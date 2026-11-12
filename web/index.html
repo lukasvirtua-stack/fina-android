@@ -252,9 +252,9 @@ const accessible=()=>true;
 const ownerBalance=o=>sum(S.accounts.filter(a=>a.owner===o),a=>a.balance);
 const partnerReady=()=>!!window.FinaPartnerReady;
 const coupleBaseBalance=()=>{
-  const titular=ownerAdjusted(selfOwner());
+  const titular=ownerBalance(selfOwner());
   if(!partnerReady()) return titular;
-  const parceiro=ownerAdjusted(partnerOwner());
+  const parceiro=ownerBalance(partnerOwner());
   return Math.min(titular,parceiro);
 };
 // Casal grande: soma dos saldos AJUSTADOS; cada pessoa selecionada: saldo ORIGINAL importado.
@@ -274,21 +274,21 @@ const reserved=()=>sum(ownBills().filter(b=>b.state==='reserved'),billValue);
 const reported=()=>sum(ownBills().filter(b=>b.state==='reported'),billValue);
 const owed=()=>open()+reserved()+reported();
 const future=()=>sum(S.future.filter(f=>ownerShown(f.owner)&&sameMonth(f)),f=>f.value);
-const real=k=>sum(ownTrans().filter(t=>t.kind===k&&t.category!=='transfer-self'&&t.category!=='card-payment'&&!(S.scope==='casal'&&t.category==='transfer-spouse')),t=>t.value);
+const real=k=>sum(ownTrans().filter(t=>t.kind===k&&t.category!=='transfer-self'&&t.category!=='transfer-spouse'&&!finaCoupleTransferTxIds.has(String(t.id||'').replace(/^real-/,''))),t=>t.value);
 const monthResult=()=>{
  if(S.scope!=='casal') return ownerProjected(S.scope);
  const base=coupleBaseBalance();
  const receivables=sum(S.future.filter(f=>sameMonth(f)&&(f.owner===selfOwner()||(partnerReady()&&f.owner===partnerOwner()))),f=>f.value);
- const openBills=sum(S.bills.filter(b=>sameMonth(b)&&b.state==='open'&&(b.owner===selfOwner()||(partnerReady()&&b.owner===partnerOwner()))),billValue);
+ const openBills=sum(S.bills.filter(b=>sameMonth(b)&&pending(b)&&(b.owner===selfOwner()||(partnerReady()&&b.owner===partnerOwner()))),billValue);
  return base+receivables-openBills;
 };
 const ownerReserved=o=>sum(S.bills.filter(b=>b.owner===o&&sameMonth(b)&&['reserved','reported'].includes(b.state)),billValue);
-const ownerOpen=o=>sum(S.bills.filter(b=>b.owner===o&&sameMonth(b)&&b.state==='open'),billValue);
+const ownerOpen=o=>sum(S.bills.filter(b=>b.owner===o&&sameMonth(b)&&pending(b)),billValue);
 // Base bancária já inclui TED/Pix efetivados: não somar transações ao saldo novamente.
-const ownerAdjusted=o=>o===partnerOwner()&&!partnerReady()?0:ownerBalance(o)-ownerReserved(o);
+const ownerAdjusted=o=>o===partnerOwner()&&!partnerReady()?0:ownerBalance(o);
 const ownerProjected=o=>{
  if(o===partnerOwner()&&!partnerReady())return 0;
- const receivables=sum(S.future.filter(f=>f.owner===o&&f.month===S.monthForBills),f=>f.value);
+ const receivables=sum(S.future.filter(f=>f.owner===o&&sameMonth(f)),f=>f.value);
  return ownerAdjusted(o)+receivables-ownerOpen(o);
 };
 const scopeForCouple=()=>coupleBaseBalance();
@@ -460,8 +460,8 @@ ${card('↶ Estornos — sempre no topo',S.refunds.filter(r=>r.card===c.id&&same
 ${card('Compras importadas (resumo)',row('Compras do ciclo',`Cartão •••• ${c.digits} · antes dos estornos`,money(b?.value||0)))}
 ${card('Adicionar estorno ao app',`<form data-form="refund" class="formgrid"><label class="wide">Descrição<input name="name" placeholder="Compra cancelada" required maxlength="80"></label><label>Valor em R$<input name="value" type="text" inputmode="decimal" autocomplete="off" placeholder="1500 ou 1.500,00" required></label><label>Cartão<select name="card">${cards.map(k=>`<option value="${k.id}" ${k.id===c.id?'selected':''}>${escape(k.name)}</option>`).join('')}</select></label><button class="btn wide" type="submit">Registrar estorno pendente</button></form>`)}
 <div class="hint">Estorno pendente não muda os totais. Crédito confirmado pela emissora reduz a fatura; devolução bancária efetiva aparece em Entrou como devolução, sem reduzir a mesma fatura.</div>`}
-function billActions(b){let a='';if(b.state==='open')a+=btn('Reservar','reserve',`data-id="${b.id}"`);if(b.state==='reserved')a+=btn('Desfazer reserva','unreserve',`data-id="${b.id}"`);if(['open','reserved'].includes(b.state))a+=btn('Informar pagamento','report',`data-id="${b.id}"`);if(b.state==='reported')a+=btn('Desfazer informação','unreport',`data-id="${b.id}"`);if(pending(b)&&b.type==='manual')a+=btn('Editar','edit',`data-id="${b.id}"`)+btn('Excluir','delete',`data-id="${b.id}"`);return a}
-function billList(b){return `<div class="line"><div class="row start"><div style="flex:1;min-width:0"><span class="line-title">${escape(b.name)}</span><span class="line-detail">${escape(b.detail)} · Dia ${b.day}</span><span class="pill ${b.state==='posted'?'ok':b.state==='reserved'?'wait':b.state==='reported'?'reported':''}">${status[b.state]}</span> <span class="line-detail">${b.estimated?'Estimativa • aguardando banco':b.type==='bank'?'Importado · somente leitura':b.type==='financing'?'Financiamento bancário · somente leitura':'Manual recorrente'}</span></div><strong>${money(billValue(b))}</strong></div><div class="action-menu">${billActions(b)}</div>${S.edit===b.id?`<form data-form="edit" data-id="${b.id}" class="formgrid" style="margin-top:12px"><label class="wide">Descrição<input name="name" value="${escape(b.name)}" required></label><label>Valor (R$)<input name="value" value="${(b.value/100).toFixed(2)}" type="text" inputmode="decimal" autocomplete="off" placeholder="1500 ou 1.500,00" required></label><label>Dia<input name="day" type="number" value="${b.day}" min="1" max="31" required></label><button class="btn" type="submit">Salvar edição</button>${btn('Cancelar','cancel')}</form>`:''}</div>`}
+function billActions(b){if(b.type==='shared')return '';let a='';if(b.state==='open')a+=btn('Reservar','reserve',`data-id="${b.id}"`);if(b.state==='reserved')a+=btn('Desfazer reserva','unreserve',`data-id="${b.id}"`);if(['open','reserved'].includes(b.state))a+=btn('Informar pagamento','report',`data-id="${b.id}"`);if(b.state==='reported')a+=btn('Desfazer informação','unreport',`data-id="${b.id}"`);if(pending(b)&&b.type==='manual')a+=btn('Editar','edit',`data-id="${b.id}"`)+btn('Excluir','delete',`data-id="${b.id}"`);return a}
+function billList(b){return `<div class="line"><div class="row start"><div style="flex:1;min-width:0"><span class="line-title">${escape(b.name)}</span><span class="line-detail">${escape(b.detail)} · Dia ${b.day}</span><span class="pill ${b.state==='posted'?'ok':b.state==='reserved'?'wait':b.state==='reported'?'reported':''}">${status[b.state]}</span> <span class="line-detail">${b.estimated?'Estimativa • aguardando banco':b.type==='bank'?'Importado · somente leitura':b.type==='financing'?'Financiamento bancário · somente leitura':b.type==='shared'?'Conta compartilhada · somente leitura':'Manual recorrente'}</span></div><strong>${money(billValue(b))}</strong></div><div class="action-menu">${billActions(b)}</div>${S.edit===b.id?`<form data-form="edit" data-id="${b.id}" class="formgrid" style="margin-top:12px"><label class="wide">Descrição<input name="name" value="${escape(b.name)}" required></label><label>Valor (R$)<input name="value" value="${(b.value/100).toFixed(2)}" type="text" inputmode="decimal" autocomplete="off" placeholder="1500 ou 1.500,00" required></label><label>Dia<input name="day" type="number" value="${b.day}" min="1" max="31" required></label><button class="btn" type="submit">Salvar edição</button>${btn('Cancelar','cancel')}</form>`:''}</div>`}
 function bills(){if(!accessible())return heading('Faturas + Contas','Sem autorização.');return `${heading('Faturas + Contas','Reserve ou informe pagamentos; a baixa bancária acontece automaticamente após o extrato confirmar.')} ${switcher()}${monthPicker()}<div class="statgrid"><div class="stat"><small>Em aberto</small><strong>${display(open())}</strong></div><div class="stat"><small>Reservado</small><strong>${display(reserved())}</strong></div><div class="stat"><small>Informado</small><strong>${display(reported())}</strong></div><div class="stat"><small>Pendente total</small><strong>${display(owed())}</strong></div></div>
 ${card('↶ Estornos das faturas',ownRefunds().map(refundRow).join('')||'<p>Sem estornos.</p>')}
 ${card('Contratos de financiamento reconhecidos',loanBoard())}<section class="card"><div class="row"><div class="cardtitle">Faturas de cartão</div>${btn('+ Informar fatura','add-invoice')}</div>${S.invoiceAdd?invoiceForm():''}${S.formNotice?`<p class="hint" role="status">${escape(S.formNotice)}</p>`:''}${ownBills().filter(b=>b.card).map(billList).join('')||'<p>Nenhuma fatura.</p>'}</section>
@@ -647,13 +647,9 @@ window.addEventListener('popstate',event=>{
  const state=event.state;
  if(state?.finaNav&&state?.finaBase){
    const now=Date.now();
-   if(now<finaExitArmedUntil){
-     finaExitArmedUntil=0;
-     setTimeout(()=>history.back(),0);
-     return;
-   }
+   if(now<finaExitArmedUntil){finaExitArmedUntil=0;}
    finaExitArmedUntil=now+2200;
-   finaBackToast('Pressione Voltar novamente para sair da FINA');
+   finaBackToast('Você está na tela inicial da FINA');
    history.pushState({finaNav:true,finaGuard:true,view:{tab:'home'}},'',location.href);
    finaHistoryRestoring=true;
    S.tab='home';
@@ -704,12 +700,7 @@ function finaReconcileBill(b){
  b.reconciliationCandidates=1;
  return true;
 }
-function finaReconcileManualBills(){
- let changed=false;
- for(const b of S.bills){if(finaReconcileBill(b))changed=true;}
- if(changed){try{localStorage.setItem('fina_state_v1',JSON.stringify(window.FinaExportPersistentState?.()))}catch{};setTimeout(()=>void window.FinaPersistNow?.(),0);}
- return changed;
-}
+function finaReconcileManualBills(){return false;}
 function post(b){if(!b||!pending(b))return;let a=S.accounts.find(a=>a.owner===b.owner);if(!a)return;const amount=billValue(b);a.balance-=amount;b.state='posted';if(b.loanId){const loan=S.loans.find(l=>l.id===b.loanId);const due=loan?.current+monthOffset();if(loan&&due>=1&&due<=loan.total)loan.paid=Math.max(loan.paid,due)}S.transactions.unshift({id:'p'+Date.now(),owner:b.owner,bank:a.name,name:'Baixa simulada · '+b.name,value:amount,kind:'out',date:'10/11',category:'expense',month:S.monthForBills});}
 function confirmRefund(r,where){if(!r||r.state!=='pending')return;if(where==='cash'){let a=S.accounts.find(a=>a.owner===r.owner);if(!a)return;a.balance+=r.value;S.transactions.unshift({id:'r'+r.id,owner:r.owner,bank:a.name,name:'Devolução confirmada · '+r.name,value:r.value,kind:'in',date:'10/11',category:'refund',month:S.monthForBills})}r.state=where}
 function answer(msg){S.messages.push({mine:true,text:msg});const t=msg.toLowerCase();let reply;if(!accessible()&&/casal|saldo|resultado/.test(t))reply='Não posso calcular os valores do casal sem consentimento recíproco.';else if(/estorn|devol/.test(t))reply=`Estornos aguardando: ${ownRefunds().filter(r=>r.state==='pending').length}. Aparecem no topo da fatura. Um crédito na fatura reduz o devido; uma devolução para a conta aparece no extrato como entrada de estorno.`;else if(/(?:naara|lucas).*(?:para|→|->).*(?:naara|lucas)|\btransfer[eê]ncia\b/.test(t)){const m=t.match(/(\d[\d.,]*)/),value=m?cents(m[1]):null;const matched=S.bankFeedApplied.includes('bank-tx-paired-naara-lucas-3260-20261110');reply=matched?'Já recebi a transferência pareada do banco: Naara → Lucas, R$ 3.260,00. As duas pontas estão no histórico e não entram como renda/gasto.':'Entendi que você está falando de '+(value?money(value):'uma transferência')+' entre pessoas do casal. Não é necessário cadastrar: vou identificar automaticamente quando o banco sincronizar e confirmar as duas movimentações. Uma mensagem não efetua nem registra PIX.';}else if(/saldo|dinheiro/.test(t))reply=S.scope==='casal'?`Saldo disponível ajustado do casal: ${money(scopeBalance())}. Toque nas iniciais para ver cada saldo original importado do banco.`:`Saldo bancário original de ${name(S.scope)}: ${money(ownerBalance(S.scope))}, sem incluir limite de cartão.`;else if(/saiu|gasto|debito/.test(t))reply=`Saiu do banco: ${money(real('out'))}. Reserva e pagamento informado não entram em Saiu.`;else if(/(?:^|\b)(?:recebi|entrou|valor)\s+(?:r\$\s*)?[\d.,]+(?:\s|$)/.test(t)||/^(?:r\$\s*)?[\d.,]+$/.test(t)){
@@ -921,11 +912,35 @@ async function finaLoadPersistentState(user){
     window.FinaApplyPersistentState?.(data.state);
   }
 }
+async function finaLoadSharedBills(){
+ if(!window.FinaCurrentUser||!window.FinaPartnerReady){S.bills=(S.bills||[]).filter(b=>b.type!=='shared');return;}
+ const {data,error}=await sb.rpc('fina_shared_pending_bills');
+ if(error||!Array.isArray(data))return;
+ const current=(S.bills||[]).filter(b=>b.type!=='shared');
+ const norm=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
+ const fp=b=>[b.owner,norm(b.name),b.month,b.year,Math.round(Number(b.value)||0)].join('|');
+ const seen=new Set(current.filter(b=>b.type==='manual').map(fp));
+ for(const item of data){
+  if(!item||!['open','reserved','reported'].includes(item.state))continue;
+  const bill={...item,type:'shared',value:Math.round(Number(item.value)||0)};
+  if(bill.value<=0||seen.has(fp(bill)))continue;
+  seen.add(fp(bill));current.push(bill);
+ }
+ S.bills=current;window.FinaRender?.();
+}
+window.FinaLoadSharedBills=finaLoadSharedBills;
 async function finaSavePersistentState(){
   const user=window.FinaCurrentUser; if(!user)return;
   const state=window.FinaExportPersistentState?.(); if(!state)return;
   try{localStorage.setItem('fina_state_v1',JSON.stringify(state));}catch{}
-  await sb.from('fina_user_state').upsert({user_id:user.id,state,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+  const {error}=await sb.from('fina_user_state').upsert({user_id:user.id,state,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+  if(error){console.warn('Erro ao salvar estado FINA',error.message);return;}
+  if(Array.isArray(state.manualBills)&&state.manualBills.some(b=>b.type==='manual'&&['open','reserved','reported'].includes(b.state))){
+   const result=await sb.rpc('fina_reconcile_manual_bills');
+   if(!result.error&&Number(result.data)>0&&window.FinaCurrentUser?.id===user.id){
+    await finaLoadPersistentState(user);window.FinaRender?.();
+   }
+  }
   // Perfil compartilhado é salvo apenas pelas rotinas específicas de perfil/foto.
 }
 function finaScheduleSave(){clearTimeout(finaPersistTimer);finaPersistTimer=setTimeout(()=>void finaSavePersistentState(),250);}
@@ -1068,7 +1083,7 @@ async function loadCoupleStatus(user){
    window.FinaPartnerReady=Number(row.member_count)>=2;
    S.activeEditor=self;
    window.FinaHeaderGreeting='Olá, '+coupleState.titularName+(coupleState.partnerName?' e '+coupleState.partnerName:'');
-   try{await finaLoadPersistentState(user);}catch{}
+   try{await finaLoadPersistentState(user);await finaLoadSharedBills();}catch{}
    try{await loadFinaSharedProfiles();finaStartSharedProfileRealtime();}catch{}
  }else{
    window.FinaSelfOwnerKey='lucas';window.FinaPartnerReady=false;
@@ -1341,6 +1356,8 @@ async function finaLoadRealBankData(){
     S.transactions=(txs||[]).filter(t=>bankIds.has(t.bank_account_id)).map(t=>{
       const a=bankById.get(t.bank_account_id)||{};
       const d=new Date(t.occurred_at);
+      const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',year:'numeric',month:'numeric',day:'numeric'}).formatToParts(d);
+      const localPart=k=>Number(parts.find(x=>x.type===k)?.value||0);
       const desc=String(t.description||'Movimentação');
       const rawCategory=String(t.category||'bank');
       const catLower=rawCategory.toLowerCase();
@@ -1350,10 +1367,9 @@ async function finaLoadRealBankData(){
       else if(finaCoupleTransferTxIds.has(String(t.id)))category='transfer-spouse';
       else if(/\bparcela\s+0*\d+\s+de\s+0*\d+/i.test(desc)||/\bcontr\s+\d+\s+parc\s+0*\d+\s*\/\s*0*\d+/i.test(desc))category='financing';
       else if(descLower.includes('pagamento de fatura'))category='card-payment';
-      return {id:'real-'+t.id,owner:ownerForUserId(t.user_id),bank:prettyBank(a.institution_name||a.name||'Banco'),name:desc,value:Math.round((Number(t.amount)||0)*100),kind:t.direction==='credit'?'in':'out',date:String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0'),category,month:d.getMonth(),year:d.getFullYear(),real:true};
+      return {id:'real-'+t.id,owner:ownerForUserId(t.user_id),bank:prettyBank(a.institution_name||a.name||'Banco'),name:desc,value:Math.round((Number(t.amount)||0)*100),kind:t.direction==='credit'?'in':'out',date:String(localPart('day')).padStart(2,'0')+'/'+String(localPart('month')).padStart(2,'0'),category,month:localPart('month')-1,year:localPart('year'),real:true};
     });
     window.FinaRealBankLoaded=true;
-    finaReconcileManualBills();
     await loadFinaFinancings();
     render(false);
   }catch(e){}
@@ -1368,7 +1384,7 @@ function finaScheduleRealtimeDataRefresh(){
   clearTimeout(finaDataRealtimeTimer);
   finaDataRealtimeTimer=setTimeout(async()=>{
     if(!window.FinaCurrentUser)return;
-    try{await finaLoadPersistentState(window.FinaCurrentUser);}catch{}
+    try{await finaLoadPersistentState(window.FinaCurrentUser);await finaLoadSharedBills();}catch{}
     try{await loadFinaCoupleTransfers();}catch{}
     try{await finaLoadRealBankData();}catch{}
     try{await loadFinaFinancings();}catch{}
@@ -1385,9 +1401,12 @@ function finaStartDataRealtime(){
     .on('postgres_changes',{event:'*',schema:'public',table:'fina_financing_installments'},refresh)
     .on('postgres_changes',{event:'*',schema:'public',table:'fina_couple_transfers'},refresh)
     .on('postgres_changes',{event:'*',schema:'public',table:'fina_user_state'},refresh)
+    .on('postgres_changes',{event:'*',schema:'public',table:'fina_couple_state_versions'},()=>void finaLoadSharedBills())
     .subscribe();
 }
 window.addEventListener('fina:auth-ready',()=>setTimeout(finaStartDataRealtime,900));
+window.addEventListener('fina:auth-ready',()=>setTimeout(()=>void finaLoadSharedBills(),1300));
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')void finaLoadSharedBills();});
 let finaAutoRefreshTimer=null;
 async function finaRefreshVisibleData(){
   if(document.hidden||!window.FinaCurrentUser)return;
