@@ -200,7 +200,7 @@ window.FinaExportPersistentState=()=>{
       id:x.id,owner:(x.owner==='naara'?'naara':'lucas'),name:x.name,value:x.value,day:x.day,type:'manual',state:x.state||'open',paidDate:x.paidDate||null,paidTransactionId:x.paidTransactionId||null,reconciliationCandidates:Number(x.reconciliationCandidates)||0,
       detail:x.detail||'',recurring:!!x.recurring,month:x.month,year:x.year,card:x.card||null,estimated:!!x.estimated
     })),
-    future:(S.future||[]).map(x=>({id:x.id,owner:(x.owner==='naara'?'naara':'lucas'),name:x.name,value:x.value,day:x.day,month:x.month,year:x.year}))
+    future:(S.future||[]).filter(x=>x.type!=='shared').map(x=>({id:x.id,owner:(x.owner==='naara'?'naara':'lucas'),name:x.name,value:x.value,day:x.day,month:x.month,year:x.year}))
   };
 };
 window.FinaApplyPersistentState=(p)=>{
@@ -913,8 +913,8 @@ async function finaLoadPersistentState(user){
   }
 }
 async function finaLoadSharedBills(){
- if(!window.FinaCurrentUser||!window.FinaPartnerReady){S.bills=(S.bills||[]).filter(b=>b.type!=='shared');return;}
- const {data,error}=await sb.rpc('fina_shared_pending_bills');
+ if(!window.FinaCurrentUser||!window.FinaPartnerReady){S.bills=(S.bills||[]).filter(b=>b.type!=='shared');S.future=(S.future||[]).filter(x=>x.type!=='shared');return;}
+ const [{data,error},{data:futureData,error:futureError}]=await Promise.all([sb.rpc('fina_shared_pending_bills'),sb.rpc('fina_shared_future_income')]);
  if(error||!Array.isArray(data))return;
  const current=(S.bills||[]).filter(b=>b.type!=='shared');
  const norm=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
@@ -926,7 +926,20 @@ async function finaLoadSharedBills(){
   if(bill.value<=0||seen.has(fp(bill)))continue;
   seen.add(fp(bill));current.push(bill);
  }
- S.bills=current;window.FinaRender?.();
+ S.bills=current;
+ if(!futureError&&Array.isArray(futureData)){
+  const ownFuture=(S.future||[]).filter(x=>x.type!=='shared');
+  const sig=x=>[x.owner,norm(x.name),x.month,x.year,Math.round(Number(x.value)||0)].join('|');
+  const seenFuture=new Set(ownFuture.map(sig));
+  for(const item of futureData){
+   if(!item)continue;
+   const entry={...item,type:'shared',value:Math.round(Number(item.value)||0)};
+   if(entry.value<=0||seenFuture.has(sig(entry)))continue;
+   seenFuture.add(sig(entry));ownFuture.push(entry);
+  }
+  S.future=ownFuture;
+ }
+ window.FinaRender?.();
 }
 window.FinaLoadSharedBills=finaLoadSharedBills;
 async function finaSavePersistentState(){
