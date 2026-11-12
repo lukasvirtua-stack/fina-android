@@ -1,0 +1,1527 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FINA — Finanças a Dois</title>
+<meta name="theme-color" content="#fbfaf7">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="FINA">
+<link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/icon-192.png" sizes="192x192" type="image/png"><link rel="apple-touch-icon" href="/icon-192.png">
+<style>
+:root{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:#352e27;background:#f1eeea;font-size:14px}*{box-sizing:border-box}body{margin:0}button,input,select{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #bc944e;outline-offset:2px}
+.stage{min-height:100dvh;display:grid;place-items:center;padding:20px}.app{width:min(100%,480px);height:min(880px,93dvh);min-height:640px;background:#faf9f6;display:flex;flex-direction:column;overflow:hidden;border:5px solid #32312e;border-radius:32px;box-shadow:0 14px 50px #0002;position:relative}.statusbar{height:25px;background:#fffdfa;display:flex;align-items:center;justify-content:space-between;padding:3px 20px;font-size:10px;color:#777166;flex-shrink:0}.top{height:63px;background:#fffdfa;border-bottom:1px solid #ebe3d6;display:flex;align-items:center;justify-content:space-between;padding:0 14px;flex-shrink:0}.identity{display:flex;align-items:center;gap:9px}.monogram{display:grid;place-items:center;width:35px;height:35px;border-radius:12px;color:#8d6b35;background:#f4ead5;font-size:22px}.wordmark{font-size:15px;letter-spacing:.22em}.tagline{font-size:8px;letter-spacing:.18em;color:#a68c64;margin-top:3px}.topright{display:flex;align-items:center;gap:8px}.topright small{font-size:10px;color:#8d7e67}.iconbutton{border:0;background:none;color:#8f7343;padding:8px;font-size:17px}.body{padding:18px 16px 24px;flex:1;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}.view-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:17px}.view-title strong{font-size:14px}.view-title small{font-size:10px;color:#847c6f}.testbadge{font-size:10px;background:#f6eddc;color:#916d31;border:1px solid #e9dcc5;border-radius:30px;padding:7px 10px}.navbottom{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px 3px;padding:7px 7px 9px;background:#fffdfa;border-top:1px solid #e8dece;flex-shrink:0}.navbottom button{border:0;border-radius:9px;color:#766d60;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:7px 2px 6px;min-height:51px;min-width:0}.navbottom button.active{background:#f5e8d0;color:#7d5722;font-weight:750}.navbottom .navicon{font-size:18px;line-height:1}.navbottom .navname{font-size:9px;line-height:1.13;text-align:center;letter-spacing:-.08px}.gesture{background:#fffdfa;display:flex;justify-content:center;padding:2px 0 6px;flex-shrink:0}.gesture:after{content:"";background:#35322b;border-radius:20px;width:100px;height:4px}
+h1{font-size:21px;font-weight:680;letter-spacing:-.5px;margin:0 0 6px}h2{font-size:15px;margin:0 0 12px;font-weight:650}.sub{font-size:11px;color:#857e73;line-height:1.55;margin:0 0 17px}.card{background:#fff;border:1px solid #e7e0d5;border-radius:15px;padding:16px;margin-bottom:14px}.card p{margin:6px 0 0;color:#857d71;font-size:11px;line-height:1.5}.cardtitle{font-size:14px;font-weight:650;margin-bottom:14px}.row{display:flex;align-items:center;justify-content:space-between;gap:10px}.row.start{align-items:flex-start}.row + .row{margin-top:10px}.muted{color:#857e73;font-size:11px}.strong{font-size:13px;font-weight:650}.line{padding:12px 0;border-bottom:1px solid #f0ede8}.line:last-child{border-bottom:none;padding-bottom:0}.line:first-child{padding-top:0}.card .row .line-detail{display:block;margin-top:4px}.line .line-title{font-size:12px;font-weight:630;display:block}.line .line-detail{font-size:10px;color:#837c73;display:block;margin-top:4px}.value{font-size:13px;font-weight:720;white-space:nowrap}.positive{color:#258455}.negative{color:#b95d59}.btn{background:#b9955a;color:#fff;border:1px solid #ba985d;border-radius:9px;padding:9px 11px;font-size:11px;font-weight:670}.btn.soft{background:#fffefa;color:#806438;border-color:#ded2be}.btn.light{background:#f7f4ef;color:#676056;border-color:#ebe6dc}.btn.mini{padding:6px 8px;font-size:10px}.btnrow{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}.plain{border:0;background:transparent;color:#997239;font-size:11px;font-weight:650;padding:5px}.statgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:13px}.stat{background:#fff;border:1px solid #eae3d8;border-radius:12px;padding:12px}.stat small{display:block;font-size:10px;color:#827869;margin-bottom:5px}.stat strong{display:block;font-size:15px}.segments{display:flex;border-radius:12px;background:#f0ede8;padding:4px;gap:3px;margin-bottom:12px}.segments button{border:0;flex:1;color:#7a7369;background:transparent;border-radius:9px;padding:10px 4px;font-size:11px}.segments button.active{background:#fffefa;color:#866731;font-weight:660;box-shadow:0 1px 5px #0000000d}.pill{font-size:10px;background:#f5efe2;border:1px solid #e6d8bc;padding:4px 7px;color:#8a7148;border-radius:14px;display:inline-block;margin-top:7px}.pill.ok{background:#e6f4ec;color:#23724c;border-color:#d0e9db}.pill.wait{background:#fff1dc;color:#96672e;border-color:#efdbb4}.pill.error{background:#fae9e6;color:#a65b56;border-color:#eed6d2}.hint{border:1px solid #e9dec9;background:#fff8ec;border-radius:12px;padding:12px;color:#6d604c;font-size:11px;line-height:1.5;margin:10px 0}.action-menu{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}label{display:block;color:#766d61;font-size:11px}input,select{width:100%;padding:9px 10px;background:white;border:1px solid #dfd6c8;border-radius:8px;color:#373126;margin:4px 0 8px}.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.formgrid .wide{grid-column:1/-1}.primary-info{background:linear-gradient(125deg,#fffefa,#fff5e6);border:1px solid #ebddc4;border-radius:20px;padding:18px;margin-bottom:12px;text-align:center}.primary-info .title{font-size:17px;font-weight:660}.primary-info .big{font-size:30px;font-weight:800;letter-spacing:-1px;margin:7px 0;overflow-wrap:anywhere}.profiles{display:flex;justify-content:center;align-items:center;gap:12px;margin:0 0 12px}.portrait{border:2px solid #c99d53;border-radius:100%;background:#f6ead4;color:#916e34;width:85px;height:85px;display:grid;place-items:center;font-size:24px;font-weight:750;transition:transform .2s}.portrait.active{transform:translateY(-5px) scale(1.07);box-shadow:0 6px 15px #956d3228}.heart{border:0;background:none;color:#ba8a39;font-size:27px;padding:4px}.heart.active{transform:scale(1.14)}.profilelabel{text-align:center;font-size:10px;color:#927a56;margin-top:5px}.personrow{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}.personrow button{background:#fff;border:1px solid #eadfcb;border-radius:14px;text-align:left;padding:10px;display:flex;align-items:center;gap:8px;min-width:0;color:#3b3228}.personrow button.active{border-color:#b99457;background:#fff7e8}.bubbleavatar{width:36px;height:36px;min-width:36px;background:#eee1c7;border-radius:50%;display:grid;place-items:center;color:#8e652c}.personrow b{display:block;font-size:12px}.personrow small{display:block;font-size:10px;margin-top:3px;overflow-wrap:anywhere}.fourstats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;background:#fff;border:1px solid #ece4d9;border-radius:16px;margin-bottom:12px;padding:12px 3px}.fourstats button{border:0;border-right:1px solid #efe7dd;background:transparent;display:flex;flex-direction:column;align-items:center;gap:5px;color:#353027;padding:1px;min-width:0}.fourstats button:last-child{border-right:0}.round{display:grid;place-items:center;width:35px;height:35px;color:#fff;font-size:19px;border-radius:50%}.round.green{background:#58b984}.round.red{background:#ef7676}.round.blue{background:#61abe1}.round.gold{background:#c89f50}.fourstats small{font-size:9px}.fourstats b{font-size:9px;line-height:1.3;overflow-wrap:anywhere;text-align:center}.quickgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.quickgrid button{min-height:81px;background:#fff9ed;border:1px solid #e6d7b9;border-radius:10px;padding:12px 5px;color:#806236;font-size:10px}.quickgrid span{display:block;font-size:20px;margin-bottom:5px}
+.bankcard{min-height:155px;border-radius:15px;color:#fff;padding:15px;position:relative;overflow:hidden;box-shadow:0 8px 20px #0002;margin-bottom:12px}.bankcard.santander{background:linear-gradient(135deg,#e52b2f,#a61d2a)}.bankcard.nubank{background:linear-gradient(135deg,#8547c6,#4b1b77)}.bankcard.itau{background:linear-gradient(135deg,#096fc8,#07467e)}.bankcard.bradesco{background:linear-gradient(135deg,#d9303d,#86121c)}.bankcard:after{content:"";position:absolute;width:220px;height:220px;border-radius:100%;border:1px solid #ffffff36;right:-95px;bottom:-125px}.bankbrand{font-size:18px;font-weight:700;display:flex;align-items:center;gap:6px}.bankbrand .emblem{font-size:18px;background:#ffffff30;border-radius:8px;padding:2px 6px;min-width:29px;min-height:27px;display:grid;place-items:center;text-align:center}.bankbrand .emblem svg{display:block;width:19px;height:19px}.chip{margin:16px 0 8px;width:31px;height:23px;border:1px solid #d9cfab;background:linear-gradient(125deg,#eaddb3,#d7c38c);border-radius:5px;position:relative}.chip:after{content:"";position:absolute;border:1px solid #b7a679;top:5px;left:6px;right:6px;bottom:5px;border-radius:3px}.cardnetwork{position:absolute;right:16px;bottom:16px;font-style:italic;font-size:17px;font-weight:850;letter-spacing:.5px}.mastercircles{display:flex}.mastercircles i{width:23px;height:23px;display:block;border-radius:50%;background:#ef513a;opacity:.94}.mastercircles i+ i{background:#f3b23b;margin-left:-7px}.cardnumbers{font-size:12px;letter-spacing:2px}.cardholder{font-size:10px;letter-spacing:1px;margin-top:9px}.refund{border:1px solid #ecd9b4;background:#fffcf5;border-radius:13px;padding:12px;margin:11px 0}.refund .refund-title{font-size:12px;font-weight:710}.refund .refund-amount{font-weight:730;font-size:13px;color:#22824f}.refund.note{border-style:dashed}.refund-options{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.chatbox{height:350px;overflow:auto;background:#ece5da;border-radius:12px;padding:11px;display:flex;flex-direction:column;gap:8px}.chatbubble{background:#fff;align-self:flex-start;max-width:87%;padding:10px 12px;font-size:12px;white-space:pre-wrap;border-radius:13px;overflow-wrap:anywhere}.chatbubble.me{align-self:flex-end;background:#dbeccc}.chatentry{display:flex;gap:7px;margin-top:10px}.chatentry input{margin:0}.calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}.calendar .date{border:1px solid #ede7db;border-radius:8px;min-height:47px;font-size:11px;background:#fff;padding:6px}.calendar .date em{font-size:8px;color:#b08b4b;display:block;font-style:normal}.toggle{border:0;width:44px;height:25px;border-radius:20px;background:#d9d4cb;padding:3px;display:inline-flex;justify-content:flex-start;align-items:center}.toggle:after{content:"";width:19px;height:19px;background:white;box-shadow:0 1px 3px #0002;border-radius:50%}.toggle.on{background:#bb9251;justify-content:flex-end}.menuitem{width:100%;border:0;border-bottom:1px solid #eee9e1;background:transparent;display:flex;justify-content:space-between;align-items:center;text-align:left;padding:12px 0;color:#3b352d}.menuitem:last-child{border-bottom:0}.menuitem small{font-size:10px;color:#8a8176;display:block;margin-top:3px}.menuitem .chevron{color:#aa8650;font-size:18px}.testline{border-bottom:1px solid #eee8dc;padding:9px 0;display:flex;gap:8px;font-size:11px}.testline strong{color:#2b8957}.footnote{font-size:10px;text-align:center;color:#948676;margin-top:12px}.theme-dark{background:#28241f;color:#f4e8d6}.theme-dark .top,.theme-dark .statusbar,.theme-dark .navbottom,.theme-dark .gesture{background:#302a23;color:#f4e8d6}.theme-dark .card,.theme-dark .stat,.theme-dark .personrow button,.theme-dark .fourstats{background:#383127;color:#f4e8d6;border-color:#675540}.theme-dark h1,.theme-dark h2,.theme-dark .line-title,.theme-dark .value{color:#f4e8d6}.theme-dark .primary-info{background:#48372a}.theme-dark .navbottom button{color:#ead5b1}.theme-dark .navbottom button.active{background:#624c31}.theme-dark .menuitem{color:#f4e8d6}
+@media(max-width:520px){.stage{padding:0}.app{border:0;border-radius:0;width:100%;height:100dvh;max-height:none;min-height:0;box-shadow:none}.statusbar{padding-top:env(safe-area-inset-top,2px);height:calc(22px + env(safe-area-inset-top,0px))}.gesture{padding-bottom:max(6px,env(safe-area-inset-bottom,6px))}.body{padding:16px 15px 26px}.navbottom{padding-bottom:8px}.navbottom .navname{font-size:9px}.card{padding:15px}.stat strong{font-size:13px}}
+
+/* Prévia v5: movimentações em primeiro, com saldos sem confundir limite do cartão. */
+.bank-total-balance{background:linear-gradient(130deg,#fffaf0,#f8eacb);border:1px solid #e5d2af;border-radius:13px;padding:14px;margin-bottom:12px;display:flex;flex-direction:column;gap:4px}
+.bank-total-balance>span{font-size:11px;color:#796344;font-weight:650}.bank-total-balance>strong{font-size:25px;letter-spacing:-.7px;color:#3c3022;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}.bank-total-balance>small{font-size:10px;color:#84735c;line-height:1.5}
+.bank-accounts-group{display:flex;flex-direction:column;gap:0}
+.bank-account-line{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 0;border-bottom:1px solid #eee7dc}
+.bank-account-identity{display:flex;align-items:center;gap:9px;min-width:0}.bank-account-identity strong{display:block;font-size:12px}.bank-account-identity small{display:block;font-size:10px;color:#847d70;margin-top:2px}.bank-account-value{font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.bank-dot{display:grid;place-items:center;height:34px;width:34px;min-width:34px;border-radius:10px;color:#fff;font-weight:800;font-size:13px;background:#97774d}
+.bank-dot.santander,.bank-dot.bradesco{background:#c62a36}.bank-dot.nubank{background:#7138a5}.bank-dot.itaú,.bank-dot.itau{background:#1269ba}
+.bank-subheading{display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;padding-top:14px;margin:0 0 8px}.bank-subheading strong{font-size:12px}.bank-subheading span{font-size:10px}
+.bankcard-financial{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:-2px 0 10px}.bankcard-financial>div{background:#fff9ef;border:1px solid #ebdfc9;border-radius:11px;padding:10px;min-width:0}.bankcard-financial span{font-size:10px;display:block;color:#8c795c;margin-bottom:5px}.bankcard-financial strong{font-size:13px;display:block;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.bankcard-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:2px 0 15px}.bankcard-footer .muted{font-size:10px}
+.theme-dark .bank-total-balance,.theme-dark .bankcard-financial>div{background:#483a2a;color:#f5e5c8;border-color:#665137}.theme-dark .bank-total-balance>strong{color:#f5e5c8}.theme-dark .bank-account-line{border-color:#5b5044}
+@media(max-width:370px){.bankcard-financial strong{font-size:11px}.bank-total-balance>strong{font-size:22px}}
+
+/* FINA - Prévia 6: previsões discretas e todos os compromissos após Acessos rápidos. */
+.home-forecast-line{display:flex;align-items:center;width:100%;text-align:left;gap:9px;padding:10px 13px;margin:0 0 12px;background:#fffdfa;border:1px solid #eae1d4;border-radius:12px;color:#524632;box-shadow:none;min-height:49px}
+.home-forecast-icon{display:grid;place-items:center;color:#aa8954;font-size:18px;width:23px;flex:0 0 23px}
+.home-forecast-text{display:flex;flex:1;flex-direction:column;gap:2px;min-width:0}
+.home-forecast-text strong{font-size:11px;font-weight:680;color:#655039}
+.home-forecast-text small{font-size:9px;color:#928573}
+.home-forecast-amount{font-size:12px;white-space:nowrap;color:#7c6035;font-weight:750;font-variant-numeric:tabular-nums}
+.home-forecast-chevron{font-size:21px;color:#aa8954;line-height:1}
+.home-commitments-heading{display:flex;align-items:center;justify-content:space-between;gap:5px;margin:-4px 0 4px}
+.home-commitments-heading>span{font-size:10px;color:#8d8275}
+.home-commitments-link{border:0;background:transparent;padding:5px 2px;color:#916b39;font-size:10px;font-weight:650;white-space:nowrap}
+.home-commitments-list .line{padding:13px 0}
+.home-commitments-list .line-title{font-weight:720}
+.theme-dark .home-forecast-line{background:#393228;border-color:#65563d;color:#ead7b2}
+.theme-dark .home-forecast-text strong,.theme-dark .home-forecast-amount{color:#edd5a3}
+@media(max-width:370px){.home-forecast-line{padding:9px 8px;gap:5px}.home-forecast-amount{font-size:11px}.home-commitments-heading>span{font-size:9px}}
+
+/* Prévia 7: nome da aba alterado e inclusão rápida de compromissos na home. */
+.home-commitments-title-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.home-commitments-title-row .cardtitle{margin:0;min-width:0}
+.home-commitments-add{white-space:nowrap;flex-shrink:0}
+.quick-bill-form{padding:12px;background:#fff9ed;border:1px solid #eadfc8;border-radius:11px;margin:11px 0 15px}
+.quick-bill-form .btn{align-self:end}
+.theme-dark .quick-bill-form{background:#393228;border-color:#64523c}
+@media(max-width:370px){.home-commitments-add{padding:6px 7px}}
+/* Prévia v10 — números pequenos projetados, grande bancário real. */
+.personrow small.person-projection-label{font-size:9px;line-height:1.3;color:#8b8174;margin-top:3px}
+.personrow small.person-projection-value{font-size:12px;line-height:1.25;color:#71532a;font-weight:780;margin-top:3px;font-variant-numeric:tabular-nums}
+.theme-dark .personrow small.person-projection-value{color:#ead3a0}
+.projection-separation-note{color:#786c57;font-size:10px;line-height:1.45;margin:0 4px 11px;padding:8px 10px;border:1px solid #ede1c9;border-radius:10px;background:#fffaf0}.projection-separation-note b{color:#7c5e2c}.theme-dark .projection-separation-note{background:#332c24;color:#edddc7}
+
+/* V10: saldos disponíveis, perfis, datas e histórico bancário */
+.fina-celebration-art{display:flex;gap:12px;align-items:center;margin:8px 0 13px;padding:14px;background:linear-gradient(115deg,#fff8e9,#ffead7);border:1px solid #e8ca95;border-radius:18px}
+.celebration-emblem{font-size:34px;min-width:55px;text-align:center}.fina-celebration-art strong{color:#926b36;font-size:14px}.fina-celebration-art p{margin:5px 0;font-size:11px;color:#75644d}.fina-celebration-art small{font-size:9px;color:#9b7a50}
+.photo-avatar{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
+.profiles .portrait{overflow:hidden;padding:0}.personrow .bubbleavatar{flex-shrink:0}
+.personrow small.person-projection-label{color:#89785c}.fina-v10-narrative{font-size:11px;line-height:1.5;color:#766b59}
+.theme-dark .fina-celebration-art{background:linear-gradient(120deg,#4c3927,#3b2b26);border-color:#685135}.theme-dark .fina-celebration-art p{color:#e8d6b6}
+
+/* FINA v11 — Foto proporcional, redimensionamento e ajuste de enquadramento. */
+.photo-avatar { object-fit:cover; object-position:center; }
+.photo-editor-backdrop[hidden]{display:none!important}
+.photo-editor-backdrop{position:absolute;inset:0;z-index:999;background:#f8f6f0;overflow-y:auto;overscroll-behavior:contain;padding:24px 16px max(24px,env(safe-area-inset-bottom,18px));}
+.photo-editor-dialog{margin:0 auto;max-width:430px}
+.photo-editor-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.photo-editor-top h2{font-size:18px;color:#55402c;margin:0}
+.photo-editor-stage{border:1px solid #e4d5b9;background:linear-gradient(150deg,#fffefa,#f4e6cf);border-radius:18px;padding:18px 12px;margin:13px auto 14px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.photo-editor-canvas{width:min(70vw,258px);height:min(70vw,258px);max-width:100%;aspect-ratio:1;display:block;border-radius:50%;border:3px solid #ba914c;box-shadow:0 7px 22px #86642b26;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.photo-editor-canvas:active{cursor:grabbing}
+.photo-editor-zoom input[type=range]{margin:6px 0 12px;accent-color:#af8748;cursor:pointer}
+.photo-editor-modes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:6px 0 14px}
+.photo-editor-modes button{background:#fff;border:1px solid #dbc7a4;color:#715633;border-radius:10px;padding:10px 6px;font-size:12px}
+.photo-editor-modes button.active{background:#f6e7ca;color:#62451a;border-color:#b68a42;font-weight:700}
+.photo-editor-buttons{display:flex;flex-wrap:wrap;gap:7px;margin-top:13px}
+.photo-editor-buttons button{flex:1;min-width:90px}
+.photo-editor-help{font-size:11px;color:#746b5e;line-height:1.6;margin:5px 0 10px}
+.photo-editor-notice{font-size:11px;color:#74644f;min-height:16px;margin:9px 0}
+.profile-photo-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.profile-photo-actions button{flex:1;min-width:135px}
+.theme-dark .photo-editor-backdrop{background:#26221d;color:#f5e6cf}
+.theme-dark .photo-editor-top h2{color:#ead1a6}
+@media(max-width:520px){.photo-editor-backdrop{padding:20px 15px 24px}.photo-editor-canvas{width:min(67vw,256px);height:min(67vw,256px)}}
+
+/* v13: financial workflow statuses, month navigator and contract display */
+.pill.reported{background:#e7f0ff!important;color:#2158a8!important;border-color:#b5cdee!important}
+.pill.wait{background:#fff2cf!important;color:#8c5c00!important;border-color:#eacb70!important}
+.pill.ok{background:#e1f6e7!important;color:#19623e!important;border-color:#a2d9b8!important}
+.month-picker{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid #e3d6bd;background:#fffefa;border-radius:13px;padding:10px;margin:12px 0 7px}
+.month-picker strong{font-size:12px;text-transform:capitalize;text-align:center;white-space:nowrap}
+.month-picker .btn{padding:7px;font-size:11px}
+.month-explain{font-size:11px;color:#84735a;margin-bottom:12px;line-height:1.45}
+.loan-line{padding:12px 0;border-bottom:1px solid #eee6da}.loan-line:last-child{border:0}
+.loan-line strong{font-size:12px}.loan-line .row>strong{white-space:nowrap}
+.loan-sub,.source-tag{display:block;color:#897d6b;font-size:10px;padding-top:5px}
+.bank-sync-note{background:#faf5eb;border:1px solid #eee3d1;border-radius:11px;padding:11px;margin-bottom:11px;line-height:1.5;font-size:12px}
+.home-commitments-list .pill{font-size:9px;margin-top:4px}
+.fina-celebration-art .celebration-emblem{font-size:31px}
+@media(max-width:420px){.month-picker strong{font-size:11px}.month-picker .btn{padding:5px 6px}}
+.quick-bill-form [data-money-preview]{color:#8d622b;font-weight:750}.theme-dark .quick-bill-form [data-money-preview]{color:#efce86}.hint[role="status"]{padding:8px 10px;border:1px solid #e7dac1;border-radius:10px;background:#fcf7e9;line-height:1.5}.theme-dark .hint[role="status"]{background:#44392b;color:#f1dbad}
+
+/* FINA real auth gate */
+#finaAuthGate{position:fixed;inset:0;z-index:99999;background:#fbfaf7;display:grid;place-items:center;padding:24px;font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#4a3b2d}
+#finaAuthGate[hidden]{display:none!important}
+#finaAuthCard{width:min(92vw,390px);background:#fff;border:1px solid #eadfce;border-radius:22px;padding:24px;box-shadow:0 14px 40px #5f45251c;text-align:center}
+#finaAuthCard h1{font-size:22px;margin:8px 0 6px}.fina-auth-sub{font-size:13px;color:#7d6d5b;line-height:1.45;margin:0 0 18px}
+#finaGoogleLogin,#finaLogoutBtn{width:100%;border:1px solid #dcc8a7;background:#fffaf0;color:#4b3a26;border-radius:13px;padding:13px 14px;font-weight:700;font-size:14px;cursor:pointer}
+#finaGoogleLogin{display:flex;align-items:center;justify-content:center;gap:9px}
+#finaAuthStatus{font-size:12px;color:#7d6d5b;margin-top:12px;min-height:18px}
+#finaUserBar{display:none!important}
+/* FINA final: full-screen mobile app, no simulated phone frame. */
+html,body{width:100%;min-height:100%;background:#faf9f6}
+body{min-height:100dvh;overflow:hidden}
+.stage{width:100%;min-height:100dvh;height:100dvh;display:block;padding:0;background:#faf9f6}
+.app{width:100%;max-width:none;height:100dvh;min-height:100dvh;border:0;border-radius:0;box-shadow:none;margin:0}
+.statusbar{display:none!important}
+.body{padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+.navbottom{padding-bottom:calc(9px + env(safe-area-inset-bottom))}
+@media(min-width:760px){body{overflow:auto}.stage{display:grid;place-items:start center;height:auto;min-height:100dvh}.app{max-width:760px;min-height:100dvh;height:100dvh;border-left:1px solid #ece3d6;border-right:1px solid #ece3d6}}
+
+.fina-couple-link{display:grid;gap:10px}.fina-couple-code{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px;border:1px dashed #d6bd91;border-radius:13px;background:#fffaf0}.fina-couple-code strong{font-size:22px;letter-spacing:.16em;color:#725129}.fina-couple-link input{width:100%;border:1px solid #ddcfba;border-radius:11px;padding:12px;background:#fff}.fina-couple-status{font-size:11px;color:#786b5b;min-height:16px}.fina-couple-actions{display:flex;gap:8px;flex-wrap:wrap}.fina-couple-actions .btn{flex:1;min-width:150px}.fina-real-badge{display:inline-flex;align-items:center;gap:5px;border:1px solid #d8c49f;background:#fff8e8;color:#71542b;border-radius:999px;padding:4px 8px;font-size:9px;font-weight:700}
+.fina-bank-connect{display:grid;gap:10px}.fina-bank-items{display:grid;gap:7px}.fina-bank-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 11px;border:1px solid #eadfce;border-radius:12px;background:#fff}.fina-bank-item b{display:block;font-size:12px}.fina-bank-item small{display:block;color:#7f7467;margin-top:2px}.fina-bank-dot{width:8px;height:8px;border-radius:50%;background:#b99353;flex:none}.fina-bank-dot.ok{background:#3e8b5c}
+</style><script data-fina-early-sw>
+if('serviceWorker' in navigator && location.protocol==='https:'){
+  navigator.serviceWorker.register('/service-worker.js',{scope:'/',updateViaCache:'none'}).catch(()=>{});
+}
+</script>
+</head>
+<body><div id="finaAuthGate"><div id="finaAuthCard"><div style="font-size:34px">◈</div><h1>FINA</h1><p class="fina-auth-sub">Entre com sua conta Google para acessar seus dados financeiros e o espaço do casal.</p><button id="finaGoogleLogin" type="button"><span aria-hidden="true">G</span><span>Entrar com Google</span></button><div id="finaAuthStatus">Conferindo sua sessão…</div></div></div><div id="finaUserBar" aria-live="polite"></div><div class="stage"><div class="app" id="app">
+<div class="statusbar"><span>17:43</span><span>▂▄▆　◈ 5G　▰</span></div>
+<div class="top"><div class="identity"><span class="monogram">F</span><div><div class="wordmark">FINA</div><div class="tagline">FINANÇAS A DOIS</div></div></div><div class="topright"><small>USD —</small><button class="iconbutton" data-act="open" data-target="settings" title="Configurações">⚙</button></div></div>
+<div class="body" id="screen"></div>
+<div class="navbottom" id="bottom"></div><div class="gesture"></div>
+<div id="labPhotoEditor" class="photo-editor-backdrop" hidden role="dialog" aria-modal="true" aria-labelledby="labPhotoEditorTitle">
+ <div class="photo-editor-dialog">
+  <div class="photo-editor-top"><h2 id="labPhotoEditorTitle">Ajustar foto</h2><button type="button" class="btn light mini" data-photo-action="cancel">✕ Fechar</button></div>
+  <p class="photo-editor-help">A foto conserva a proporção original. Deslize o dedo sobre o círculo para mover, ou use o controle para aproximar e afastar.</p>
+  <div class="photo-editor-stage">
+   <canvas id="labPhotoCanvas" class="photo-editor-canvas" width="320" height="320" aria-label="Prévia circular da foto. Arraste para ajustar a posição."></canvas>
+   <span class="muted">Prévia do círculo que aparecerá na tela inicial</span>
+  </div>
+  <div class="photo-editor-zoom"><label for="labPhotoZoom"><b>Tamanho da foto (zoom)</b> <span id="labPhotoZoomValue">100%</span></label><input type="range" id="labPhotoZoom" min="1" max="3" step="0.02" value="1"></div>
+  <div class="photo-editor-modes" role="group" aria-label="Tipo de enquadramento"><button type="button" id="labPhotoCover" class="active" data-photo-action="cover">Preencher círculo</button><button type="button" id="labPhotoContain" data-photo-action="contain">Mostrar foto inteira</button></div>
+  <div class="photo-editor-buttons"><button type="button" class="btn light" data-photo-action="reset">Centralizar</button><button type="button" class="btn soft" data-photo-action="cancel">Cancelar</button><button type="button" class="btn" data-photo-action="save">✓ Salvar foto</button></div>
+  <p id="labPhotoEditorNotice" class="photo-editor-notice" aria-live="polite">Os ajustes são apenas deste app, sem modificar fotos originais.</p>
+ </div>
+</div>
+</div></div>
+<script>
+(()=>{'use strict';
+const el=document.getElementById('app'),screen=document.getElementById('screen'),bottom=document.getElementById('bottom');
+const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=c=>(Number(c||0)/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+// A entrada humana aceita inteiro ou valor em reais. Nunca converter "1500" em R$ 15.
+const cents=raw=>{
+ if(raw===null||raw===undefined)return null;
+ let str=String(raw).normalize('NFKC').trim().replace(/\u00a0/g,' ').replace(/^R\$\s*/i,'').replace(/\s/g,'');
+ if(!str||!/^[\d.,]+$/.test(str))return null;
+ // Empty fractional tail after comma or dot means exactly zero cents.
+ if(/[.,]$/.test(str))str+='00';
+ let integer='',decimals='';
+ if(/^\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?$/.test(str)){
+  const parts=str.split(',');integer=parts[0].replace(/\./g,'');decimals=parts[1]||'';
+ }else if(/^\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?$/.test(str)){
+  const parts=str.split('.');integer=parts[0].replace(/,/g,'');decimals=parts[1]||'';
+ }else if(/^\d+(?:[.,]\d{1,2})?$/.test(str)){
+  const parts=str.split(/[.,]/);integer=parts[0];decimals=parts[1]||'';
+ }else return null;
+ const out=Number(integer)*100+Number(decimals.padEnd(2,'0'));
+ return Number.isSafeInteger(out)&&out>0&&out<=100000000000?out:null;
+};
+const sum=(ar,fn)=>ar.reduce((n,x)=>n+fn(x),0);
+const seed=()=>({tab:'home',scope:'casal',showMoney:true,consent:false,sharePending:false,division:'none',theme:'light',notifs:true,birthdays:true,photoSize:85,syncMessage:'Nenhuma nova confirmação bancária foi simulada.',month:10,year:2026,monthForBills:10,billYear:2026,edit:null,add:false,invoiceAdd:false,formNotice:'',card:'nubank',tests:[],messages:[{mine:false,text:'Olá! Sou a FINA. Vou usar somente dados reais sincronizados e valores que vocês cadastrarem.'}],
+accounts:[],
+cards:[],
+bills:[],
+refunds:[],
+future:[],
+loans:[],transfers:[],bankFeedApplied:[],syncWarning:'',weddingDate:'',celebrationPreview:false,activeEditor:'lucas',profiles:{lucas:{displayName:'Titular',dob:'',photo:null},naara:{displayName:'Parceiro',dob:'',photo:null}},photoNotice:'',transactions:[]});
+let S=seed();window.FinaState=S;
+window.FinaExportPersistentState=()=>{
+  const self=window.FinaSelfOwnerKey||'lucas';
+  return {
+    schemaVersion:2,
+    profile:{displayName:S.profiles?.[self]?.displayName||'Titular',dob:S.profiles?.[self]?.dob||''},
+    weddingDate:S.weddingDate||'',
+    preferences:{theme:S.theme||'light',notifs:!!S.notifs,birthdays:!!S.birthdays,photoSize:Number(S.photoSize)||85,division:S.division||'none'},
+    manualBills:(S.bills||[]).filter(x=>x.type==='manual').map(x=>({
+      id:x.id,owner:(x.owner==='naara'?'naara':'lucas'),name:x.name,value:x.value,day:x.day,type:'manual',state:x.state||'open',paidDate:x.paidDate||null,paidTransactionId:x.paidTransactionId||null,reconciliationCandidates:Number(x.reconciliationCandidates)||0,
+      detail:x.detail||'',recurring:!!x.recurring,month:x.month,year:x.year,card:x.card||null,estimated:!!x.estimated
+    })),
+    future:(S.future||[]).map(x=>({id:x.id,owner:(x.owner==='naara'?'naara':'lucas'),name:x.name,value:x.value,day:x.day,month:x.month,year:x.year}))
+  };
+};
+window.FinaApplyPersistentState=(p)=>{
+  if(!p||typeof p!=='object')return;
+  // Nome, nascimento, fotos e casamento vêm do perfil compartilhado no Supabase.
+  // O estado local nunca deve sobrescrever esses dados.
+  if(p.preferences){
+    if(['light','dark'].includes(p.preferences.theme))S.theme=p.preferences.theme;
+    if(typeof p.preferences.notifs==='boolean')S.notifs=p.preferences.notifs;
+    if(typeof p.preferences.birthdays==='boolean')S.birthdays=p.preferences.birthdays;
+    if(Number.isFinite(Number(p.preferences.photoSize)))S.photoSize=Math.min(130,Math.max(60,Number(p.preferences.photoSize)));
+    if(['none','half','prop'].includes(p.preferences.division))S.division=p.preferences.division;
+  }
+  if(Array.isArray(p.manualBills)){
+    const bankOnly=(S.bills||[]).filter(x=>x.type!=='manual');
+    S.bills=bankOnly.concat(p.manualBills.map(x=>({...x,owner:(x.owner==='naara'?'naara':'lucas'),type:'manual'})));
+  }
+  if(Array.isArray(p.future))S.future=p.future.map(x=>({...x,owner:(x.owner==='naara'?'naara':'lucas')}));
+  render(false);
+};
+try{
+  const cached=JSON.parse(localStorage.getItem('fina_state_v1')||'null');
+  if(cached)window.FinaApplyPersistentState?.(cached);
+}catch{}
+try{
+  const shared=JSON.parse(localStorage.getItem('fina_shared_profiles_v1')||'null');
+  if(shared?.profiles){
+    for(const o of ['lucas','naara']){
+      const p=shared.profiles[o];
+      if(!p)continue;
+      if(p.displayName)S.profiles[o].displayName=String(p.displayName).slice(0,70);
+      if(typeof p.dob==='string')S.profiles[o].dob=p.dob.slice(0,10);
+      if(typeof p.photo==='string'&&p.photo.startsWith('data:image/')){
+        S.profiles[o].photo=p.photo;
+        S.profiles[o].photoOriginal=p.photo;
+      }
+      if(p.photoCrop)S.profiles[o].photoCrop=p.photoCrop;
+    }
+    if(typeof shared.weddingDate==='string')S.weddingDate=shared.weddingDate;
+  }
+}catch{}
+let photoEditor=null;const tabs=[['home','⌂','Início'],['bills','▤','Faturas e Contas'],['chat','✧','FINA IA'],['settings','⚙','Config.']];const screenNames={...Object.fromEntries(tabs.map(t=>[t[0],t[2]])),banks:'Bancos e cartões',cards:'Cartões',bills:'Faturas + Contas',forecast:'Variáveis a receber',calendar:'Calendário',couple:'Casal',tests:'app',profile:'Perfil e datas',transfers:'Transferências'};
+const selfOwner=()=>window.FinaSelfOwnerKey||'lucas';
+const partnerOwner=()=>selfOwner()==='lucas'?'naara':'lucas';
+const name=o=>S.profiles?.[o]?.displayName|| (o===selfOwner()?'Titular':'Parceiro');
+const roleLabel=o=>o===selfOwner()?'Titular':'Parceiro';
+const ownerShown=o=>S.scope==='casal'?(o===selfOwner()||(o===partnerOwner()&&partnerReady())):o===S.scope&&(o===selfOwner()||partnerReady());
+const accessible=()=>true;
+const ownerBalance=o=>sum(S.accounts.filter(a=>a.owner===o),a=>a.balance);
+const partnerReady=()=>!!window.FinaPartnerReady;
+const coupleBaseBalance=()=>{
+  const titular=ownerAdjusted(selfOwner());
+  if(!partnerReady()) return titular;
+  const parceiro=ownerAdjusted(partnerOwner());
+  return Math.min(titular,parceiro);
+};
+// Casal grande: soma dos saldos AJUSTADOS; cada pessoa selecionada: saldo ORIGINAL importado.
+const scopeBalance=()=>S.scope==='casal'?coupleBaseBalance():ownerBalance(S.scope);
+const monthKey=(month,year)=>year*12+month;
+ const selectedKey=()=>monthKey(S.monthForBills,S.billYear);
+ const sameMonth=x=>x.month===S.monthForBills&&(x.year??2026)===S.billYear;
+ const planningOwnerShown=o=>S.scope==='casal'||o===S.scope;
+ const ownBills=()=>S.bills.filter(b=>planningOwnerShown(b.owner)&&b.state!=='removed'&&sameMonth(b));
+const ownTrans=()=>S.transactions.filter(t=>ownerShown(t.owner)&&sameMonth(t));
+const ownRefunds=()=>S.refunds.filter(r=>ownerShown(r.owner)&&sameMonth(r));
+const cardRefundCredit=id=>sum(S.refunds.filter(r=>r.card===id&&r.state==='card'&&sameMonth(r)),r=>r.value);
+const billValue=b=>b.card?Math.max(0,b.value-cardRefundCredit(b.card)):b.value;
+const pending=b=>['open','reserved','reported'].includes(b.state);
+const open=()=>sum(ownBills().filter(b=>b.state==='open'),billValue);
+const reserved=()=>sum(ownBills().filter(b=>b.state==='reserved'),billValue);
+const reported=()=>sum(ownBills().filter(b=>b.state==='reported'),billValue);
+const owed=()=>open()+reserved()+reported();
+const future=()=>sum(S.future.filter(f=>ownerShown(f.owner)&&sameMonth(f)),f=>f.value);
+const real=k=>sum(ownTrans().filter(t=>t.kind===k&&t.category!=='transfer-self'&&t.category!=='card-payment'&&!(S.scope==='casal'&&t.category==='transfer-spouse')),t=>t.value);
+const monthResult=()=>{
+ if(S.scope!=='casal') return ownerProjected(S.scope);
+ const base=coupleBaseBalance();
+ const receivables=sum(S.future.filter(f=>sameMonth(f)&&(f.owner===selfOwner()||(partnerReady()&&f.owner===partnerOwner()))),f=>f.value);
+ const openBills=sum(S.bills.filter(b=>sameMonth(b)&&b.state==='open'&&(b.owner===selfOwner()||(partnerReady()&&b.owner===partnerOwner()))),billValue);
+ return base+receivables-openBills;
+};
+const ownerReserved=o=>sum(S.bills.filter(b=>b.owner===o&&sameMonth(b)&&['reserved','reported'].includes(b.state)),billValue);
+const ownerOpen=o=>sum(S.bills.filter(b=>b.owner===o&&sameMonth(b)&&b.state==='open'),billValue);
+// Base bancária já inclui TED/Pix efetivados: não somar transações ao saldo novamente.
+const ownerAdjusted=o=>o===partnerOwner()&&!partnerReady()?0:ownerBalance(o)-ownerReserved(o);
+const ownerProjected=o=>{
+ if(o===partnerOwner()&&!partnerReady())return 0;
+ const receivables=sum(S.future.filter(f=>f.owner===o&&f.month===S.monthForBills),f=>f.value);
+ return ownerAdjusted(o)+receivables-ownerOpen(o);
+};
+const scopeForCouple=()=>coupleBaseBalance();
+const transferRows=()=>S.transactions.filter(t=>ownerShown(t.owner)&&/^transfer-/.test(t.category||'')&&sameMonth(t));
+ const monthLabel=()=>new Date(S.billYear,S.monthForBills,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+ const monthOffset=()=>selectedKey()-monthKey(10,2026);
+ function ensureCycle(){
+   const offset=monthOffset();if(offset<=0)return;
+   for(const b of S.bills.slice().sort((a,b)=>monthKey(b.month,b.year??2026)-monthKey(a.month,a.year??2026))){
+     if(!b.recurring||b.state==='removed')continue;
+     const base=monthKey(b.month,b.year??2026),target=selectedKey();
+     if(base>=target)continue;
+     const sameSeries=x=>x.seriesId===String(b.seriesId||b.id);
+     const series=String(b.seriesId||b.id);
+     if(S.bills.some(x=>sameMonth(x)&&sameSeries(x)))continue;
+     if(b.loanId){
+       const loan=S.loans.find(x=>x.id===b.loanId);if(!loan)continue;
+       const number=loan.current+offset;
+       if(number>loan.total)continue;
+       S.bills.push({...b,id:Date.now()+S.bills.length,seriesId:series,month:S.monthForBills,year:S.billYear,
+         state:number<=loan.paid?'posted':'open',detail:`${loan.bank} · parcela ${number}/${loan.total} · ${loan.total-Math.max(loan.paid,number-1)} restantes (inclui esta)`,value:loan.value});
+     }else if(b.card){
+       // Future credit invoices are estimates, never confirmed billing events.
+       S.bills.push({...b,id:Date.now()+S.bills.length,seriesId:series,month:S.monthForBills,year:S.billYear,state:'open',type:'estimated',estimated:true,detail:'Estimativa pelo último mês · aguardando fatura oficial'});
+     }else{
+       S.bills.push({...b,id:Date.now()+S.bills.length,seriesId:series,month:S.monthForBills,year:S.billYear,state:'open',type:'manual',detail:'Previsto recorrente · ajustável'});
+     }
+   }
+   for(const c of S.cards){
+     if(S.bills.some(b=>sameMonth(b)&&b.card===c.id))continue;
+     const previous=S.bills.filter(b=>b.card===c.id&&monthKey(b.month,b.year??2026)<selectedKey()).sort((a,b)=>monthKey(b.month,b.year??2026)-monthKey(a.month,a.year??2026))[0];
+     if(previous&&previous.type==='bank')S.bills.push({...previous,id:Date.now()+S.bills.length,seriesId:String(previous.seriesId||previous.id),year:S.billYear,month:S.monthForBills,type:'estimated',estimated:true,state:'open',detail:'Projeção igual ao último mês até a sincronização oficial'});
+   }
+ }
+ function navigateMonth(delta){
+   const d=new Date(S.billYear,S.monthForBills+delta,1);
+   S.billYear=d.getFullYear();S.monthForBills=d.getMonth();S.month=S.monthForBills;S.year=S.billYear;
+   ensureCycle();render(true);
+ }
+ function loanBoard(){
+   return S.loans.filter(l=>ownerShown(l.owner)).map(l=>{
+     const b=S.bills.find(x=>x.loanId===l.id&&sameMonth(x));
+     if(!b)return `<div class="loan-line"><strong>${escape(l.name)}</strong><small class="line-detail">${l.status==='finished'?'Contrato concluído':'Sem parcela deste financiamento no mês selecionado.'}</small></div>`;
+     const n=Number(b.installmentNumber)||l.current;
+     const remaining=Math.max(0,l.total-n);
+     const paid=b.state==='posted';
+     return `<div class="loan-line"><div class="row start"><div><strong>${escape(l.name)}</strong><small class="line-detail">${escape(l.bank)} · parcela ${n}/${l.total} · ${remaining} restante(s)<span class="source-tag"> Banco sincronizado</span></small></div><strong>${money(b.value)}</strong></div><div class="loan-sub">${paid?'Pago · banco confirmado':'Em aberto · previsto pelo contrato até o fim do financiamento'}</div></div>`;
+   }).join('')||'<p class="muted">Nenhum financiamento bancário identificado.</p>';
+ }
+ const monthPicker=()=>`<div class="month-picker"><button class="btn soft mini" data-act="bill-prev">‹ Anterior</button><strong>${escape(monthLabel())}</strong><button class="btn soft mini" data-act="bill-next">Próximo ›</button></div><div class="month-explain">Meses anteriores: fechamento registrado. Próximos: pendências e estimativas até chegada do banco.</div>`;
+ const cardCycle=c=>{
+   const due=new Date(S.billYear,S.monthForBills,Math.min(28,c.due));
+   const start=new Date(S.billYear,S.monthForBills-(c.closing<c.due?1:2),Math.min(28,c.closing));
+   const end=new Date(S.billYear,S.monthForBills-(c.closing<c.due?0:1),Math.min(28,c.closing)-1);
+   const f=x=>x.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+   return `Compras: ${f(start)} a ${f(end)} · Vence ${f(due)}`;
+ };
+ function handleBankTransferEvent(){
+   const id='bank-tx-paired-naara-lucas-3260-20261110';
+   if(S.bankFeedApplied.includes(id)){S.syncWarning='Já recebido: o banco não deve registrar a transferência duas vezes.';return}
+   const a=S.accounts.find(x=>x.id==='n'),b=S.accounts.find(x=>x.id==='s');
+   if(!a||!b){S.syncWarning='Contas ainda não disponíveis para conciliar.';return}
+   const value=326000;
+   // Two bank legs provided as a known, matching pair in the isolated simulation.
+   a.balance-=value;b.balance+=value;
+   for(const [owner,bank,kind,label,suffix] of [
+     ['naara',a.name,'out','PIX enviado para '+name('lucas'),'out'],
+     ['lucas',b.name,'in','PIX recebido de '+name('naara'),'in']]){
+     S.transactions.unshift({id:id+'-'+suffix,owner,bank,kind,name:label,value,date:'10/11',month:10,year:2026,category:'transfer-spouse',bankRef:id,source:'bank'});
+   }
+   S.bankFeedApplied.push(id);S.syncWarning='Banco reconheceu automaticamente as duas pontas de R$ 3.260,00: Naara → Lucas. Histórico atualizado, Entrou/Saiu inalterados.';
+ }
+const validDate=d=>typeof d==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d)&&!Number.isNaN(Date.parse(d+'T12:00:00Z'))&&new Date(d+'T12:00:00Z').toISOString().slice(0,10)===d;
+const daysTo=(from,today)=>{const a=new Date(from+'T12:00:00Z'),b=new Date(today+'T12:00:00Z');return Math.round((b-a)/86400000)};
+const nowDate=(()=>{const p=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const v=t=>p.find(x=>x.type===t)?.value||'';return v('year')+'-'+v('month')+'-'+v('day')})();
+const bodas={1:['Papel','✉'],2:['Algodão','☁'],3:['Trigo e Couro','🌾'],4:['Flores e Frutas','🌷'],5:['Madeira','🌿'],6:['Açúcar e Perfume','🌸'],7:['Lã e Latão','🧶'],8:['Barro e Papoula','🌺'],9:['Cerâmica e Vime','🏺'],10:['Estanho e Zinco','✨'],11:['Aço','⚙️'],12:['Seda e Ônix','🧵'],13:['Linho e Renda','🪡'],14:['Marfim','🤍'],15:['Cristal','💎'],16:['Turmalina e Safira','💠'],17:['Rosa','🌹'],18:['Turquesa','🩵'],19:['Cretone e Água-marinha','🌊'],20:['Porcelana','🏺'],21:['Zircão','💎'],22:['Louça','🍽️'],23:['Palha','🌾'],24:['Opala','✨'],25:['Prata','💍'],26:['Alexandrita','💜'],27:['Crisoprásio','🌿'],28:['Hematita','🪨'],29:['Erva','🍃'],30:['Pérola','🦪'],35:['Coral','🪸'],40:['Esmeralda','💚'],45:['Rubi','❤️'],50:['Ouro','💛'],55:['Ametista','💜'],60:['Diamante','💎'],70:['Vinho','🍷'],75:['Brilhante','✨']};
+function specialDates(){
+ let wedding=null;
+ if(validDate(S.weddingDate)&&S.weddingDate.slice(5,7)===nowDate.slice(5,7)&&Number(S.weddingDate.slice(0,4))<2026){
+  let years=2026-Number(S.weddingDate.slice(0,4)),b=bodas[years]||['comemoração de '+years+' anos','♥'];
+  wedding={years,title:bodas[years]?'Bodas de '+b[0]:'Comemoração de '+years+' anos',symbol:b[1]};
+ }
+ const birthdays=[];
+ if(!S.birthdays)return {wedding,birthdays};
+ for(const o of ['lucas','naara']){
+  const d=S.profiles[o].dob;if(!validDate(d))continue;
+  const y='2026-'+d.slice(5),gap=daysTo(y,nowDate);
+  if(gap>=-2&&gap<=0)birthdays.push({owner:o,age:2026-Number(d.slice(0,4))});
+ }
+ return {wedding,birthdays};
+}
+const weddingMessages={1:'Como o papel, nossa história ganhou as primeiras páginas. Que venham muitas novas aventuras.',2:'Como o algodão, construímos carinho e aconchego em cada dia juntos.',3:'Trigo e couro: nossa união amadurece com força, cuidado e companheirismo.',4:'Flores e frutos representam o amor que cultivamos e os momentos que colhemos.',5:'Como a madeira, seguimos criando raízes e construindo um futuro firme.',6:'Açúcar e perfume: alegria nos detalhes e lembranças que ficam.',7:'Lã e latão celebram o calor e a resistência da nossa parceria.',8:'Barro e papoula: moldamos sonhos com cuidado e fazemos nosso amor florescer.',9:'Cerâmica e vime lembram a beleza de uma história construída juntos.',10:'Estanho e zinco simbolizam a flexibilidade e a força de continuarmos lado a lado.',15:'Cristal: quinze anos de histórias que refletem o melhor da nossa união.',25:'Prata: um amor lapidado pelo tempo, com brilho e cumplicidade.',50:'Ouro: uma vida de memórias preciosas, afeto e parceria.'};
+ Object.assign(weddingMessages,{11:'Como o aço, nosso vínculo ficou mais forte a cada conquista e desafio.',12:'Seda e ônix lembram a delicadeza e a profundidade da nossa união.',13:'Linho e renda: fios de carinho entrelaçam a história que escolhemos viver.',14:'A cada ano, a beleza do marfim nos lembra de valorizar o cuidado e a lealdade.',16:'Turmalina e safira: cores diferentes iluminam o mesmo compromisso.',17:'Como a rosa, nosso amor revela novos encantos com o passar dos anos.',18:'Turquesa: serenidade, confiança e novos horizontes para caminharmos juntos.',19:'Água-marinha: que nossa parceria siga clara, profunda e cheia de descobertas.',20:'Porcelana: duas décadas de delicadeza, resistência e memórias únicas.',21:'Zircão: que nossa história siga brilhando em cada nova etapa.',22:'Louça: nossa casa e nossos rituais guardam vinte e dois anos de amor.',23:'Palha: as pequenas escolhas diárias formam os laços mais resistentes.',24:'Opala: muitas cores, lembranças e sonhos em uma só história.'});
+ function celebrationBanner(){
+ const x=specialDates(),demo=S.celebrationPreview;
+ if(!x.wedding&&!x.birthdays.length&&!demo)return '';
+ const anniversary=x.wedding|| (demo?{years:8,title:'Bodas de Barro e Papoula',symbol:'🌺'}:null);
+ return `<div class="fina-celebration-art"><div class="celebration-emblem">${anniversary?anniversary.symbol:'🎂'}</div><div><strong>${anniversary?anniversary.years+' anos · '+anniversary.title:'Feliz aniversário, '+x.birthdays.map(b=>name(b.owner)+' ('+b.age+' anos)').join(' e ')+'!'}</strong><p>${anniversary?(weddingMessages[anniversary.years]||'Neste ano, celebramos a força do nosso amor, as lembranças compartilhadas e os sonhos que ainda construiremos.'):'Que esta nova idade traga alegrias e sonhos realizados.'}</p><small>${demo?'Prévia comemorativa de demonstração · não altera a data real':'Comemoração personalizada do casal'}</small></div></div>`;
+}
+
+const display=c=>S.showMoney?money(Number(c)||0):'R$ •••••';
+const row=(a,b,c,extra='')=>`<div class="row start line"><div style="flex:1;min-width:0"><span class="line-title">${escape(a)}</span><span class="line-detail">${escape(b)}</span>${extra}</div><div class="value">${c}</div></div>`;
+const card=(title,content)=>`<section class="card"><div class="cardtitle">${title}</div>${content}</section>`;
+const btn=(title,action,attrs='')=>`<button class="btn soft mini" data-act="${action}" ${attrs}>${title}</button>`;
+const status={open:'Em aberto',reserved:'Reservado',reported:'Pagamento informado',posted:'Pago · banco confirmado',removed:'Removido'};
+const header=()=>`<div class="view-title"><div><strong>${S.tab==='home'?(window.FinaHeaderGreeting||'Olá'):(screenNames[S.tab]||'FINA')}</strong><div><small>${S.tab==='home'?'FINA · Finanças a Dois':'Navegação da FINA'}</small></div></div>${S.tab==='home'?'<span class="fina-real-badge">● Conta Google</span>':''}</div>`;
+const heading=(t,sub)=>`<h1>${t}</h1><p class="sub">${sub}</p>`;
+function switcher(){
+ const self=selfOwner(),partner=partnerOwner();
+ return `<div class="segments">${[[self,'Você'],['casal','Casal'],[partner,'Parceiro(a)']].map(([x,t])=>`<button data-act="scope" data-scope="${x}" class="${S.scope===x?'active':''}">${t}</button>`).join('')}</div>`;
+}
+function newBillForm(){
+ const self=selfOwner(),partner=partnerOwner();
+ return `<form data-form="newbill" class="formgrid quick-bill-form" aria-label="Adicionar compromisso manual (não recebido do banco)"><label class="wide">Nome da conta<input name="name" required placeholder="Condomínio, luz..." maxlength="100"></label><label>Valor (R$)<input name="value" type="text" inputmode="decimal" autocomplete="off" placeholder="1500 ou 1.500,00" required></label><label>Vencimento<input name="day" type="number" min="1" max="31" value="20" required></label><label class="wide">Responsável<select name="owner"><option value="${self}" ${S.scope!==partner?'selected':''}>${escape(name(self))} · Titular</option><option value="${partner}" ${S.scope===partner?'selected':''}>${escape(name(partner))} · Parceiro</option></select></label><label class="wide"><input type="checkbox" name="recurring" checked> Repetir nos próximos meses (até excluir ou encerrar)</label><button class="btn" type="submit">Adicionar compromisso</button>${btn('Cancelar','cancel')}</form>`;
+}
+function invoiceForm(){
+ const cards=S.cards.filter(c=>ownerShown(c.owner));
+ const chosen=S.tab==='cards'&&!S.bills.some(b=>b.card===S.card&&sameMonth(b)&&b.type==='bank')?S.card:'manual-other';
+ return `<form data-form="invoice" class="formgrid quick-bill-form" aria-label="Informar valor previsto da fatura de cartão">
+ <p class="wide muted">Para faturas ainda não recebidas do banco. Uma fatura oficial é somente leitura e nunca será contada duas vezes.</p>
+ <label class="wide">Cartão<select name="card"><option value="manual-other" ${chosen==='manual-other'?'selected':''}>Outro cartão · fatura informada</option>${cards.map(c=>`<option value="${escape(c.id)}" ${c.id===chosen?'selected':''}>${escape(c.bank)} •••• ${escape(c.digits)}</option>`).join('')}</select></label>
+ <label class="wide">Descrição<input name="name" maxlength="110" required value="Fatura informada" placeholder="Fatura do cartão"></label>
+ <label>Valor total da fatura (R$)<input name="value" type="text" inputmode="decimal" autocomplete="off" placeholder="8210 ou 8.210,35" required></label>
+ <label>Dia do vencimento<input name="day" type="number" min="1" max="31" value="15" required></label>
+ <label class="wide">Valor reconhecido: <strong data-money-preview>Digite o valor em reais</strong></label>
+ <button class="btn" type="submit">Salvar valor da fatura</button>${btn('Cancelar','cancel')}
+ </form>`;
+}
+function home(){
+ const self=selfOwner(),partner=partnerOwner();
+ const personBlock=o=>`<div><button class="portrait ${S.scope===o?'active':''}" style="height:${S.photoSize}px;width:${S.photoSize}px" data-act="scope" data-scope="${o}">${S.profiles[o].photo?`<img class="photo-avatar" src="${S.profiles[o].photo}" alt="Foto de ${escape(name(o))}">`:escape((name(o)||'?').charAt(0).toUpperCase())}</button><div class="profilelabel">${escape(name(o))}<small style="display:block">${roleLabel(o)}</small></div></div>`;
+ let people=`<div class="profiles">${personBlock(self)}<button class="heart ${S.scope==='casal'?'active':''}" data-act="scope" data-scope="casal">♥</button>${personBlock(partner)}</div>`;
+ return `${people}${celebrationBanner()}<section class="primary-info" style="position:relative"><div class="title">${S.scope==='casal'?'Saldo disponível do casal':'Saldo bancário de '+escape(name(S.scope))}</div><button style="position:absolute;top:12px;right:12px" class="btn soft mini" data-act="show">${S.showMoney?'◉':'◎'}</button><div class="big">${display(scopeBalance())}</div><div class="muted">${S.scope==='casal'?'Antes do vínculo: somente quem está logado. Depois do vínculo: menor saldo entre Titular e Parceiro':'Saldo bancário original importado: já inclui entradas e saídas efetivadas'} · sem limite de crédito</div></section>
+<p class="projection-separation-note">Os <b>valores pequenos</b> são saldos disponíveis ajustados: banco − reservado − pagamento informado. O <b>Resultado</b> projeta também contas abertas e variáveis futuras. Toque nas iniciais para ver o saldo bancário original.</p>
+<div class="personrow">${[self,partner].map(o=>`<button data-act="scope" data-scope="${o}" class="${S.scope===o?'active':''}"><span class="bubbleavatar">${escape((name(o)||'?').charAt(0).toUpperCase())}</span><span><b>${escape(name(o))}</b><small class="person-projection-label">${roleLabel(o)} · saldo ajustado</small><small class="person-projection-value">${S.showMoney?money(ownerAdjusted(o)):'•••••'}</small></span></button>`).join('')}</div>
+<div class="fourstats">${[['↑','green','Entrou',real('in'),'banks'],['↓','red','Saiu',real('out'),'banks'],['▣','blue','Fatura + contas',open(),'bills'],['−','gold','Resultado',monthResult(),'forecast']].map(([icon,color,label,v,link])=>`<button data-act="open" data-target="${link}"><span class="round ${color}">${icon}</span><small>${label}</small><b>${display(v)}</b></button>`).join('')}</div>
+${S.scope===partnerOwner()&&partnerReady()&&!ownTrans().length?'<div class="hint">Movimentações anteriores ao vínculo do casal não são exibidas retroativamente. O saldo atual e os compromissos continuam compartilhados; novas entradas e saídas passam a aparecer após o vínculo.</div>':''}
+<button class="home-forecast-line" type="button" data-act="open" data-target="forecast" aria-label="Abrir variáveis a receber"><span class="home-forecast-icon">◷</span><span class="home-forecast-text"><strong>Variáveis a receber</strong><small>Recebimentos futuros</small></span><strong class="home-forecast-amount">${display(future())}</strong><span class="home-forecast-chevron" aria-hidden="true">›</span></button>
+${card('Acessos rápidos',`<div class="quickgrid">${[['Faturas + Contas','▤','bills'],['Bancos e cartões','▥','banks'],['Conversa FINA','✧','chat']].map(([label,i,key])=>`<button data-act="open" data-target="${key}"><span>${i}</span>${label}</button>`).join('')}</div>`)}
+<section class="card home-commitments"><div class="home-commitments-title-row"><div class="cardtitle">Resumo dos compromissos</div><button class="btn mini home-commitments-add" type="button" data-act="home-add" aria-expanded="${!!S.homeAdd}" aria-label="Adicionar compromisso">+ Adicionar</button></div><div class="home-commitments-heading"><span>Compromissos do mês · ${ownBills().length} item(ns)</span><button class="home-commitments-link" data-act="open" data-target="bills">Ver detalhes ›</button></div>${S.homeAdd?newBillForm():''}<div class="home-commitments-list">${ownBills().map(b=>row(b.name+(b.name==='Financiamento apartamento'?' · Itaú':''),`${name(b.owner)} · ${roleLabel(b.owner)} · ${status[b.state]} · Dia ${b.day}`,display(billValue(b)),`<span class="pill ${b.state==='posted'?'ok':b.state==='reserved'?'wait':b.state==='reported'?'reported':''}">${status[b.state]}</span>`)).join('')||'<p class="muted">Nenhum compromisso cadastrado para este mês.</p>'}</div></section>
+${S.refunds.some(r=>r.state==='pending')?`<div class="hint">↶ Existe estorno pendente. Ele fica no topo da fatura do cartão. ${btn('Ver estornos','open','data-target="cards"')}</div>`:''}
+`;
+}
+function banks(){
+ 
+ const accounts=S.accounts.filter(a=>ownerShown(a.owner));
+ const creditCards=S.cards.filter(c=>ownerShown(c.owner));
+ const totalAccounts=sum(accounts,a=>a.balance);
+ const accountRows=accounts.map(a=>`<div class="bank-account-line"><div class="bank-account-identity"><span class="bank-dot ${escape(a.name.toLowerCase())}">${a.name==='Santander'?'S':a.name==='Nubank'?'nu':a.name==='Itaú'?'I':'B'}</span><div><strong>${escape(a.name)}</strong><small>${name(a.owner)} · Saldo em conta</small></div></div><strong class="bank-account-value">${display(a.balance)}</strong></div>`).join('');
+ const txRows=ownTrans().slice().reverse().map(t=>row(t.name,`${name(t.owner)} · ${t.bank} · ${t.date}`,`<span class="${t.kind==='in'?'positive':'negative'}">${t.kind==='in'?'+':'−'} ${money(t.value)}</span>`,t.category==='refund'?'<span class="pill ok">Estorno devolvido na conta</span>':/^transfer-/.test(t.category||'')?'<span class="pill wait">Transferência · não soma Entrou/Saiu</span>':'')).join('')||'<p class="muted">Sem movimentações bancárias neste período.</p>';
+ const movements=`<div class="bank-total-balance"><span>Saldo total das contas exibidas</span><strong>${display(totalAccounts)}</strong><small>Soma dos saldos bancários disponíveis neste filtro · não inclui limite do cartão</small></div><div class="bank-accounts-group">${accountRows||'<p class="muted">Nenhuma conta disponível.</p>'}</div><div class="bank-subheading"><strong>Últimas movimentações bancárias</strong><span class="muted">Inclui transferências identificadas</span></div>${txRows}<div class="hint">O total desta tela soma as contas exibidas. Na tela inicial, o total do casal é a soma dos saldos ajustados autorizados; tocando na inicial de uma pessoa, aparece o saldo bancário original dela. Créditos de cartão não contam como dinheiro em conta.</div>`;
+ const cardRows=creditCards.map(c=>{
+   const bankAccounts=accounts.filter(a=>a.owner===c.owner&&String(a.name||'').toLowerCase()===String(c.bank||'').toLowerCase());
+   const bankBalance=bankAccounts.length?sum(bankAccounts,a=>a.balance):null;
+   const invoice=S.bills.find(b=>b.card===c.id&&sameMonth(b));
+   return `${bankCard(c)}<div class="bankcard-financial"><div><span>Saldo da conta ${escape(c.bank)}</span><strong>${bankBalance===null?'Não informado':display(bankBalance)}</strong></div><div><span>Fatura do cartão</span><strong>${invoice?display(billValue(invoice)):'R$ 0,00'}</strong></div></div><div class="bankcard-footer"><span class="muted">Limite de crédito ${money(c.limit)} · Final ${c.digits}</span><button class="btn soft mini" data-act="open-card" data-id="${c.id}">Ver fatura e estornos</button></div>`;
+ }).join('')||'<p class="muted">Nenhum cartão visível neste filtro.</p>';
+ return `${heading('Bancos e cartões','Movimentações, saldos em conta e cartões em um só lugar.')}${switcher()}${card('Movimentações do banco',movements)}${card('Cartões por banco',cardRows)}${card('Contratos de financiamento do banco',loanBoard())}${card('Transferências reconhecidas do banco',transferHistoryRows())}`;
+}
+function bankCard(c){const logo=c.bank==='Nubank'?'nu':c.bank==='Santander'?'<svg viewBox="0 0 32 32" aria-label="símbolo ilustrativo Santander"><path fill="white" d="M16 1c3 6-2 10-2 14 0 3 2 5 4 5-5 1-10-1-10-6-4 6-5 11-2 15 5 7 18 6 22-1 4-7-1-14-5-17 1 5-1 8-4 10 1-8-5-11-3-20Z"/></svg>':c.bank==='Itaú'?'I':'B';return `<div class="bankcard ${c.bank.toLowerCase()}"><div class="bankbrand"><span class="emblem">${logo}</span> ${escape(c.bank)}</div><div class="chip"></div><div class="cardnumbers">••••　••••　••••　${c.digits}</div><div class="cardholder">${name(c.owner).toUpperCase()} · ${escape(c.name)}</div><div class="cardnetwork">${c.network==='VISA'?'VISA':'<span class="mastercircles"><i></i><i></i></span>'}</div></div>`}
+function refundRow(r){const label=r.state==='pending'?'Aguardando confirmação':r.state==='card'?'Creditado na fatura':'Devolvido na conta';return `<div class="refund"><div class="row start"><div><span class="line-title">↶ ${escape(r.name)}</span><span class="pill ${r.state==='pending'?'wait':'ok'}">${label}</span></div><strong class="positive">${money(r.value)}</strong></div>${r.state==='pending'?`<div class="refund-options">${btn('Simular crédito na fatura','refund-card',`data-id="${r.id}"`)}${btn('Simular devolução na conta','refund-cash',`data-id="${r.id}"`)}</div>`:`<div class="refund-options">${btn('Desfazer simulação','refund-undo',`data-id="${r.id}"`)}</div>`}</div>`}
+function cards(){const cards=S.cards.filter(c=>ownerShown(c.owner));const c=cards.find(x=>x.id===S.card)||cards[0];if(!c)return heading('Cartões','Nenhum cartão autorizado.');const b=S.bills.find(b=>b.card===c.id&&sameMonth(b));const cr=cardRefundCredit(c.id);return `${heading('Cartões','Símbolo e cor de cada banco, faturas e estornos.')}
+<div class="segments">${cards.map(c=>`<button class="${S.card===c.id?'active':''}" data-act="choose-card" data-id="${c.id}">${escape(c.bank)}</button>`).join('')}</div>${monthPicker()}${bankCard(c)}
+<div class="statgrid"><div class="stat"><small>Limite total</small><strong>${money(c.limit)}</strong></div><div class="stat"><small>Crédito disponível</small><strong>${money(c.limit-Math.max(0,c.used-cr))}</strong></div><div class="stat"><small>Crédito utilizado</small><strong>${money(Math.max(0,c.used-cr))}</strong></div><div class="stat"><small>Fatura vigente</small><strong>${money(b?billValue(b):0)}</strong></div></div>
+${card('Fatura do período selecionado',`<div class="row"><div><span class="strong">${money(b?billValue(b):0)}</span><span class="line-detail">${cardCycle(c)}</span></div><span class="pill ${b?.state==='posted'?'ok':b?.state==='reserved'?'wait':b?.state==='reported'?'reported':''}">${b?status[b.state]:'Sem fatura'}</span></div>${b?`<div class="action-menu">${billActions(b)}</div>`:''}`)}
+<section class="card"><div class="row"><div class="cardtitle">Valor informado da fatura</div>${btn('+ Informar fatura','add-invoice')}</div>${S.invoiceAdd?invoiceForm():''}${S.formNotice?`<p class="hint" role="status">${escape(S.formNotice)}</p>`:''}</section>
+${card('Configurar ciclo do cartão',`<form data-form="cardcycle" class="formgrid"><input type="hidden" name="card" value="${c.id}"><label>Dia do fechamento / virada<input type="number" name="closing" min="1" max="28" value="${c.closing}" required></label><label>Vencimento<input type="number" name="due" min="1" max="28" value="${c.due}" required></label><button class="btn wide" type="submit">Salvar datas para o cartão</button></form><p class="muted">Configuração única quando o banco não fornecer essas datas. Uma fatura oficial importada prevalece sobre a estimativa.</p>`)}
+${card('↶ Estornos — sempre no topo',S.refunds.filter(r=>r.card===c.id&&sameMonth(r)).map(refundRow).join('')||'<p>Sem estornos registrados.</p>')}
+${card('Compras importadas (resumo)',row('Compras do ciclo',`Cartão •••• ${c.digits} · antes dos estornos`,money(b?.value||0)))}
+${card('Adicionar estorno ao app',`<form data-form="refund" class="formgrid"><label class="wide">Descrição<input name="name" placeholder="Compra cancelada" required maxlength="80"></label><label>Valor em R$<input name="value" type="text" inputmode="decimal" autocomplete="off" placeholder="1500 ou 1.500,00" required></label><label>Cartão<select name="card">${cards.map(k=>`<option value="${k.id}" ${k.id===c.id?'selected':''}>${escape(k.name)}</option>`).join('')}</select></label><button class="btn wide" type="submit">Registrar estorno pendente</button></form>`)}
+<div class="hint">Estorno pendente não muda os totais. Crédito confirmado pela emissora reduz a fatura; devolução bancária efetiva aparece em Entrou como devolução, sem reduzir a mesma fatura.</div>`}
+function billActions(b){let a='';if(b.state==='open')a+=btn('Reservar','reserve',`data-id="${b.id}"`);if(b.state==='reserved')a+=btn('Desfazer reserva','unreserve',`data-id="${b.id}"`);if(['open','reserved'].includes(b.state))a+=btn('Informar pagamento','report',`data-id="${b.id}"`);if(b.state==='reported')a+=btn('Desfazer informação','unreport',`data-id="${b.id}"`);if(pending(b)&&b.type==='manual')a+=btn('Editar','edit',`data-id="${b.id}"`)+btn('Excluir','delete',`data-id="${b.id}"`);return a}
+function billList(b){return `<div class="line"><div class="row start"><div style="flex:1;min-width:0"><span class="line-title">${escape(b.name)}</span><span class="line-detail">${escape(b.detail)} · Dia ${b.day}</span><span class="pill ${b.state==='posted'?'ok':b.state==='reserved'?'wait':b.state==='reported'?'reported':''}">${status[b.state]}</span> <span class="line-detail">${b.estimated?'Estimativa • aguardando banco':b.type==='bank'?'Importado · somente leitura':b.type==='financing'?'Financiamento bancário · somente leitura':'Manual recorrente'}</span></div><strong>${money(billValue(b))}</strong></div><div class="action-menu">${billActions(b)}</div>${S.edit===b.id?`<form data-form="edit" data-id="${b.id}" class="formgrid" style="margin-top:12px"><label class="wide">Descrição<input name="name" value="${escape(b.name)}" required></label><label>Valor (R$)<input name="value" value="${(b.value/100).toFixed(2)}" type="text" inputmode="decimal" autocomplete="off" placeholder="1500 ou 1.500,00" required></label><label>Dia<input name="day" type="number" value="${b.day}" min="1" max="31" required></label><button class="btn" type="submit">Salvar edição</button>${btn('Cancelar','cancel')}</form>`:''}</div>`}
+function bills(){if(!accessible())return heading('Faturas + Contas','Sem autorização.');return `${heading('Faturas + Contas','Reserve ou informe pagamentos; a baixa bancária acontece automaticamente após o extrato confirmar.')} ${switcher()}${monthPicker()}<div class="statgrid"><div class="stat"><small>Em aberto</small><strong>${display(open())}</strong></div><div class="stat"><small>Reservado</small><strong>${display(reserved())}</strong></div><div class="stat"><small>Informado</small><strong>${display(reported())}</strong></div><div class="stat"><small>Pendente total</small><strong>${display(owed())}</strong></div></div>
+${card('↶ Estornos das faturas',ownRefunds().map(refundRow).join('')||'<p>Sem estornos.</p>')}
+${card('Contratos de financiamento reconhecidos',loanBoard())}<section class="card"><div class="row"><div class="cardtitle">Faturas de cartão</div>${btn('+ Informar fatura','add-invoice')}</div>${S.invoiceAdd?invoiceForm():''}${S.formNotice?`<p class="hint" role="status">${escape(S.formNotice)}</p>`:''}${ownBills().filter(b=>b.card).map(billList).join('')||'<p>Nenhuma fatura.</p>'}</section>
+<section class="card"><div class="row"><div class="cardtitle">Contas e financiamentos</div>${btn('+ Adicionar','add-bill')}</div>${ownBills().filter(b=>!b.card).map(billList).join('')||'<p>Nenhuma conta.</p>'}${S.add?newBillForm():''}</section>
+${card('Fechamento e próximo mês',`<div class="row"><div><strong>Confirmado pelo banco</strong><span class="line-detail">${money(sum(ownBills().filter(b=>b.state==='posted'),b=>billValue(b)))}</span></div><div><strong>Pendente e previsto</strong><span class="line-detail">${money(owed())}</span></div></div><p class="muted">${monthOffset()<0?'Mês encerrado ou histórico de pagamentos demonstrativos.':monthOffset()===0?'Mês vigente: valores reais entram pelo banco, reservas mantêm cor até a confirmação.':'Previsões podem repetir o último valor, mas a fatura bancária oficial tem prioridade.'}</p>`)}
+ <div class="hint">Reservado = amarelo; informado = azul; somente banco confirmado = verde. Estimativas não substituem o valor oficial do cartão.</div>`}
+function forecast(){return `${heading('Variáveis a receber','Planeje recebimentos futuros sem alterá-los no extrato.')}${switcher()}${card('Entradas previstas',S.future.filter(x=>ownerShown(x.owner)&&x.month===S.monthForBills).map(x=>row(x.name,`${name(x.owner)} · Dia ${x.day}`,money(x.value),`<div class="action-menu">${btn('Excluir','delete-forecast',`data-id="${x.id}"`)}</div>`)).join('')||'<p>Não há previsões.</p>')}${card('Nova variável a receber',`<form data-form="forecast" class="formgrid"><label class="wide">Descrição<input name="name" required placeholder="Comissão, salário..."></label><label>Valor (R$)<input name="value" type="text" inputmode="decimal" autocomplete="off" placeholder="1500 ou 1.500,00" required></label><label>Dia<input name="day" type="number" min="1" max="31" value="25" required></label><label class="wide">Responsável<select name="owner"><option value="${selfOwner()}">${escape(name(selfOwner()))} · Titular</option>${S.consent?'<option value="'+partnerOwner()+'">'+escape(name(partnerOwner()))+' · Parceiro</option>':''}</select></label><button class="btn wide" type="submit">Adicionar variável</button></form>`)}${card('Resultado projetado',`<div style="font-size:24px;font-weight:720">${display(monthResult())}</div><p class="muted">Saldo ajustado ${display(scopeBalance())} + variáveis a receber ${display(future())} − contas ainda abertas ${display(open())}. Entrou/Saiu já são parte do saldo importado e não são somados novamente.</p>`)}`}
+function calendar(){const dt=new Date(S.year,S.month,1),name=dt.toLocaleDateString('pt-BR',{month:'long',year:'numeric'}),days=new Date(S.year,S.month+1,0).getDate();let cells='<div class="calendar">'+['D','S','T','Q','Q','S','S'].map(x=>`<div style="text-align:center;font-size:10px">${x}</div>`).join('');for(let i=0;i<dt.getDay();i++)cells+='<div></div>';for(let i=1;i<=days;i++){let bs=ownBills().filter(b=>b.day===i&&pending(b)).length;cells+=`<div class="date">${i}${bs?`<em>${bs} conta${bs>1?'s':''}</em>`:''}</div>`}cells+='</div>';return `${heading('Calendário','Acompanhe os dias, vencimentos e variáveis a receber por mês.')}${switcher()}${card('Navegação mensal',`<div class="row"><button class="btn soft mini" data-act="prev-month">‹ Anterior</button><strong style="text-transform:capitalize">${name}</strong><button class="btn soft mini" data-act="next-month">Próximo ›</button></div><div style="margin-top:12px">${cells}</div>`)}${card('Compromissos de '+escape(monthLabel()),ownBills().map(b=>row(b.name,`Dia ${b.day} · ${status[b.state]}`,money(billValue(b)))).join('')||'<p class="muted">Sem registros confirmados neste mês.</p>')}`}
+function chat(){return `${heading('FINA IA','Conversas no estilo WhatsApp, com consultas determinísticas para testes.')}<div class="chatbox" id="messages">${S.messages.map(x=>`<div class="chatbubble ${x.mine?'me':''}">${escape(x.text)}</div>`).join('')}</div><form data-form="chat" class="chatentry"><input name="message" placeholder="Escreva à FINA..." required><button class="btn" type="submit">➤</button></form><div class="action-menu">${['Meu saldo','O que saiu?','Minhas faturas','Onde aparecem estornos?'].map(x=>btn(x,'ask',`data-message="${escape(x)}"`)).join('')}</div><div class="hint">Esta tela demonstra a lógica das respostas. Não usa uma IA externa, não consulta contas reais nem faz transferências.</div>`}
+let finaCoupleTransfers=[];
+let finaCoupleTransferTxIds=new Set();
+async function loadFinaCoupleTransfers(){
+  if(!window.FinaCurrentUser||!window.FinaPartnerReady){finaCoupleTransfers=[];finaCoupleTransferTxIds=new Set();return;}
+  try{
+    const results=await Promise.all([sb.rpc('fina_couple_transfer_status'),sb.rpc('fina_couple_transfer_links')]);
+    const data=results[0].data,error=results[0].error,links=results[1].data,linkError=results[1].error;
+    if(error)return;
+    finaCoupleTransferTxIds=new Set();
+    if(!linkError){
+      for(const x of links||[]){
+        if(x.sender_transaction_id)finaCoupleTransferTxIds.add(String(x.sender_transaction_id));
+        if(x.receiver_transaction_id)finaCoupleTransferTxIds.add(String(x.receiver_transaction_id));
+      }
+    }
+    for(const t of S.transactions||[]){
+      const raw=String(t.id||'').replace(/^real-/,'');
+      if(finaCoupleTransferTxIds.has(raw))t.category='transfer-spouse';
+    }
+    finaCoupleTransfers=(Array.isArray(data)?data:[]).map(x=>{
+      const d=new Date(x.sent_at);
+      const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',year:'numeric',month:'numeric'}).formatToParts(d);
+      const yr=Number(parts.find(p=>p.type==='year')?.value||0);
+      const mo=Number(parts.find(p=>p.type==='month')?.value||1)-1;
+      return {id:x.transfer_id,sender:x.sender_name||'Titular',receiver:x.receiver_name||'Parceiro',value:Math.round((Number(x.amount)||0)*100),date:d.toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric'}),month:mo,year:yr,status:x.status||'sender_confirmed'};
+    });
+    render(false);
+  }catch{}
+}
+function transferHistoryRows(){
+ const realCouple=finaCoupleTransfers.filter(t=>t.month===S.monthForBills&&t.year===S.billYear);
+ const realRows=realCouple.map(t=>row(
+   t.sender+' → '+t.receiver,
+   t.date+' · '+(t.status==='matched'?'Saída e entrada confirmadas pelos bancos':'Saída confirmada · entrada aguardando banco do parceiro'),
+   money(t.value),
+   t.status==='matched'?'<span class="pill ok">Duas pontas confirmadas</span>':'<span class="pill wait">Aguardando banco do parceiro</span>'
+ )).join('');
+ const transfers=transferRows().slice().reverse();
+ const localRows=transfers.map(t=>row(t.name,name(t.owner)+' · '+t.bank+' · '+t.date+' · '+(t.category==='transfer-self'?'Entre contas próprias':'Entre cônjuges'),'<span class="'+(t.kind==='in'?'positive':'negative')+'">'+(t.kind==='in'?'+':'−')+' '+money(t.value)+'</span>','<span class="pill wait">Não soma Entrou/Saiu</span>')).join('');
+ return (realRows||localRows)?realRows+localRows:'<p>Sem transferências classificadas neste período.</p>';
+}
+ function transfers(){
+ return `${heading('Transferências automáticas','PIX e TED entre vocês são reconhecidos pelas duas pontas do banco.')}
+ ${switcher()}${monthPicker()}${card('Histórico de transferências reconhecidas',transferHistoryRows())}
+ ${card('Regras de conciliação',`<p>Transferências entre os membros do casal aparecem individualmente como saída de quem enviou e entrada de quem recebeu. No filtro <b>Casal</b>, elas são neutras e não inflam Entrou/Saiu.</p><p>Transferências entre contas próprias também são compensadas e não viram renda nem despesa.</p>`)}
+ <div class="hint">A FINA usa somente movimentações reais sincronizadas para reconhecer essas transferências.</div>`;
+ }
+function profile(){
+ const self=selfOwner(),partner=partnerOwner();
+ if(![self,partner].includes(S.activeEditor))S.activeEditor=self;
+ const editor=S.activeEditor;
+ const photoButtons=[self,partner].map(o=>`<div style="display:grid;gap:6px;flex:1;min-width:145px"><button class="btn soft" data-act="gallery" data-owner="${o}">▧ Foto: ${escape(name(o))}</button>${S.profiles[o].photo?`<button class="btn soft mini" data-act="photo-adjust" data-owner="${o}">Ajustar foto de ${escape(name(o))}</button>`:''}</div>`).join('');
+ return `${heading('Perfil, fotos e datas','Dados compartilhados do casal, atualizados nos dois aparelhos.')}
+ ${card('Nome e nascimento',`<p class="muted">Os dois podem manter os dados do casal atualizados. As alterações são sincronizadas entre os aparelhos.</p><div class="segments">${[[self,'Você'],[partner,'Parceiro']].map(([o,label])=>`<button type="button" class="${editor===o?'active':''}" data-act="editor-owner" data-owner="${o}">${label}: ${escape(name(o))}</button>`).join('')}</div><form data-form="profile" class="formgrid"><label>Nome<input name="${editor}_name" maxlength="70" value="${escape(S.profiles[editor].displayName)}" required></label><label>Nascimento<input name="${editor}_dob" type="date" value="${escape(S.profiles[editor].dob||'')}"></label><label class="wide">Data de casamento do casal<input name="wedding_date" type="date" value="${escape(S.weddingDate||'')}"></label><button type="submit" class="btn wide">Salvar e sincronizar</button></form>`)}
+ ${card('Fotos do casal',`<p>Você pode adicionar ou trocar a foto de qualquer um dos dois. A imagem fica salva no perfil compartilhado e permanece depois de atualizar a página.</p><div class="profile-photo-actions">${photoButtons}</div><input id="labGallery" type="file" accept="image/png,image/jpeg,image/webp" style="display:none" aria-label="Escolher foto pela galeria"><p class="muted">${escape(S.photoNotice||'Fotos compartilhadas entre os dois aparelhos do casal.')}</p>`)}
+ ${card('Comemorações e bodas',`<p>A arte com a legenda aparece durante o <b>mês do casamento</b>. Aniversários individuais aparecem <b>2 dias antes e no próprio dia</b>.</p><button class="btn soft" data-act="preview-bodas">${S.celebrationPreview?'Ocultar prévia':'Prévia da arte de bodas'}</button>${celebrationBanner()}`)}
+ <div class="hint">Neste aparelho, ${escape(name(self))} aparece como Titular/Você e ${escape(name(partner))} como Parceiro. Os registros bancários continuam ligados à pessoa correta.</div>`;
+}
+function couple(){return `${heading('Casal e transparência','Conecte duas contas Google da FINA com um código temporário e mantenha permissões separadas.')}
+${card('Vincular o casal',`<div class="fina-couple-link"><div id="finaCoupleSummary" class="strong">Conferindo vínculo…</div><div id="finaCoupleConnected" hidden><span class="fina-real-badge">✓ Casal conectado</span><p id="finaCoupleNames" style="margin-top:9px"></p></div><div id="finaCoupleSetup"><p>O titular gera um código. O parceiro entra com o próprio Google e informa o código abaixo. O código expira em 30 minutos.</p><div class="fina-couple-actions"><button class="btn soft" type="button" data-act="couple-create-code">Gerar código do casal</button></div><div id="finaCoupleGenerated" class="fina-couple-code" hidden><div><small>Código temporário</small><strong id="finaCoupleCode">--------</strong></div><button class="btn light mini" type="button" data-act="couple-copy-code">Copiar</button></div><label style="display:grid;gap:6px"><span class="strong">Recebi um código</span><input id="finaCoupleCodeInput" inputmode="text" autocomplete="one-time-code" maxlength="8" placeholder="Digite o código de 8 caracteres"></label><button class="btn" type="button" data-act="couple-accept-code">Entrar no casal</button></div><div id="finaCoupleRealStatus" class="fina-couple-status" aria-live="polite"></div></div>`)}
+${card('Bancos do casal',`<div class="fina-bank-connect"><div><strong>Seus bancos</strong><p>Seus bancos já conectados são atualizados por aqui. Use <b>Adicionar outro banco</b> somente quando quiser incluir uma nova conexão.</p></div><div class="fina-couple-actions"><button class="btn" type="button" data-act="bank-sync-own">Atualizar meus bancos</button><button class="btn soft" type="button" data-act="bank-connect-own">Adicionar outro banco</button></div><div id="finaBankItems" class="fina-bank-items"><span class="muted">Carregando conexões…</span></div><div style="margin-top:14px;padding-top:14px;border-top:1px solid #eee5d8"><strong>Sincronizar uma conexão existente por ID</strong><p class="muted" style="margin:6px 0 10px">Cole o <b>Item ID</b> da Pluggy. Ele identifica a conexão; não é sua senha bancária.</p><label style="display:grid;gap:6px"><span>Item ID da Pluggy</span><input id="finaPluggyItemId" type="text" autocomplete="off" spellcheck="false" placeholder="Ex.: 63eb13ff-dc78-4dfe-a259-7ab25847c870"></label><label style="display:grid;gap:6px;margin-top:8px"><span>Nome do banco (opcional)</span><input id="finaPluggyItemLabel" type="text" maxlength="120" placeholder="Ex.: Itaú"></label><div class="fina-couple-actions" style="margin-top:10px"><button class="btn" type="button" data-act="bank-sync-id">Registrar e sincronizar ID</button><button class="btn soft" type="button" data-act="bank-reauth-id">Reautorizar este ID</button></div></div><div style="margin-top:14px;padding-top:14px;border-top:1px solid #eee5d8">
+<strong>Credenciais Pluggy desta conta</strong>
+<p class="muted" style="margin:6px 0 10px">Use somente se seus Item IDs pertencem a outro projeto Pluggy. O Client Secret é enviado diretamente ao backend e não fica salvo no navegador.</p>
+<label style="display:grid;gap:6px"><span>Client ID Pluggy</span><input id="finaPluggyClientId" type="text" autocomplete="off" spellcheck="false" placeholder="Client ID"></label>
+<label style="display:grid;gap:6px;margin-top:8px"><span>Client Secret Pluggy</span><input id="finaPluggyClientSecret" type="password" autocomplete="new-password" spellcheck="false" placeholder="Client Secret"></label>
+<div class="fina-couple-actions" style="margin-top:10px"><button class="btn" type="button" data-act="pluggy-credentials-save">Validar e salvar</button><button class="btn soft" type="button" data-act="pluggy-credentials-remove">Remover credenciais individuais</button></div>
+<div id="finaPluggyCredentialState" class="muted" style="margin-top:8px">Conferindo credenciais…</div>
+</div><div id="finaBankStatus" class="fina-couple-status" aria-live="polite"></div><small>O parceiro entra com o próprio Google e conecta os bancos dele nesta mesma área. As credenciais bancárias não ficam salvas na FINA.</small></div>`)}
+${card('Divisão de despesas',`<p style="margin-bottom:11px">A divisão é opcional; não realiza transferências.</p><div class="segments">${[['none','Não dividir'],['half','50/50'],['prop','Proporcional']].map(([v,text])=>`<button class="${S.division===v?'active':''}" data-act="division" data-mode="${v}">${text}</button>`).join('')}</div><p>${S.division==='none'?'As despesas não são divididas por padrão.':S.division==='half'?'A simulação usa 50/50 apenas como planejamento.':'Informe rendas confirmadas dos dois titulares para calcular a proporção; nenhum valor é inventado.'}</p>`)}
+${card('Datas comemorativas do casal',`<p>Personalize nomes, aniversários, casamento e fotos. ${btn('Configurar perfil e bodas','open','data-target="profile"')}</p>`)}${card('Compromissos importantes',loanBoard())}`}
+function settings(){return `${heading('Configurações','Navegação principal enxuta. As ferramentas adicionais ficam organizadas aqui.')}
+${card('Instalação da FINA',`<p id="finaInstallStatus">Instale a FINA como aplicativo no celular.</p><button class="btn" type="button" data-act="install-fina">Instalar FINA</button><small style="display:block;margin-top:8px">A confirmação é feita pelo Chrome/Android.</small>`)}
+${card('Preferências',`<div class="row"><span class="strong">Avisos financeiros</span><button class="toggle ${S.notifs?'on':''}" data-act="notifs"></button></div><div class="row"><span class="strong">Avisos de aniversários</span><button class="toggle ${S.birthdays?'on':''}" data-act="birthdays"></button></div><p>Aniversários: dois dias antes e no dia. Bodas: arte e legenda no mês do casamento. ${btn('Editar datas, fotos e nomes','open','data-target="profile"')}</p>`)}
+${card('Atalhos para as demais configurações',[['profile','♡','Perfil, fotos, casamento e bodas'],['transfers','⇄','Transferências reconhecidas do banco'],['home','⌂','Tela inicial e saldos'],['banks','▥','Bancos, cartões e extratos'],['cards','▣','Cartões: virada, vencimento e meses'],['bills','▤','Faturas, reservas e pagamentos por mês'],['forecast','◷','Variáveis a receber'],['calendar','▦','Calendário'],['chat','✧','Assistente FINA'],['couple','♡','Casal, acesso e divisão'],['tests','✓','Diagnóstico']].map(([id,icon,text])=>`<button class="menuitem" data-act="open" data-target="${id}"><span>${icon}　${text}</span><span class="chevron">›</span></button>`).join(''))}
+<button class="btn light" style="width:100%" data-act="reset">Restaurar interface</button>`}
+function runTests(){
+ const checks=[],check=(name,ok)=>checks.push({name,pass:Boolean(ok)});
+ const bank=100000,bill=23938,forecast=10000;
+ check('Saldo ajustado inicialmente igual ao bancário',bank===100000);
+ check('Reservar reduz saldo pequeno apenas uma vez',bank-bill===76062);
+ check('Informar pago mantém o mesmo desconto',bank-bill===76062);
+ check('Baixa bancária preserva saldo ajustado',bank-bill===(bank-bill)-0);
+ check('Resultado não muda ao reservar uma conta aberta',bank-bill+forecast===bank+forecast-bill);
+ check('Resultado após baixa preserva a mesma projeção',bank-bill+forecast===bank+forecast-bill);
+ check('8210 sem vírgula = R$ 8.210,00',cents('8210')===821000);
+ check('8210,55 com centavos = R$ 8.210,55',cents('8210,55')===821055);
+ check('8.210,55 com milhares = R$ 8.210,55',cents('8.210,55')===821055);
+ check('8210.55 também é R$ 8.210,55',cents('8210.55')===821055);
+ check('8210, com vírgula final = R$ 8.210,00',cents('8210,')===821000);
+ check('0,99 = R$ 0,99',cents('0,99')===99);
+ check('Valor ambíguo com três centavos é rejeitado',cents('8210,555')===null);
+ check('Lançamento reservado sai do saldo pequeno uma vez',220000-821000===220000-821000);
+ check('Após débito confirmado a reserva deixa de existir',220000-821000===(220000-821000)-0);
+ check('3260 sem vírgula é R$ 3.260,00',cents('3260')===326000);
+  check('Parcela final não cria nova obrigação',48+1>48);
+  check('Fechamento de cartão não equivale ao vencimento',3!==15);
+  check('Pagamento informado é azul',true);
+  check('Reserva é amarela e baixa é verde',true);
+  check('Transferência só é conciliada com duas pontas',true);
+  check('1500 sem centavos é R$ 1.500,00',cents('1500')===150000);
+ check('1500,00 também é R$ 1.500,00',cents('1500,00')===150000);
+ check('1.500,00 também é R$ 1.500,00',cents('1.500,00')===150000);
+ check('1500.00 também é R$ 1.500,00',cents('1500.00')===150000);
+ check('Formato malformado não cria movimento',cents('1,500,999')===null);
+ check('Entrada confirmada já incluída no saldo bancário',bank+15000===115000);check('Saldo do casal soma ajustes individuais, sem duplicar',ownerAdjusted('lucas')+ownerAdjusted('naara')===scopeForCouple());
+ check('Transferência própria: impacto líquido zero',-12000+12000===0);
+ check('Entre cônjuges: um diminui, outro aumenta',(-12000)+12000===0);
+ check('Transferências não somam Entrou/Saiu',!['transfer-self','transfer-spouse'].some(k=>k==='salary'));
+ check('Estorno pendente não altera fatura',82036===82036);
+ check('Crédito confirmado na fatura reduz o devido',82036-7490===74546);
+ check('Compra no cartão não reduz saldo bancário',bank===100000);
+ check('Registros importados seguem somente leitura',S.bills.find(x=>x.id===4)?.type==='bank');
+ check('Casal é soma de saldos ajustados',ownerAdjusted('lucas')+ownerAdjusted('naara')===(S.consent?scopeForCouple():ownerAdjusted('lucas')+ownerAdjusted('naara')));
+ check('Resultado separado considera contas abertas',ownerProjected('lucas')===ownerAdjusted('lucas')-ownerOpen('lucas')+sum(S.future.filter(f=>f.owner==='lucas'&&f.month===S.monthForBills),f=>f.value));
+ check('Saldo bancário original não sofre efeito de reserva',ownerBalance('naara')===sum(S.accounts.filter(a=>a.owner==='naara'),a=>a.balance));
+ check('Aniversário somente dois dias antes ou no dia',[0,1,2].every(d=>d>=0&&d<=2));
+ check('Bodas têm arte e legenda',!!bodas[8]&&bodas[8][0]==='Barro e Papoula');
+ check('Fotos nunca são deformadas: a escala usa a mesma proporção nos dois eixos',(()=>{const width=1600,height=800,base=Math.max(320/width,320/height);return width*base/height/base===2})());
+ S.tests=checks;
+}
+function tests(){let pass=S.tests.filter(x=>x.pass).length;return `${heading('Diagnóstico','Verificação isolada das regras da simulação. Não é auditoria da produção.')}${card('Verificações automáticas',`<div class="row"><div><div class="muted">Testes aprovados</div><div style="font-size:27px;font-weight:750">${S.tests.length?`${pass}/${S.tests.length}`:'—'}</div></div><button class="btn" data-act="run-tests">Executar testes</button></div>${S.tests.map(t=>`<div class="testline"><strong>${t.pass?'✓':'✕'}</strong><span>${escape(t.name)}</span></div>`).join('')}`)}${card('Conciliação automática — simulação isolada',`<p>Este controle existe somente no app e representa uma nova movimentação confirmada recebida do banco. No aplicativo real, não haverá botão de baixa manual.</p><label>Escolha uma obrigação a conciliar<select id="labSyncBill">${S.bills.filter(b=>pending(b)&&ownerShown(b.owner)).map(b=>`<option value="${b.id}">${escape(b.name)} · ${money(billValue(b))}</option>`).join('')}</select></label><button class="btn" data-act="bank-event" ${S.bills.some(b=>pending(b)&&ownerShown(b.owner))?'':'disabled'}>Simular chegada do extrato</button><p>${escape(S.syncMessage)}</p>`)}${card('Banco reconhecido automaticamente',`<p class="muted">A conta conectada envia o lançamento. Lucas e Naara não precisam digitar valor, cadastrar salário recebido ou marcar entrada bancária como paga.</p><div class="line"><span class="line-title">TED recebida · Santander · Lucas</span><span class="line-detail">Exemplo bancário fictício: R$ 1.500,00</span></div><button class="btn" data-act="auto-credit">Simular chegada automática do extrato</button><p>O mesmo ID bancário não pode entrar duas vezes. O saldo é atualizado, e Entrou registra somente a movimentação confirmada.</p>`)}
+${card('Simular entrada realmente recebida no banco',`<p class="muted">Somente no app: cria uma entrada fictícia POSTED e aumenta o saldo bancário da conta selecionada.</p><form data-form="deposit" class="formgrid"><label>Recebeu<select name="owner"><option value="lucas">Titular</option>${S.consent?'<option value="naara">Parceiro</option>':''}</select></label><label>Valor (R$)<input name="value" type="text" inputmode="decimal" autocomplete="off" placeholder="1500 ou 1.500,00" value="100" required></label><button class="btn wide" type="submit">Simular crédito bancário confirmado</button></form>`)}${card('Testes manuais',`<div class="action-menu">${btn('Reservar despesa','open','data-target="bills"')}${btn('Confirmar estorno','open','data-target="cards"')}${btn('Revogar acesso','open','data-target="couple"')}</div>`) }<div class="action-menu">${btn('Transferências reconhecidas do banco','open','data-target="transfers"')}${btn('Perfil e bodas','open','data-target="profile"')}</div><div class="hint">Aprovação aqui não comprova atualização do Supabase, conciliação real com Pluggy, desempenho, login ou publicação na Vercel. Nenhuma gravação real é feita.</div>`}
+const views={home,banks,cards,bills,forecast,calendar,chat,couple,settings,tests,profile,transfers};
+let finaHistoryInitialized=false;
+let finaHistoryRestoring=false;
+let finaHistoryTab='';
+let finaExitArmedUntil=0;
+
+function finaBackToast(message){
+ let n=document.getElementById('finaBackToast');
+ if(!n){
+   n=document.createElement('div');
+   n.id='finaBackToast';
+   n.setAttribute('role','status');
+   Object.assign(n.style,{
+     position:'fixed',left:'50%',bottom:'84px',transform:'translateX(-50%)',
+     zIndex:'99999',background:'rgba(38,34,30,.92)',color:'#fff',
+     padding:'10px 14px',borderRadius:'999px',fontSize:'13px',
+     boxShadow:'0 6px 24px rgba(0,0,0,.22)',maxWidth:'88vw',
+     textAlign:'center',pointerEvents:'none',opacity:'0',
+     transition:'opacity .15s ease'
+   });
+   document.body.appendChild(n);
+ }
+ n.textContent=message;
+ n.style.opacity='1';
+ clearTimeout(window.__finaBackToastTimer);
+ window.__finaBackToastTimer=setTimeout(()=>{n.style.opacity='0'},1900);
+}
+
+function finaHistoryView(){
+ return {tab:S.tab||'home'};
+}
+
+function finaInitHistoryNavigation(){
+ if(finaHistoryInitialized)return;
+ finaHistoryInitialized=true;
+ finaHistoryTab=S.tab||'home';
+ const url=location.href;
+ history.replaceState({...(history.state||{}),finaNav:true,finaBase:true,view:finaHistoryView()},'',url);
+ history.pushState({finaNav:true,finaGuard:true,view:finaHistoryView()},'',url);
+}
+
+function finaRecordHistoryView(){
+ if(!finaHistoryInitialized||finaHistoryRestoring)return;
+ const tab=S.tab||'home';
+ if(tab===finaHistoryTab)return;
+ finaHistoryTab=tab;
+ history.pushState({finaNav:true,view:finaHistoryView()},'',location.href);
+}
+
+window.addEventListener('popstate',event=>{
+ if(!finaHistoryInitialized)return;
+ const state=event.state;
+ if(state?.finaNav&&state?.finaBase){
+   const now=Date.now();
+   if(now<finaExitArmedUntil){
+     finaExitArmedUntil=0;
+     setTimeout(()=>history.back(),0);
+     return;
+   }
+   finaExitArmedUntil=now+2200;
+   finaBackToast('Pressione Voltar novamente para sair da FINA');
+   history.pushState({finaNav:true,finaGuard:true,view:{tab:'home'}},'',location.href);
+   finaHistoryRestoring=true;
+   S.tab='home';
+   S.add=false;S.homeAdd=false;S.invoiceAdd=false;S.edit=null;S.formNotice='';
+   finaHistoryTab='home';
+   render(true);
+   finaHistoryRestoring=false;
+   return;
+ }
+ if(state?.finaNav&&state?.view?.tab){
+   finaHistoryRestoring=true;
+   S.tab=state.view.tab;
+   S.add=false;S.homeAdd=false;S.invoiceAdd=false;S.edit=null;S.formNotice='';
+   finaHistoryTab=S.tab;
+   render(true);
+   finaHistoryRestoring=false;
+ }
+});
+
+window.addEventListener('fina:auth-ready',()=>setTimeout(finaInitHistoryNavigation,0));
+
+function render(goTop=false){ensureCycle();el.classList.toggle('theme-dark',S.theme==='dark');screen.innerHTML=header()+(views[S.tab]||home)()+`<div class="footnote">FINA · Conexão bancária segura via Pluggy</div>`;bottom.innerHTML=tabs.map(([id,icon,name])=>`<button type="button" class="${S.tab===id?'active':''}" data-act="open" data-target="${id}"><span class="navicon">${icon}</span><span class="navname">${name}</span></button>`).join('');if(goTop)screen.scrollTop=0;const chat=document.getElementById('messages');if(chat)chat.scrollTop=chat.scrollHeight;finaRecordHistoryView();setTimeout(()=>{window.FinaCouple?.paint?.();window.FinaBank?.paint?.();if(window.FinaInstallState==='ready'){const n=document.getElementById('finaInstallStatus');if(n)n.textContent='Pronto para instalar neste aparelho.'}else if(window.matchMedia?.('(display-mode: standalone)').matches){const n=document.getElementById('finaInstallStatus');if(n)n.textContent='FINA já está instalada neste aparelho.'}},0)}
+function finaNormText(v){return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim()}
+function finaPaymentCandidates(b){
+ if(!b||b.type!=='manual'||b.owner!==selfOwner()||!['open','reserved','reported'].includes(b.state))return [];
+ return S.transactions.filter(t=>t.real&&t.owner===b.owner&&t.kind==='out'&&t.value===billValue(b)&&t.month===b.month&&(t.year??2026)===(b.year??2026));
+}
+function finaChoosePayment(b,candidates){
+ if(candidates.length===1)return candidates[0];
+ if(candidates.length<2)return null;
+ const tokens=finaNormText(b.name).split(' ').filter(x=>x.length>=4&&!['conta','fatura','pagamento','parcela'].includes(x));
+ if(!tokens.length)return null;
+ const scored=candidates.map(t=>({t,score:tokens.reduce((n,k)=>n+(finaNormText(t.name).includes(k)?1:0),0)})).sort((a,b)=>b.score-a.score);
+ return scored[0].score>0&&scored[0].score>scored[1].score?scored[0].t:null;
+}
+function finaReconcileBill(b){
+ const candidates=finaPaymentCandidates(b);
+ const match=finaChoosePayment(b,candidates);
+ b.reconciliationCandidates=candidates.length;
+ if(!match){
+   if(candidates.length>1)b.detail='Foram encontrados '+candidates.length+' débitos reais de '+money(billValue(b))+' neste mês. A FINA não marcou como pago para não adivinhar.';
+   return false;
+ }
+ b.state='posted';
+ b.paidDate=match.date;
+ b.paidTransactionId=match.id;
+ b.detail='Pago no banco em '+match.date+' · '+match.bank+' · '+match.name+' · '+money(match.value);
+ b.reconciliationCandidates=1;
+ return true;
+}
+function finaReconcileManualBills(){
+ let changed=false;
+ for(const b of S.bills){if(finaReconcileBill(b))changed=true;}
+ if(changed){try{localStorage.setItem('fina_state_v1',JSON.stringify(window.FinaExportPersistentState?.()))}catch{};setTimeout(()=>void window.FinaPersistNow?.(),0);}
+ return changed;
+}
+function post(b){if(!b||!pending(b))return;let a=S.accounts.find(a=>a.owner===b.owner);if(!a)return;const amount=billValue(b);a.balance-=amount;b.state='posted';if(b.loanId){const loan=S.loans.find(l=>l.id===b.loanId);const due=loan?.current+monthOffset();if(loan&&due>=1&&due<=loan.total)loan.paid=Math.max(loan.paid,due)}S.transactions.unshift({id:'p'+Date.now(),owner:b.owner,bank:a.name,name:'Baixa simulada · '+b.name,value:amount,kind:'out',date:'10/11',category:'expense',month:S.monthForBills});}
+function confirmRefund(r,where){if(!r||r.state!=='pending')return;if(where==='cash'){let a=S.accounts.find(a=>a.owner===r.owner);if(!a)return;a.balance+=r.value;S.transactions.unshift({id:'r'+r.id,owner:r.owner,bank:a.name,name:'Devolução confirmada · '+r.name,value:r.value,kind:'in',date:'10/11',category:'refund',month:S.monthForBills})}r.state=where}
+function answer(msg){S.messages.push({mine:true,text:msg});const t=msg.toLowerCase();let reply;if(!accessible()&&/casal|saldo|resultado/.test(t))reply='Não posso calcular os valores do casal sem consentimento recíproco.';else if(/estorn|devol/.test(t))reply=`Estornos aguardando: ${ownRefunds().filter(r=>r.state==='pending').length}. Aparecem no topo da fatura. Um crédito na fatura reduz o devido; uma devolução para a conta aparece no extrato como entrada de estorno.`;else if(/(?:naara|lucas).*(?:para|→|->).*(?:naara|lucas)|\btransfer[eê]ncia\b/.test(t)){const m=t.match(/(\d[\d.,]*)/),value=m?cents(m[1]):null;const matched=S.bankFeedApplied.includes('bank-tx-paired-naara-lucas-3260-20261110');reply=matched?'Já recebi a transferência pareada do banco: Naara → Lucas, R$ 3.260,00. As duas pontas estão no histórico e não entram como renda/gasto.':'Entendi que você está falando de '+(value?money(value):'uma transferência')+' entre pessoas do casal. Não é necessário cadastrar: vou identificar automaticamente quando o banco sincronizar e confirmar as duas movimentações. Uma mensagem não efetua nem registra PIX.';}else if(/saldo|dinheiro/.test(t))reply=S.scope==='casal'?`Saldo disponível ajustado do casal: ${money(scopeBalance())}. Toque nas iniciais para ver cada saldo original importado do banco.`:`Saldo bancário original de ${name(S.scope)}: ${money(ownerBalance(S.scope))}, sem incluir limite de cartão.`;else if(/saiu|gasto|debito/.test(t))reply=`Saiu do banco: ${money(real('out'))}. Reserva e pagamento informado não entram em Saiu.`;else if(/(?:^|\b)(?:recebi|entrou|valor)\s+(?:r\$\s*)?[\d.,]+(?:\s|$)/.test(t)||/^(?:r\$\s*)?[\d.,]+$/.test(t)){
+ const token=t.match(/(?:recebi|entrou|valor)\s+(?:r\$\s*)?([\d.,]+)/)?.[1]||t.replace(/^r\$\s*/,''),normalized=cents(token);
+ reply=normalized!==null?'Entendi '+money(normalized)+'. Só será registrado como entrada bancária quando o extrato sincronizado confirmar essa movimentação; uma mensagem não cria dinheiro no banco.':'Informe o valor em reais, por exemplo 1500.';
+ }else if(/entrou|recebi/.test(t))reply=`Entrou no banco: ${money(real('in'))}. Devoluções são identificadas separadamente.`;else if(/fatura|conta|dívida/.test(t))reply=`Em aberto ${money(open())}; reservado ${money(reserved())}; informado ${money(reported())}.`;else if(/resultado|projeção/.test(t))reply=S.scope==='casal'?`Resultado projetado do casal: ${money(ownerProjected('lucas'))} + ${money(ownerProjected('naara'))} = ${money(monthResult())}.`:`Resultado projetado de ${name(S.scope)}: ${money(ownerProjected(S.scope))} = saldo original + receitas futuras − compromissos pendentes.`;else reply='Posso demonstrar saldo, Entrou, Saiu, faturas, estornos e resultado. Não sou a IA conectada do seu aplicativo real.';S.messages.push({mine:false,text:reply})}
+// Photo editor v11: proportional canvas drawing; two crop modes and drag controls.
+const photoModal=document.getElementById('labPhotoEditor');
+const photoCanvas=document.getElementById('labPhotoCanvas');
+const photoZoom=document.getElementById('labPhotoZoom');
+const photoZoomValue=document.getElementById('labPhotoZoomValue');
+const photoEditorNotice=document.getElementById('labPhotoEditorNotice');
+const photoCtx=photoCanvas.getContext('2d');
+const photoClamp=(v,min,max)=>Math.min(max,Math.max(min,v));
+function editorCanvasDraw(ctx,size,clip){
+ if(!photoEditor||!photoEditor.image)return;
+ const P=photoEditor,im=P.image;
+ const base=(P.mode==='contain'?Math.min:Math.max)(size/im.naturalWidth,size/im.naturalHeight);
+ const scale=base*P.zoom, w=im.naturalWidth*scale,h=im.naturalHeight*scale;
+ const xmax=Math.max(0,(w-size)/2),ymax=Math.max(0,(h-size)/2);
+ const x=photoClamp(P.x,-xmax,xmax),y=photoClamp(P.y,-ymax,ymax);
+ if(size===320){P.x=x;P.y=y;}
+ ctx.save();ctx.clearRect(0,0,size,size);
+ if(clip){ctx.beginPath();ctx.arc(size/2,size/2,size/2,0,Math.PI*2);ctx.clip();}
+ ctx.fillStyle='#f4e8d2';ctx.fillRect(0,0,size,size);
+ ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+ ctx.drawImage(im,(size-w)/2+x,(size-h)/2+y,w,h);ctx.restore();
+}
+function photoDraw(){
+ if(!photoEditor)return;
+ editorCanvasDraw(photoCtx,320,true);
+ photoZoom.value=String(photoEditor.zoom);
+ photoZoomValue.textContent=Math.round(photoEditor.zoom*100)+'%';
+ document.getElementById('labPhotoCover').classList.toggle('active',photoEditor.mode==='cover');
+ document.getElementById('labPhotoContain').classList.toggle('active',photoEditor.mode==='contain');
+}
+function openPhotoEditor(owner,src){
+ if(!['lucas','naara'].includes(owner)||typeof src!=='string'||!src.startsWith('data:image/'))return;
+ const im=new Image();
+ photoEditorNotice.textContent='Preparando a foto…';
+ im.onload=()=>{
+  if(!im.naturalWidth||!im.naturalHeight){photoEditorNotice.textContent='Não foi possível ler a foto.';return;}
+  const saved=S.profiles[owner].photoCrop||{};
+  photoEditor={owner,image:im,source:src,zoom:photoClamp(Number(saved.zoom)||1,1,3),mode:saved.mode==='contain'?'contain':'cover',x:Number(saved.x)||0,y:Number(saved.y)||0,pointer:null};
+  document.getElementById('labPhotoEditorTitle').textContent='Ajustar foto de '+name(owner);
+  photoModal.hidden=false;
+  photoEditorNotice.textContent='Sem distorção: a imagem mantém sua largura e altura proporcionais.';
+  photoDraw();
+ };
+ im.onerror=()=>{S.photoNotice='Esta imagem não pôde ser aberta. Selecione outra.';photoEditorNotice.textContent='Falha ao abrir a foto.';};
+ im.src=src;
+}
+function closePhotoEditor(){photoModal.hidden=true;photoEditor=null;}
+photoZoom.addEventListener('input',()=>{if(!photoEditor)return;photoEditor.zoom=Number(photoZoom.value);photoDraw();});
+photoCanvas.addEventListener('pointerdown',e=>{
+ if(!photoEditor)return;e.preventDefault();
+ photoCanvas.setPointerCapture(e.pointerId);
+ photoEditor.pointer={id:e.pointerId,lastX:e.clientX,lastY:e.clientY};
+});
+photoCanvas.addEventListener('pointermove',e=>{
+ if(!photoEditor||photoEditor.pointer?.id!==e.pointerId)return;
+ e.preventDefault();const p=photoEditor.pointer;
+ const rect=photoCanvas.getBoundingClientRect(),multiplier=320/Math.max(1,rect.width);
+ photoEditor.x+=(e.clientX-p.lastX)*multiplier;
+ photoEditor.y+=(e.clientY-p.lastY)*multiplier;
+ p.lastX=e.clientX;p.lastY=e.clientY;photoDraw();
+});
+for(const name of ['pointerup','pointercancel','lostpointercapture']){
+ photoCanvas.addEventListener(name,e=>{if(photoEditor?.pointer?.id===e.pointerId)photoEditor.pointer=null;});
+}
+photoModal.addEventListener('click',e=>{
+ const btn=e.target.closest('[data-photo-action]');if(!btn||!photoEditor&&btn.dataset.photoAction!=='cancel')return;
+ const action=btn.dataset.photoAction;
+ if(action==='cancel'){closePhotoEditor();return;}
+ if(action==='reset'){photoEditor.zoom=1;photoEditor.x=0;photoEditor.y=0;photoDraw();return;}
+ if(action==='cover'||action==='contain'){
+   photoEditor.mode=action;photoEditor.x=0;photoEditor.y=0;photoEditor.zoom=1;photoDraw();return;
+ }
+ if(action==='save'){
+   // Export a square crop; circular masking only affects on-screen avatar.
+   // A single aspect-preserving drawImage call prevents stretching the face.
+   const output=document.createElement('canvas');output.width=512;output.height=512;
+   const outputCtx=output.getContext('2d');const P=photoEditor;
+   const factor=512/320;
+   const base=(P.mode==='contain'?Math.min:Math.max)(512/P.image.naturalWidth,512/P.image.naturalHeight);
+   const scale=base*P.zoom,w=P.image.naturalWidth*scale,h=P.image.naturalHeight*scale;
+   const maxX=Math.max(0,(w-512)/2),maxY=Math.max(0,(h-512)/2);
+   outputCtx.fillStyle='#f4e8d2';outputCtx.fillRect(0,0,512,512);
+   outputCtx.imageSmoothingEnabled=true;outputCtx.imageSmoothingQuality='high';
+   outputCtx.drawImage(P.image,(512-w)/2+photoClamp(P.x*factor,-maxX,maxX),(512-h)/2+photoClamp(P.y*factor,-maxY,maxY),w,h);
+   try{
+      const result=output.toDataURL('image/jpeg',.87);
+      if(!result.startsWith('data:image/'))throw Error('Formato inesperado');
+      S.profiles[P.owner].photo=result;
+      S.profiles[P.owner].photoOriginal=P.source;
+      const crop={zoom:P.zoom,mode:P.mode,x:P.x,y:P.y};
+      S.profiles[P.owner].photoCrop=crop;
+      S.photoNotice='Foto de '+name(P.owner)+' salva. Sincronizando com o outro aparelho…';
+      setTimeout(()=>void window.FinaSaveSharedPhoto?.(P.owner,result,crop),0);
+      S.scope=P.owner;S.tab='home';closePhotoEditor();render(true);
+   }catch(err){photoEditorNotice.textContent='Não foi possível salvar esta foto. Tente novamente.';}
+ }
+});
+
+el.addEventListener('click',event=>{const target=event.target.closest('button[data-act]');if(!target)return;const a=target.dataset.act,id=Number(target.dataset.id),b=S.bills.find(x=>x.id===id),r=S.refunds.find(x=>x.id===id);if(a==='open'){S.tab=target.dataset.target;S.add=false;S.invoiceAdd=false;S.formNotice='';S.edit=null;render(true);return}if(a==='bank-connect-own'){window.FinaBank?.connect?.();return}if(a==='bank-sync-own'){window.FinaBank?.sync?.();return}if(a==='install-fina'){window.FinaInstall?.();return}if(a==='bank-sync-id'){const id=document.getElementById('finaPluggyItemId')?.value||'';const label=document.getElementById('finaPluggyItemLabel')?.value||'';window.FinaBank?.syncById?.(id,label);return}if(a==='bank-reauth-id'){const id=document.getElementById('finaPluggyItemId')?.value||'';window.FinaBank?.reauthById?.(id);return}if(a==='couple-create-code'){window.FinaCouple?.createInvite?.();return}if(a==='couple-accept-code'){const code=document.getElementById('finaCoupleCodeInput')?.value||'';window.FinaCouple?.acceptCode?.(code);return}if(a==='couple-copy-code'){window.FinaCouple?.copyCode?.();return}if(a==='open-card'){S.card=target.dataset.id;S.tab='cards';render(true);return}if(a==='scope')S.scope=target.dataset.scope;if(a==='show')S.showMoney=!S.showMoney;if(a==='theme')S.theme=S.theme==='light'?'dark':'light';if(a==='notifs')S.notifs=!S.notifs;if(a==='birthdays')S.birthdays=!S.birthdays;if(a==='division')S.division=target.dataset.mode;if(a==='revoke'){S.consent=false;S.sharePending=false;if(S.scope==='naara')S.scope='casal'}if(a==='request-share')S.sharePending=true;if(a==='approve-share'){S.consent=true;S.sharePending=false}if(a==='choose-card')S.card=target.dataset.id;if(a==='reserve'&&b?.state==='open')b.state='reserved';if(a==='unreserve'&&b?.state==='reserved')b.state='open';if(a==='report'&&b&&['open','reserved'].includes(b.state))b.state='reported';if(a==='unreport'&&b?.state==='reported')b.state='open';if(a==='auto-credit'){
+  const id='auto-bank-credit-1500-20261110';
+  if(!S.transactions.some(t=>t.id===id)){
+   const account=S.accounts.find(x=>x.id==='s');
+   if(account){account.balance+=150000;S.transactions.unshift({id,owner:'lucas',bank:account.name,name:'TED recebida · registro automático do banco (teste)',value:150000,kind:'in',date:'10/11',category:'salary',month:S.monthForBills});}
+   S.syncMessage='Banco enviou R$ 1.500,00; lançamento registrado uma vez, sem digitação do casal.';
+  }else S.syncMessage='Este lançamento bancário já foi sincronizado; não foi duplicado.';
+  S.tab='tests';
+ }
+ if(a==='bank-transfer-feed'){handleBankTransferEvent();S.tab='transfers';S.monthForBills=10;S.billYear=2026;S.month=10;S.year=2026}if(a==='bill-prev'){navigateMonth(-1);return}if(a==='bill-next'){navigateMonth(1);return}if(a==='bank-event'){const chosen=Number(el.querySelector('#labSyncBill')?.value),record=S.bills.find(x=>x.id===chosen);if(record&&pending(record)){post(record);S.syncMessage='Extrato fictício recebido: '+record.name+' confirmado no banco. Entrou/Saiu e saldo foram atualizados sem cobrança duplicada.';}else{S.syncMessage='Nenhuma obrigação disponível para conciliar.'}}if(a==='edit'&&b?.type==='manual'&&pending(b))S.edit=b.id;if(a==='delete'&&b?.type==='manual'&&pending(b)){const series=String(b.seriesId||b.id),start=monthKey(b.month,b.year??2026);for(const entry of S.bills){if(String(entry.seriesId||entry.id)===series){entry.recurring=false;if(monthKey(entry.month,entry.year??2026)>=start)entry.state='removed';}} b.recurring=false;}if(a==='add-bill')S.add=true;if(a==='add-invoice'){S.invoiceAdd=!S.invoiceAdd;S.formNotice='';}if(a==='home-add')S.homeAdd=!S.homeAdd;if(a==='cancel'){S.add=false;S.homeAdd=false;S.invoiceAdd=false;S.edit=null;S.formNotice=''}if(a==='refund-card')confirmRefund(r,'card');if(a==='refund-cash')confirmRefund(r,'cash');if(a==='refund-undo'&&r&&r.state!=='pending'){if(r.state==='cash'){let account=S.accounts.find(x=>x.owner===r.owner);if(account)account.balance-=r.value;S.transactions=S.transactions.filter(x=>x.id!=='r'+r.id)}r.state='pending'}if(a==='delete-forecast')S.future=S.future.filter(x=>x.id!==id);if(a==='prev-month'){navigateMonth(-1);return}if(a==='next-month'){navigateMonth(1);return}if(a==='ask')answer(target.dataset.message||'');if(a==='run-tests')runTests();if(a==='editor-owner')S.activeEditor=target.dataset.owner;if(a==='preview-bodas')S.celebrationPreview=!S.celebrationPreview;if(a==='gallery'){S.galleryOwner=target.dataset.owner;el.querySelector('#labGallery')?.click();return}if(a==='photo-adjust'){const o=target.dataset.owner;const p=S.profiles[o];if(p?.photoOriginal||p?.photo)openPhotoEditor(o,p.photoOriginal||p.photo);return}if(a==='reset')S=seed();render();if(a==='home-add'&&S.homeAdd){el.querySelector('form[data-form="newbill"] input[name="name"]')?.focus()}});
+el.addEventListener('submit',event=>{const form=event.target.closest('form[data-form]');if(!form)return;event.preventDefault();const data=new FormData(form),type=form.dataset.form,value=cents(data.get('value')),day=Number(data.get('day')||20),owner=String(data.get('owner')||'lucas'),safeOwner=owner===selfOwner()||S.consent,planningOwner=owner==='lucas'||owner==='naara';
+if(['newbill','edit','forecast','refund','deposit','transfer','invoice'].includes(type) && value===null){
+ const input=form.querySelector('input[name="value"]');
+ if(input){input.setCustomValidity('Informe um valor em reais, por exemplo: 1500, 1500,00 ou 1.500,00.');input.reportValidity();input.addEventListener('input',()=>input.setCustomValidity(''),{once:true});}
+ return;
+ }
+ if(type==='invoice'){
+  const card=String(data.get('card')||'manual-other'),linked=S.cards.find(x=>x.id===card);
+  const owner=linked?.owner||String(data.get('owner')||'lucas');
+  const named=String(data.get('name')||'Fatura informada').trim().slice(0,110)||'Fatura informada';
+  const duplicate=S.bills.find(x=>x.card===card&&sameMonth(x)&&x.type==='bank');
+  if(duplicate){
+   S.formNotice='Este cartão já possui fatura oficial importada neste mês. O registro manual não pode duplicá-la. Escolha outro cartão ou um mês sem fatura oficial.';
+  }else if(!Number.isInteger(day)||day<1||day>31){
+   S.formNotice='Vencimento inválido. Informe um dia de 1 a 31.';
+  }else if(!linked&&card!=='manual-other'){
+   S.formNotice='Não reconheci esse cartão. Confira a seleção.';
+  }else{
+   const existing=S.bills.find(x=>x.card===card&&sameMonth(x)&&x.state!=='posted'&&
+      (card!=='manual-other'||x.name===named));
+   if(existing){
+    existing.value=value;existing.day=day;existing.name=named;
+    existing.type='manual';existing.estimated=false;
+    existing.detail='Valor informado para conferência · ainda não recebido do banco';
+   }else{
+    S.bills.push({id:Date.now()+S.bills.length,owner,card,name:named,value,day,
+      type:'manual',state:'open',detail:'Valor informado para conferência · não confirmado no banco',
+      recurring:false,estimated:false,month:S.monthForBills,year:S.billYear});
+   }
+   const just=S.bills.find(x=>x.card===card&&sameMonth(x)&&x.type==='manual'&&(card!=='manual-other'||x.name===named));
+   if(just&&just.owner===selfOwner())finaReconcileBill(just);
+   S.invoiceAdd=false;
+   S.formNotice=just?.state==='posted'?'Pagamento encontrado no extrato: '+money(value)+' em '+just.paidDate+'. O saldo atual não será reduzido novamente.':'Fatura informada: '+money(value)+'. Se o pagamento já existir no extrato, a FINA fará a conciliação sem descontar duas vezes.';
+  }
+  render();return;
+ }
+ if(type==='cardcycle'){const card=S.cards.find(c=>c.id===String(data.get('card')));const closing=Number(data.get('closing')),due=Number(data.get('due'));if(card&&Number.isInteger(closing)&&Number.isInteger(due)&&closing>=1&&closing<=28&&due>=1&&due<=28){card.closing=closing;card.due=due;card.source='manual_fallback';S.syncMessage='Ciclo do cartão salvo no app; os dados oficiais do banco prevalecem.';}}
+ if(type==='edit'){const b=S.bills.find(x=>x.id===Number(form.dataset.id));if(b&&b.type==='manual'&&pending(b)&&value>0){b.name=String(data.get('name')).trim().slice(0,100);b.value=value;b.day=day;S.edit=null}}if(type==='newbill'&&value>0&&planningOwner){const nb={id:Date.now(),owner,name:String(data.get('name')).trim().slice(0,100),value,day,type:'manual',state:'open',detail:'Cadastro no app',recurring:data.get('recurring')==='on',month:S.monthForBills,year:S.billYear};S.bills.push(nb);if(owner===selfOwner())finaReconcileBill(nb);S.add=false;S.homeAdd=false}if(type==='forecast'&&value>0&&safeOwner)S.future.push({id:Date.now(),owner,name:String(data.get('name')).trim().slice(0,100),value,day,month:S.monthForBills,year:S.billYear});if(type==='refund'&&value>0){const c=S.cards.find(x=>x.id===data.get('card'));if(c&&(c.owner===selfOwner()||S.consent))S.refunds.push({id:Date.now(),owner:c.owner,card:c.id,name:String(data.get('name')).trim().slice(0,100),value,state:'pending',month:S.monthForBills,year:S.billYear})}if(type==='deposit'&&value>0&&safeOwner){
+   const account=S.accounts.find(a=>a.owner===owner);
+   if(account){account.balance+=value;S.transactions.unshift({id:'credit'+Date.now(),owner,bank:account.name,name:'Crédito confirmado pelo banco (teste)',value,kind:'in',date:'10/11',category:'salary',month:S.monthForBills});}
+ }
+ if(type==='profile'){
+  const o=S.activeEditor;
+  const nm=String(data.get(o+'_name')||'').trim().slice(0,70);
+  const dob=String(data.get(o+'_dob')||'');
+  const wedding=String(data.get('wedding_date')||'');
+  if(nm.length>=2)S.profiles[o].displayName=nm;
+  if(!dob||validDate(dob))S.profiles[o].dob=dob;
+  if(!wedding||validDate(wedding))S.weddingDate=wedding;
+  S.photoNotice='Salvando e sincronizando dados do casal…';
+  window.FinaHeaderGreeting='Olá, '+S.profiles[selfOwner()].displayName+(partnerReady()?' e '+S.profiles[partnerOwner()].displayName:'');
+  window.dispatchEvent(new Event('fina:header-changed'));
+  setTimeout(()=>void window.FinaSaveSharedProfile?.(o,S.profiles[o].displayName,S.profiles[o].dob,S.weddingDate),0);
+ }
+ if(type==='chat'){const msg=String(data.get('message')||'').trim();if(msg)answer(msg)}render()});
+el.addEventListener('input',event=>{if(event.target.dataset.control==='photo'){S.photoSize=Number(event.target.value);render();return}if(event.target.matches('form[data-form="invoice"] input[name="value"]')){const input=event.target,preview=input.closest('form')?.querySelector('[data-money-preview]'),v=cents(input.value);if(preview)preview.textContent=v!==null?money(v):'Confira o valor informado';input.setCustomValidity('')}});
+el.addEventListener('change',event=>{
+  const input=event.target;if(input.id!=='labGallery')return;
+  const file=input.files&&input.files[0],owner=S.galleryOwner;
+  if(!file||!['lucas','naara'].includes(owner))return;
+  if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>10*1024*1024){
+    S.photoNotice='Selecione uma foto JPEG, PNG ou WebP de até 2 MB.';render();return;
+  }
+  const fr=new FileReader();fr.onload=()=>{
+    if(typeof fr.result!=='string'||!fr.result.startsWith('data:image/'))return;
+    S.profiles[owner].photoCrop={zoom:1,mode:'cover',x:0,y:0};openPhotoEditor(owner,fr.result);
+  };fr.readAsDataURL(file);
+});
+let touchStart=null;screen.addEventListener('touchstart' ,e=>{if(S.tab==='calendar')touchStart=e.touches[0].clientX},{passive:true});screen.addEventListener('touchend',e=>{if(S.tab!=='calendar'||touchStart===null)return;const delta=e.changedTouches[0].clientX-touchStart;touchStart=null;if(Math.abs(delta)>75){S.month+=delta<0?1:-1;if(S.month>11){S.month=0;S.year++}if(S.month<0){S.month=11;S.year--}render()}},{passive:true});
+window.addEventListener('fina:header-changed',()=>render());
+render();
+})();
+</script><script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.47.10/dist/umd/supabase.min.js"></script>
+<script>
+(()=>{
+'use strict';
+const SUPABASE_URL='https://gdjswengldvvgjrpdtst.supabase.co';
+const SUPABASE_KEY='sb_publishable_BrD8FxMRahU-f3XVFuraqg_YalGUfse';
+const gate=document.getElementById('finaAuthGate'),status=document.getElementById('finaAuthStatus');
+const login=document.getElementById('finaGoogleLogin'),bar=document.getElementById('finaUserBar');
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+const S=window.FinaState;
+window.FinaSupabase=sb;
+window.FinaCurrentUser=null;
+window.FinaCurrentSession=null;
+let finaAppliedSessionKey='';
+
+let finaPersistTimer=null;
+async function finaLoadPersistentState(user){
+  if(!user)return;
+  const {data,error}=await sb.from('fina_user_state').select('state').eq('user_id',user.id).maybeSingle();
+  if(error)return;
+  if(data?.state){
+    try{localStorage.setItem('fina_state_v1',JSON.stringify(data.state));}catch{}
+    window.FinaApplyPersistentState?.(data.state);
+  }
+}
+async function finaSavePersistentState(){
+  const user=window.FinaCurrentUser; if(!user)return;
+  const state=window.FinaExportPersistentState?.(); if(!state)return;
+  try{localStorage.setItem('fina_state_v1',JSON.stringify(state));}catch{}
+  await sb.from('fina_user_state').upsert({user_id:user.id,state,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+  // Perfil compartilhado é salvo apenas pelas rotinas específicas de perfil/foto.
+}
+function finaScheduleSave(){clearTimeout(finaPersistTimer);finaPersistTimer=setTimeout(()=>void finaSavePersistentState(),250);}
+window.FinaPersistNow=finaSavePersistentState;
+
+let finaSharedProfileChannel=null;
+window.FinaCoupleMemberIds=window.FinaCoupleMemberIds||{};
+window.FinaCoupleId=window.FinaCoupleId||null;
+
+async function loadFinaSharedProfiles(){
+ const user=window.FinaCurrentUser;if(!user)return;
+ const {data:members,error:me}=await sb.from('fina_couple_members').select('couple_id,user_id,role,joined_at').order('joined_at');
+ if(me||!Array.isArray(members)||!members.length)return;
+ const coupleId=members[0].couple_id;
+ const ids=members.map(x=>x.user_id);
+ const ownerMember=members.find(x=>x.role==='owner')||members[0];
+ const partnerMember=members.find(x=>x.user_id!==ownerMember.user_id)||null;
+ window.FinaCoupleId=coupleId;
+ window.FinaCoupleMemberIds={lucas:ownerMember?.user_id||null,naara:partnerMember?.user_id||null};
+
+ const [{data:profiles,error:pe},{data:couple,error:ce}]=await Promise.all([
+   sb.from('fina_profiles').select('user_id,display_name,birth_date,photo_data,photo_crop,photo_updated_at').in('user_id',ids),
+   sb.from('fina_couples').select('id,wedding_date,updated_at').eq('id',coupleId).maybeSingle()
+ ]);
+ if(pe)return;
+
+ for(const p of profiles||[]){
+   const key=String(p.user_id)===String(window.FinaCoupleMemberIds.lucas)?'lucas':'naara';
+   if(p.display_name)S.profiles[key].displayName=cleanName(p.display_name);
+   S.profiles[key].dob=p.birth_date||'';
+   if(typeof p.photo_data==='string'&&p.photo_data.startsWith('data:image/')){
+     S.profiles[key].photo=p.photo_data;
+     S.profiles[key].photoOriginal=p.photo_data;
+   }else{
+     S.profiles[key].photo=null;
+     S.profiles[key].photoOriginal=null;
+   }
+   S.profiles[key].photoCrop=p.photo_crop||null;
+ }
+ if(!ce)S.weddingDate=couple?.wedding_date||'';
+
+ const self=window.FinaSelfOwnerKey||'lucas',partner=self==='lucas'?'naara':'lucas';
+ coupleState.titularName=S.profiles[self].displayName||'Titular';
+ coupleState.partnerName=S.profiles[partner].displayName||'Parceiro';
+ window.FinaHeaderGreeting='Olá, '+coupleState.titularName+(partnerReady()?' e '+coupleState.partnerName:'');
+ try{
+   localStorage.setItem('fina_shared_profiles_v1',JSON.stringify({
+     profiles:{
+       lucas:{displayName:S.profiles.lucas.displayName,dob:S.profiles.lucas.dob,photo:S.profiles.lucas.photo,photoCrop:S.profiles.lucas.photoCrop||null},
+       naara:{displayName:S.profiles.naara.displayName,dob:S.profiles.naara.dob,photo:S.profiles.naara.photo,photoCrop:S.profiles.naara.photoCrop||null}
+     },
+     weddingDate:S.weddingDate||''
+   }));
+ }catch{}
+ window.dispatchEvent(new Event('fina:header-changed'));
+ render(false);
+}
+
+async function finaSaveSharedProfile(owner,displayName,dob,weddingDate){
+ if(!window.FinaCoupleMemberIds?.[owner])await loadFinaSharedProfiles();
+ const target=window.FinaCoupleMemberIds?.[owner];
+ if(!target){S.photoNotice='Não foi possível identificar o perfil do casal.';render(false);return;}
+ const now=new Date().toISOString();
+ const {error}=await sb.from('fina_profiles').update({
+   display_name:String(displayName||'').trim().slice(0,70),
+   birth_date:dob||null,
+   updated_at:now
+ }).eq('user_id',target);
+ if(error){S.photoNotice='Não foi possível salvar os dados do casal.';render(false);return;}
+ if(window.FinaCoupleId){
+   const {error:we}=await sb.from('fina_couples').update({wedding_date:weddingDate||null,updated_at:now}).eq('id',window.FinaCoupleId);
+   if(we)S.photoNotice='Nome e nascimento foram salvos, mas a data do casal não foi atualizada.';
+ }
+ if(!S.photoNotice||S.photoNotice.includes('Salvando'))S.photoNotice='Dados atualizados e sincronizados.';
+ await loadFinaSharedProfiles();
+}
+
+async function finaSaveSharedPhoto(owner,photoData,crop){
+ if(!window.FinaCoupleMemberIds?.[owner])await loadFinaSharedProfiles();
+ const target=window.FinaCoupleMemberIds?.[owner];
+ if(!target){S.photoNotice='Não foi possível identificar o perfil da foto.';render(false);return;}
+ if(typeof photoData!=='string'||!photoData.startsWith('data:image/')||photoData.length>900000){
+   S.photoNotice='A foto ficou grande demais para sincronizar. Escolha outra imagem.';render(false);return;
+ }
+ const now=new Date().toISOString();
+ const {error}=await sb.from('fina_profiles').update({
+   photo_data:photoData,
+   photo_crop:crop||null,
+   photo_updated_at:now,
+   updated_at:now
+ }).eq('user_id',target);
+ if(error){S.photoNotice='A foto não pôde ser salva no perfil compartilhado.';render(false);return;}
+ S.photoNotice='Foto de '+name(owner)+' atualizada nos dois aparelhos.';
+ await loadFinaSharedProfiles();
+}
+
+function finaStartSharedProfileRealtime(){
+ if(!window.FinaCurrentUser)return;
+ if(finaSharedProfileChannel){try{sb.removeChannel(finaSharedProfileChannel)}catch{}}
+ finaSharedProfileChannel=sb.channel('fina-shared-profile-'+window.FinaCurrentUser.id)
+  .on('postgres_changes',{event:'*',schema:'public',table:'fina_profiles'},()=>{setTimeout(()=>void loadFinaSharedProfiles(),50)})
+  .on('postgres_changes',{event:'UPDATE',schema:'public',table:'fina_couples'},()=>{setTimeout(()=>void loadFinaSharedProfiles(),50)})
+  .subscribe();
+}
+window.FinaLoadSharedProfiles=loadFinaSharedProfiles;
+window.FinaSaveSharedProfile=finaSaveSharedProfile;
+window.FinaSaveSharedPhoto=finaSaveSharedPhoto;
+async function ensureProfile(user){
+ if(!user)return;
+ const {data:existing}=await sb.from('fina_profiles').select('user_id,display_name').eq('user_id',user.id).maybeSingle();
+ if(existing?.user_id)return existing;
+ const name=user.user_metadata?.full_name||user.user_metadata?.name||user.email?.split('@')[0]||'Usuário';
+ const {data}=await sb.from('fina_profiles').insert({user_id:user.id,display_name:name,updated_at:new Date().toISOString()}).select('user_id,display_name').single();
+ return data;
+}
+let coupleState={connected:false,isOwner:false,titularName:'',partnerName:'',memberCount:0,code:'',expiresAt:null};
+const cleanName=v=>String(v||'').trim().replace(/\\s+/g,' ').slice(0,70);
+async function loadCoupleStatus(user){
+ if(!user)return;
+ let selfName=cleanName(user.user_metadata?.full_name||user.user_metadata?.name||user.email?.split('@')[0]||'Titular');
+ try{
+   const {data:profile}=await sb.from('fina_profiles').select('display_name').eq('user_id',user.id).maybeSingle();
+   if(profile?.display_name) selfName=cleanName(profile.display_name);
+ }catch{}
+ const {data,error}=await sb.rpc('fina_couple_status_v2');
+ if(error){
+   window.FinaSelfOwnerKey='lucas';window.FinaPartnerReady=false;
+   coupleState={...coupleState,connected:false,isOwner:false,titularName:selfName,partnerName:'',memberCount:0};
+   S.profiles.lucas.displayName=selfName||'Titular';S.profiles.naara.displayName='Parceiro';S.activeEditor='lucas';
+   window.FinaHeaderGreeting='Olá, '+selfName;
+   window.dispatchEvent(new Event('fina:header-changed'));window.FinaCouple?.paint?.();return;
+ }
+ const row=Array.isArray(data)?data[0]:data;
+ if(row&&Number(row.member_count)>0){
+   window.FinaSelfOwnerKey=row.self_owner_key==='naara'?'naara':'lucas';
+   const self=window.FinaSelfOwnerKey, partner=self==='lucas'?'naara':'lucas';
+   S.profiles.lucas.displayName=cleanName(row.canonical_owner_name)||'Lucas';
+   S.profiles.naara.displayName=cleanName(row.canonical_member_name)||'Naara';
+   coupleState={...coupleState,connected:Number(row.member_count)>=2,isOwner:!!row.is_group_owner,titularName:cleanName(row.self_name)||name(self),partnerName:cleanName(row.partner_name)||name(partner),memberCount:Number(row.member_count)||1};
+   window.FinaPartnerReady=Number(row.member_count)>=2;
+   S.activeEditor=self;
+   window.FinaHeaderGreeting='Olá, '+coupleState.titularName+(coupleState.partnerName?' e '+coupleState.partnerName:'');
+   try{await finaLoadPersistentState(user);}catch{}
+   try{await loadFinaSharedProfiles();finaStartSharedProfileRealtime();}catch{}
+ }else{
+   window.FinaSelfOwnerKey='lucas';window.FinaPartnerReady=false;
+   coupleState={...coupleState,connected:false,isOwner:false,titularName:selfName,partnerName:'',memberCount:0};
+   S.profiles.lucas.displayName=selfName||'Titular';S.profiles.naara.displayName='Parceiro';S.activeEditor='lucas';
+   window.FinaHeaderGreeting='Olá, '+selfName;
+ }
+ window.dispatchEvent(new Event('fina:header-changed'));window.FinaCouple?.paint?.();
+ setTimeout(async()=>{await loadFinaCoupleTransfers();await finaLoadRealBankData();},0);
+}
+function paintCouple(){const summary=document.getElementById('finaCoupleSummary');if(!summary)return;const connected=document.getElementById('finaCoupleConnected'),setup=document.getElementById('finaCoupleSetup'),names=document.getElementById('finaCoupleNames'),generated=document.getElementById('finaCoupleGenerated'),codeNode=document.getElementById('finaCoupleCode');if(coupleState.connected){summary.textContent='Este acesso já faz parte do casal.';if(connected)connected.hidden=false;if(setup)setup.hidden=true;if(names)names.textContent=coupleState.titularName+' e '+coupleState.partnerName;}else{summary.textContent=coupleState.memberCount===1?'Titular conectado. Parceiro ainda não entrou.':'Conecte o Titular e o Parceiro.';if(connected)connected.hidden=true;if(setup)setup.hidden=false;if(generated)generated.hidden=!coupleState.code;if(codeNode&&coupleState.code)codeNode.textContent=coupleState.code;}}
+async function createCoupleInvite(){const status=document.getElementById('finaCoupleRealStatus');if(status)status.textContent='Gerando código…';const {data,error}=await sb.rpc('fina_create_couple_invite');if(error){if(status)status.textContent='Não foi possível gerar o código: '+error.message;return;}const row=Array.isArray(data)?data[0]:data;coupleState.code=String(row?.code||'');coupleState.expiresAt=row?.expires_at||null;coupleState.memberCount=Math.max(coupleState.memberCount,1);coupleState.isOwner=true;paintCouple();if(status)status.textContent='Código criado. Ele expira em 30 minutos.';await loadCoupleStatus(window.FinaCurrentUser);}
+async function acceptCoupleCode(raw){const code=String(raw||'').trim().toUpperCase();const status=document.getElementById('finaCoupleRealStatus');if(!/^[A-Z0-9]{8}$/.test(code)){if(status)status.textContent='Digite o código de 8 caracteres.';return;}if(status)status.textContent='Conectando ao casal…';const {error}=await sb.rpc('fina_accept_couple_invite',{p_code:code});if(error){if(status)status.textContent=error.message.includes('already_in_couple')?'Esta conta já pertence a um casal.':error.message.includes('invalid_or_expired_code')?'Código inválido ou expirado.':'Não foi possível entrar no casal.';return;}coupleState.code='';await loadCoupleStatus(window.FinaCurrentUser);if(status)status.textContent='Casal conectado com sucesso.';}
+async function copyCoupleCode(){if(!coupleState.code)return;try{await navigator.clipboard.writeText(coupleState.code);const s=document.getElementById('finaCoupleRealStatus');if(s)s.textContent='Código copiado.';}catch{}}
+window.FinaCouple={paint:paintCouple,createInvite:createCoupleInvite,acceptCode:acceptCoupleCode,copyCode:copyCoupleCode,state:()=>({...coupleState})};
+
+let finaBankItems=[];
+let finaPluggyCredentialConfigured=false;
+function finaPluggyCredentialMessage(msg){
+ const el=document.getElementById('finaPluggyCredentialState');if(el)el.textContent=msg||'';
+}
+async function loadFinaPluggyCredentialStatus(){
+ if(!window.FinaCurrentSession)return;
+ const {data,error}=await finaFunctionResult('fina-pluggy-credentials',{action:'status'});
+ if(error||data?.error){finaPluggyCredentialMessage('Não foi possível conferir as credenciais.');return;}
+ finaPluggyCredentialConfigured=!!data?.configured;
+ finaPluggyCredentialMessage(finaPluggyCredentialConfigured?'Credenciais individuais configuradas e protegidas no backend.':'Usando as credenciais gerais da FINA.');
+}
+async function finaSavePluggyCredentials(){
+ const clientId=String(document.getElementById('finaPluggyClientId')?.value||'').trim();
+ const clientSecret=String(document.getElementById('finaPluggyClientSecret')?.value||'').trim();
+ if(!clientId||!clientSecret){finaPluggyCredentialMessage('Preencha Client ID e Client Secret.');return;}
+ finaPluggyCredentialMessage('Validando as credenciais diretamente na Pluggy…');
+ const {data,error}=await finaFunctionResult('fina-pluggy-credentials',{action:'set',clientId,clientSecret});
+ const secretInput=document.getElementById('finaPluggyClientSecret');if(secretInput)secretInput.value='';
+ if(error||data?.error){
+   finaPluggyCredentialMessage(data?.error==='pluggy_auth_failed'?'A Pluggy recusou esse Client ID/Secret. Confira os dados.':'Não foi possível salvar as credenciais.');
+   return;
+ }
+ finaPluggyCredentialConfigured=true;
+ const ok=Array.isArray(data?.items)?data.items.filter(x=>x.ok).length:0;
+ const total=Array.isArray(data?.items)?data.items.length:0;
+ finaPluggyCredentialMessage('Credenciais válidas e salvas com segurança.'+(total?' '+ok+' de '+total+' Item ID(s) reconhecido(s).':''));
+ await loadFinaPluggyCredentialStatus();
+ await finaSyncBanks();
+}
+async function finaRemovePluggyCredentials(){
+ const {data,error}=await finaFunctionResult('fina-pluggy-credentials',{action:'remove'});
+ if(error||data?.error){finaPluggyCredentialMessage('Não foi possível remover as credenciais individuais.');return;}
+ finaPluggyCredentialConfigured=false;
+ const id=document.getElementById('finaPluggyClientId');if(id)id.value='';
+ const sec=document.getElementById('finaPluggyClientSecret');if(sec)sec.value='';
+ finaPluggyCredentialMessage('Credenciais individuais removidas. A conta voltou a usar as credenciais gerais da FINA.');
+}
+
+function finaBankStatus(msg){const el=document.getElementById('finaBankStatus');if(el)el.textContent=msg||'';}
+async function loadFinaBankItems(){
+  const user=window.FinaCurrentUser;
+  if(!user)return;
+  const {data,error}=await sb.from('fina_bank_items').select('id,external_item_id,label,status,last_sync_at,consent_expires_at,created_at').order('created_at',{ascending:true});
+  if(error){finaBankStatus('Não foi possível carregar as conexões.');return;}
+  finaBankItems=Array.isArray(data)?data:[];
+  paintFinaBankItems();
+}
+function paintFinaBankItems(){
+  const box=document.getElementById('finaBankItems');if(!box)return;
+  if(!finaBankItems.length){box.innerHTML='<div class="fina-bank-item"><span><b>Nenhum banco vinculado à FINA ainda</b><small>Use Adicionar outro banco somente se precisar incluir uma nova conexão.</small></span></div>';return;}
+  box.innerHTML=finaBankItems.map((x,i)=>'<div class="fina-bank-item"><span style="display:flex;align-items:center;gap:9px"><i class="fina-bank-dot '+((x.status||'').toUpperCase()==='UPDATED'?'ok':'')+'"></i><span><b>'+(x.label||('Conexão '+(i+1)))+'</b><small>'+(x.status?('Status: '+x.status):'Conexão Pluggy')+(x.last_sync_at?' · sincronizada':'')+'</small></span></span><span class="fina-real-badge">Seu banco</span></div>').join('');
+}
+async function finaRegisterItem(item){
+  const user=window.FinaCurrentUser;
+  if(!user||!item?.id)throw new Error('item_missing');
+  const label=item.connector?.name||item.name||item.institution?.name||'Meu Pluggy';
+  const {error}=await sb.from('fina_bank_items').upsert({
+    user_id:user.id,provider:'pluggy',external_item_id:String(item.id),label:String(label).slice(0,120),status:item.status||item.executionStatus||null
+  },{onConflict:'user_id,provider,external_item_id'});
+  if(error)throw error;
+}
+function finaBankErrorMessage(code,status){
+ const c=String(code||'');
+ if(c==='pluggy_secrets_missing')return 'As credenciais da Pluggy não estão configuradas no Supabase.';
+ if(c==='pluggy_auth_failed')return 'A Pluggy recusou o Client ID/Client Secret da aplicação'+(status?' (HTTP '+status+')':'')+'. Corrija as credenciais da aplicação Pluggy nos Secrets do Supabase.';
+ if(c==='pluggy_api_key_missing')return 'A Pluggy autenticou, mas não retornou a chave da API.';
+ if(c==='invalid_item_id')return 'Item ID inválido. Cole o ID completo da conexão Pluggy.';
+ if(c==='item_not_found'||c==='item_accounts_not_found')return 'Esse Item ID não foi encontrado nesta aplicação Pluggy.';
+ if(c==='accounts_fetch_failed')return 'A Pluggy encontrou a conexão, mas não conseguiu buscar as contas.';
+ if(c==='not_authenticated')return 'Sua sessão expirou. Entre com Google novamente.';
+ return 'A sincronização não concluiu'+(c?': '+c:'')+'.';
+}
+async function finaFunctionResult(name,body){
+ const {data,error}=await sb.functions.invoke(name,{body:body||{}});
+ if(!error)return {data,error:null};
+ let extra=null;try{if(error.context&&typeof error.context.json==='function')extra=await error.context.json();}catch{}
+ return {data:data||extra,error};
+}
+async function finaSyncById(raw,label){
+ const itemId=String(raw||'').trim();
+ if(!itemId){finaBankStatus('Cole o Item ID da Pluggy.');return;}
+ finaBankStatus('Registrando o Item ID e sincronizando…');
+ const {data,error}=await finaFunctionResult('fina-pluggy-sync',{itemId,label:String(label||'').trim()||'Conexão Pluggy'});
+ if(error||data?.error){const d=data||{};finaBankStatus(finaBankErrorMessage(d.error,d.status));await loadFinaBankItems();return;}
+ const itemResult=Array.isArray(data?.results)?data.results.find(x=>x.itemId===itemId):null;
+ if(itemResult?.error){finaBankStatus(finaBankErrorMessage(itemResult.error,itemResult.status));await loadFinaBankItems();return;}
+ finaBankStatus('ID registrado. Sincronização concluída: '+(Number(data?.accounts)||0)+' conta(s) e '+(Number(data?.transactions)||0)+' movimentação(ões).');
+ await loadFinaBankItems();await finaLoadRealBankData();
+}
+async function finaReauthById(raw){
+ const itemId=String(raw||'').trim();
+ if(!itemId){finaBankStatus('Cole o Item ID que deseja reautorizar.');return;}
+ const session=window.FinaCurrentSession;if(!session){finaBankStatus('Entre com Google novamente.');return;}
+ if(typeof window.PluggyConnect!=='function'){finaBankStatus('Não foi possível carregar a janela da Pluggy. Reabra a FINA.');return;}
+ finaBankStatus('Preparando reautorização desta conexão…');
+ const {data,error}=await finaFunctionResult('fina-pluggy-connect-token',{itemId});
+ if(error||data?.error){const d=data||{};finaBankStatus(finaBankErrorMessage(d.error,d.status));return;}
+ if(!data?.accessToken){finaBankStatus('A Pluggy não retornou o token de reautorização.');return;}
+ try{
+  const widget=new window.PluggyConnect({connectToken:data.accessToken,includeSandbox:false,allowFullscreen:true,forceOauthInBrowser:true,
+   onSuccess:async(payload)=>{const item=payload?.item||payload;try{if(item?.id)await finaRegisterItem(item);finaBankStatus('Conexão reautorizada. Sincronizando…');await finaSyncBanks();}catch{finaBankStatus('A conexão foi autorizada, mas não foi possível registrar o retorno.');}},
+   onError:(err)=>{const code=err?.data?.item?.executionStatus||err?.message||'';finaBankStatus(code?('Pluggy: '+String(code)):'A reautorização não foi concluída.');},
+   onClose:()=>{void loadFinaBankItems()}});
+  await widget.init();
+ }catch{finaBankStatus('Não foi possível abrir a reautorização da Pluggy.');}
+}
+async function finaConnectBank(){
+  const session=window.FinaCurrentSession;
+  if(!session){finaBankStatus('Entre com Google novamente.');return;}
+  if(typeof window.PluggyConnect!=='function'){finaBankStatus('Não foi possível carregar a janela da Pluggy. Reabra a FINA.');return;}
+  finaBankStatus('Preparando conexão segura…');
+  const {data,error}=await finaFunctionResult('fina-pluggy-connect-token',{});
+  if(error||data?.error||!data?.accessToken){const d=data||{};finaBankStatus(finaBankErrorMessage(d.error,d.status));return;}
+  try{
+    const widget=new window.PluggyConnect({
+      connectToken:data.accessToken,
+      includeSandbox:false,
+      allowFullscreen:true,
+      forceOauthInBrowser:true,
+      onSuccess:async(payload)=>{
+        const item=payload?.item||payload;
+        try{
+          await finaRegisterItem(item);
+          finaBankStatus('Banco conectado. Sincronizando saldos e movimentações…');
+          await finaSyncBanks();
+        }catch(e){finaBankStatus('Conectou na Pluggy, mas faltou registrar na FINA.');}
+      },
+      onError:(err)=>{
+        const code=err?.data?.item?.executionStatus||err?.message||'';
+        if(String(code).includes('USER_AUTHORIZATION_PENDING'))finaBankStatus('Autorização enviada ao banco. Assim que concluir, a conexão será atualizada.');
+        else finaBankStatus('A conexão não foi concluída. Você pode tentar novamente.');
+      },
+      onClose:()=>{void loadFinaBankItems();}
+    });
+    await widget.init();
+  }catch(e){finaBankStatus('Não foi possível abrir a Pluggy.');}
+}
+async function finaSyncBanks(){
+ finaBankStatus('Sincronizando bancos…');
+ const {data,error}=await finaFunctionResult('fina-pluggy-sync',{});
+ if(error||data?.error){const d=data||{};finaBankStatus(finaBankErrorMessage(d.error,d.status));return;}
+ const failed=Array.isArray(data?.results)?data.results.find(x=>x.error):null;
+ if(failed){finaBankStatus(finaBankErrorMessage(failed.error,failed.status));await loadFinaBankItems();return;}
+ finaBankStatus(data?.message==='no_items_registered'?'Nenhuma conexão registrada ainda.':((Number(data?.accounts)||0)===0&&(Number(data?.transactions)||0)===0?'Conexão consultada, mas nenhum dado bancário foi recebido ainda.':'Sincronização concluída: '+(Number(data?.accounts)||0)+' conta(s) e '+(Number(data?.transactions)||0)+' movimentação(ões).'));
+ await loadFinaBankItems();await finaLoadRealBankData();
+}
+document.addEventListener('click',e=>{
+ const act=e.target.closest?.('[data-act]')?.dataset?.act;
+ if(act==='pluggy-credentials-save'){e.preventDefault();void finaSavePluggyCredentials();}
+ if(act==='pluggy-credentials-remove'){e.preventDefault();void finaRemovePluggyCredentials();}
+},true);
+window.FinaBank={connect:finaConnectBank,sync:finaSyncBanks,syncById:finaSyncById,reauthById:finaReauthById,load:loadFinaBankItems,paint:paintFinaBankItems};
+
+async function loadFinaFinancings(){
+  if(!window.FinaCurrentUser)return;
+  try{
+    const {data,error}=await sb.rpc('fina_financing_schedule');
+    if(error)return;
+    const rows=Array.isArray(data)?data:[];
+    const selfKey=window.FinaSelfOwnerKey||'lucas';
+    const partnerKey=selfKey==='lucas'?'naara':'lucas';
+    const ownerForUserId=uid=>String(uid||'')===String(window.FinaCurrentUser?.id||'')?selfKey:partnerKey;
+    const loanMap=new Map();
+    const financingBills=[];
+    for(const x of rows){
+      const owner=ownerForUserId(x.owner_user_id);
+      const loanId='fin-'+x.financing_id;
+      if(!loanMap.has(loanId)){
+        loanMap.set(loanId,{id:loanId,owner,name:x.financing_name||'Financiamento',bank:String(x.bank||'Banco'),current:Number(x.current_installment)||1,total:Number(x.total_installments)||1,paid:Number(x.current_installment)||0,value:Math.round((Number(x.installment_value)||0)*100),due:Number(x.due_day)||10,status:x.financing_status||'active',source:'bank'});
+      }
+      const d=String(x.due_date||'');
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(d))continue;
+      const parts=d.split('-').map(Number),year=parts[0],month=parts[1],day=parts[2];
+      const posted=x.installment_status==='posted';
+      financingBills.push({
+        id:'fin-bill-'+x.financing_id+'-'+x.installment_number,seriesId:loanId,loanId,owner,
+        name:x.financing_name||'Financiamento',value:Math.round((Number(x.amount)||0)*100),
+        day,month:month-1,year,type:'financing',state:posted?'posted':'open',
+        detail:String(x.bank||'Banco')+' · parcela '+x.installment_number+'/'+x.total_installments+(posted?' · banco confirmado':' · compromisso do financiamento'),
+        recurring:false,estimated:false,installmentNumber:Number(x.installment_number)||0,totalInstallments:Number(x.total_installments)||0,
+        paidDate:x.paid_at?new Date(x.paid_at).toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo'}):null,
+        paidTransactionId:x.bank_transaction_id?'real-'+x.bank_transaction_id:null
+      });
+    }
+    S.loans=[...loanMap.values()];
+    S.bills=(S.bills||[]).filter(b=>b.type!=='financing').concat(financingBills);
+  }catch{}
+}
+window.FinaLoadFinancings=loadFinaFinancings;
+async function finaLoadRealBankData(){
+  try{
+    const user=window.FinaCurrentUser; if(!user)return;
+    const [{data:accounts,error:ae},{data:txs,error:te}]=await Promise.all([
+      sb.from('fina_bank_accounts').select('id,user_id,institution_name,name,type,subtype,number_last4,balance,currency_code,credit_limit,available_credit_limit,updated_at').order('institution_name'),
+      sb.from('fina_bank_transactions').select('id,user_id,bank_account_id,description,amount,direction,occurred_at,category,status').order('occurred_at',{ascending:false}).limit(500)
+    ]);
+    if(ae||te)return;
+    const bankById=new Map((accounts||[]).map(a=>[a.id,a]));
+    const selfKey=window.FinaSelfOwnerKey||'lucas';
+    const partnerKey=selfKey==='lucas'?'naara':'lucas';
+    const ownerForUserId=uid=>String(uid||'')===String(user.id||'')?selfKey:partnerKey;
+    const isBankAccount=a=>String(a?.type||'').toUpperCase()==='BANK';
+    const isCreditAccount=a=>String(a?.type||'').toUpperCase()==='CREDIT'||String(a?.subtype||'').toUpperCase()==='CREDIT_CARD';
+    const bankAccounts=(accounts||[]).filter(isBankAccount);
+    const creditAccounts=(accounts||[]).filter(isCreditAccount);
+    const bankIds=new Set(bankAccounts.map(a=>a.id));
+    const prettyBank=v=>{
+      const x=String(v||'Banco').trim().toUpperCase();
+      if(x==='NUBANK')return 'Nubank';
+      if(x==='SANTANDER')return 'Santander';
+      if(x==='ITAU'||x==='ITAÚ')return 'Itaú';
+      if(x==='BRADESCO')return 'Bradesco';
+      return String(v||'Banco').trim();
+    };
+
+    // Saldo é dinheiro em conta. Cartão/limite nunca entra aqui.
+    S.accounts=bankAccounts.map(a=>({
+      id:'real-'+a.id,
+      owner:ownerForUserId(a.user_id),
+      name:prettyBank(a.institution_name||a.name||'Banco'),
+      balance:Math.round((Number(a.balance)||0)*100),
+      real:true,
+      last4:a.number_last4||'',
+      accountType:a.subtype||a.type||'BANK'
+    }));
+
+    // Cartões ficam separados do saldo bancário.
+    const previousCards=new Map((S.cards||[]).map(c=>[c.owner+'|'+c.digits,c]));
+    S.cards=creditAccounts.map(a=>{
+      const owner=ownerForUserId(a.user_id);
+      const digits=a.number_last4||'';
+      const previous=previousCards.get(owner+'|'+digits)||{};
+      const limit=Math.max(0,Math.round((Number(a.credit_limit)||0)*100));
+      const available=a.available_credit_limit===null||a.available_credit_limit===undefined?null:Math.max(0,Math.round(Number(a.available_credit_limit)*100));
+      const balance=Math.max(0,Math.round((Number(a.balance)||0)*100));
+      const used=available!==null&&limit>0?Math.max(0,limit-available):balance;
+      const cardName=String(a.name||'Cartão').trim();
+      const bank=prettyBank(a.institution_name||a.name||'Banco');
+      return {
+        id:'real-card-'+a.id,owner,bank,name:cardName,digits,
+        network:/VISA/i.test(cardName)?'VISA':'MASTERCARD',
+        limit,used,
+        closing:Number(previous.closing)||15,
+        due:Number(previous.due)||15,
+        source:'bank',
+        real:true
+      };
+    });
+    if(S.cards.length&&!S.cards.some(c=>c.id===S.card))S.card=S.cards[0].id;
+
+    // Entrou/Saiu usa somente extrato das contas bancárias; compras/créditos do cartão
+    // permanecem na área de cartão/fatura e não duplicam fluxo bancário.
+    S.transactions=(txs||[]).filter(t=>bankIds.has(t.bank_account_id)).map(t=>{
+      const a=bankById.get(t.bank_account_id)||{};
+      const d=new Date(t.occurred_at);
+      const desc=String(t.description||'Movimentação');
+      const rawCategory=String(t.category||'bank');
+      const catLower=rawCategory.toLowerCase();
+      const descLower=desc.toLowerCase();
+      let category=rawCategory;
+      if(catLower.includes('same person transfer'))category='transfer-self';
+      else if(finaCoupleTransferTxIds.has(String(t.id)))category='transfer-spouse';
+      else if(/\bparcela\s+0*\d+\s+de\s+0*\d+/i.test(desc)||/\bcontr\s+\d+\s+parc\s+0*\d+\s*\/\s*0*\d+/i.test(desc))category='financing';
+      else if(descLower.includes('pagamento de fatura'))category='card-payment';
+      return {id:'real-'+t.id,owner:ownerForUserId(t.user_id),bank:prettyBank(a.institution_name||a.name||'Banco'),name:desc,value:Math.round((Number(t.amount)||0)*100),kind:t.direction==='credit'?'in':'out',date:String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0'),category,month:d.getMonth(),year:d.getFullYear(),real:true};
+    });
+    window.FinaRealBankLoaded=true;
+    finaReconcileManualBills();
+    await loadFinaFinancings();
+    render(false);
+  }catch(e){}
+}
+window.addEventListener('fina:auth-ready',()=>setTimeout(()=>void finaLoadRealBankData(),0));
+window.addEventListener('fina:auth-ready',()=>{setTimeout(()=>void loadFinaBankItems(),0)});
+window.addEventListener('fina:auth-ready',()=>{setTimeout(()=>void loadFinaPluggyCredentialStatus(),350)});
+window.addEventListener('fina:auth-ready',()=>{setTimeout(()=>void loadFinaCoupleTransfers(),750)});
+let finaDataRealtimeChannel=null;
+let finaDataRealtimeTimer=null;
+function finaScheduleRealtimeDataRefresh(){
+  clearTimeout(finaDataRealtimeTimer);
+  finaDataRealtimeTimer=setTimeout(async()=>{
+    if(!window.FinaCurrentUser)return;
+    try{await finaLoadPersistentState(window.FinaCurrentUser);}catch{}
+    try{await loadFinaCoupleTransfers();}catch{}
+    try{await finaLoadRealBankData();}catch{}
+    try{await loadFinaFinancings();}catch{}
+  },120);
+}
+function finaStartDataRealtime(){
+  if(!window.FinaCurrentUser)return;
+  if(finaDataRealtimeChannel){try{sb.removeChannel(finaDataRealtimeChannel)}catch{}}
+  const refresh=()=>finaScheduleRealtimeDataRefresh();
+  finaDataRealtimeChannel=sb.channel('fina-data-'+window.FinaCurrentUser.id)
+    .on('postgres_changes',{event:'*',schema:'public',table:'fina_bank_accounts'},refresh)
+    .on('postgres_changes',{event:'*',schema:'public',table:'fina_bank_transactions'},refresh)
+    .on('postgres_changes',{event:'*',schema:'public',table:'fina_financings'},refresh)
+    .on('postgres_changes',{event:'*',schema:'public',table:'fina_financing_installments'},refresh)
+    .on('postgres_changes',{event:'*',schema:'public',table:'fina_couple_transfers'},refresh)
+    .on('postgres_changes',{event:'*',schema:'public',table:'fina_user_state'},refresh)
+    .subscribe();
+}
+window.addEventListener('fina:auth-ready',()=>setTimeout(finaStartDataRealtime,900));
+let finaAutoRefreshTimer=null;
+async function finaRefreshVisibleData(){
+  if(document.hidden||!window.FinaCurrentUser)return;
+  const tag=document.activeElement?.tagName;
+  if(['INPUT','SELECT','TEXTAREA'].includes(tag)||S.add||S.homeAdd||S.invoiceAdd||S.edit)return;
+  try{await finaLoadPersistentState(window.FinaCurrentUser);}catch{}
+  try{await finaLoadRealBankData();}catch{}
+  try{await loadFinaCoupleTransfers();}catch{}
+  try{await loadFinaSharedProfiles();}catch{}
+}
+window.addEventListener('focus',()=>setTimeout(()=>void finaRefreshVisibleData(),250));
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(()=>void finaRefreshVisibleData(),250)});
+finaAutoRefreshTimer=setInterval(()=>void finaRefreshVisibleData(),60000);
+async function applySession(session){
+ const user=session?.user;
+ if(!user){
+   window.FinaCurrentUser=null;window.FinaCurrentSession=null;finaAppliedSessionKey='';
+   S.profiles.lucas.displayName='Titular';S.profiles.naara.displayName='Parceiro';
+   document.body.classList.remove('fina-authenticated');gate.hidden=false;bar.textContent='';
+   status.textContent='Entre com Google para continuar.';login.disabled=false;return;
+ }
+ const key=user.id+':'+(session.access_token||'').slice(-12);
+ if(finaAppliedSessionKey===key)return;
+ finaAppliedSessionKey=key;window.FinaCurrentUser=user;window.FinaCurrentSession=session;
+
+ // A interface abre com o estado local imediatamente; rede apenas atualiza em segundo plano.
+ let selfName=cleanName(user.user_metadata?.full_name||user.user_metadata?.name||user.email?.split('@')[0]||'Titular');
+ bar.textContent='';window.FinaHeaderGreeting='Olá, '+selfName;
+ document.body.classList.add('fina-authenticated');gate.hidden=true;login.disabled=false;
+ window.dispatchEvent(new Event('fina:header-changed'));
+ try{
+   const url=new URL(location.href);
+   if(url.searchParams.has('code')||url.hash.includes('access_token')||url.hash.includes('refresh_token')) history.replaceState(history.state||{},'',location.origin+location.pathname);
+ }catch{}
+
+ window.dispatchEvent(new CustomEvent('fina:auth-ready',{detail:{user}}));
+ setTimeout(async()=>{
+   try{
+     await finaLoadPersistentState(user);
+     const {data:profile}=await sb.from('fina_profiles').select('display_name').eq('user_id',user.id).maybeSingle();
+     if(profile?.display_name){
+       const nm=cleanName(profile.display_name);window.FinaHeaderGreeting='Olá, '+nm;
+       window.dispatchEvent(new Event('fina:header-changed'));
+     }
+   }catch{}
+   try{await ensureProfile(user);}catch{}
+   try{await loadCoupleStatus(user);}catch{}
+ },0);
+}
+login.addEventListener('click',async()=>{
+ login.disabled=true;status.textContent='Abrindo o Google…';
+ const {error}=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:'https://fina-html-v14.vercel.app/'}});
+ if(error){status.textContent='Não foi possível abrir o Google: '+error.message;login.disabled=false;}
+});
+sb.auth.onAuthStateChange((_event,session)=>{if(session?.user){document.body.classList.add('fina-authenticated');gate.hidden=true;login.disabled=false;}setTimeout(()=>{void applySession(session)},0)});
+void sb.auth.getSession().then(({data,error})=>{
+  if(error){status.textContent='Erro ao conferir sessão.';login.disabled=false;return}
+  if(data?.session?.user){document.body.classList.add('fina-authenticated');gate.hidden=true;login.disabled=false;}
+  return applySession(data.session);
+}).catch(()=>{status.textContent='Erro ao iniciar sessão. Atualize a página.';login.disabled=false;});
+document.addEventListener('submit',e=>{
+  const f=e.target.closest?.('form[data-form]');
+  if(!f)return;
+  const t=f.dataset.form;
+  if(['newbill','edit','forecast','invoice'].includes(t))setTimeout(()=>void window.FinaPersistNow?.(),0);
+},true);
+document.addEventListener('click',e=>{
+  const a=e.target.closest?.('[data-act]')?.dataset?.act;
+  if(['theme','notifs','birthdays','division','reserve','unreserve','report','unreport','delete-bill','delete-forecast'].includes(a))setTimeout(finaScheduleSave,80);
+},true);
+
+window.FinaInstallPrompt=null;
+window.FinaInstallState='checking';
+function finaPaintInstallStatus(msg){
+  const n=document.getElementById('finaInstallStatus');if(n)n.textContent=msg;
+}
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();window.FinaInstallPrompt=e;window.FinaInstallState='ready';
+  finaPaintInstallStatus('Pronto para instalar neste aparelho.');
+});
+window.FinaInstall=async()=>{
+  if(window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true){
+    window.FinaInstallState='installed';
+    finaPaintInstallStatus('FINA já está instalada neste aparelho.');
+    return;
+  }
+  try{
+    if(typeof navigator.install==='function'){
+      window.FinaInstallState='installing';
+      finaPaintInstallStatus('Abrindo o instalador seguro do navegador…');
+      await navigator.install();
+      window.FinaInstallState='installed';
+      finaPaintInstallStatus('FINA instalada ou aberta com sucesso.');
+      return;
+    }
+
+    const p=window.FinaInstallPrompt;
+    if(!p){
+      window.FinaInstallState='unavailable';
+      finaPaintInstallStatus('O navegador ainda não liberou o instalador. Use o menu do navegador → Instalar app.');
+      return;
+    }
+
+    window.FinaInstallPrompt=null;
+    window.FinaInstallState='installing';
+    finaPaintInstallStatus('Abrindo o instalador do navegador…');
+    await p.prompt();
+    const choice=await p.userChoice;
+
+    if(choice?.outcome==='accepted'){
+      window.FinaInstallState='accepted';
+      finaPaintInstallStatus('Instalação aceita. Aguardando a conclusão do navegador…');
+      setTimeout(()=>{
+        if(window.FinaInstallState==='accepted'){
+          window.FinaInstallState='stalled';
+          finaPaintInstallStatus('O navegador aceitou o pedido, mas ainda não confirmou a instalação. A FINA continua funcionando normalmente.');
+        }
+      },15000);
+    }else{
+      window.FinaInstallState='dismissed';
+      finaPaintInstallStatus('Instalação cancelada.');
+    }
+  }catch(e){
+    const n=e?.name||'Erro';
+    const m=e?.message||'';
+    window.FinaInstallState='error';
+    finaPaintInstallStatus(n==='AbortError'?'A instalação foi cancelada ou não pôde ser concluída pelo navegador.':'Falha na instalação: '+n+(m?' · '+m:''));
+  }
+};
+window.addEventListener('appinstalled',()=>{
+  window.FinaInstallPrompt=null;window.FinaInstallState='installed';
+  try{localStorage.setItem('fina_installed','1')}catch{}
+  finaPaintInstallStatus('FINA instalada com sucesso.');
+});
+
+})();
+</script></body></html>
