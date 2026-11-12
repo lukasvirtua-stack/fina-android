@@ -181,7 +181,7 @@ const cents=raw=>{
  return Number.isSafeInteger(out)&&out>0&&out<=100000000000?out:null;
 };
 const sum=(ar,fn)=>ar.reduce((n,x)=>n+fn(x),0);
-const seed=()=>({tab:'home',scope:'casal',showMoney:true,consent:false,sharePending:false,division:'none',theme:'light',notifs:true,birthdays:true,photoSize:85,syncMessage:'Nenhuma nova confirmação bancária foi simulada.',month:10,year:2026,monthForBills:10,billYear:2026,edit:null,add:false,invoiceAdd:false,formNotice:'',card:'nubank',tests:[],messages:[{mine:false,text:'Olá! Sou a FINA. Vou usar somente dados reais sincronizados e valores que vocês cadastrarem.'}],
+const seed=()=>({tab:'home',scope:'casal',showMoney:true,consent:false,sharePending:false,division:'none',theme:'light',notifs:false,birthdays:true,photoSize:85,syncMessage:'Nenhuma nova confirmação bancária foi simulada.',month:10,year:2026,monthForBills:10,billYear:2026,edit:null,add:false,invoiceAdd:false,formNotice:'',card:'nubank',tests:[],messages:[{mine:false,text:'Olá! Sou a FINA. Vou usar somente dados reais sincronizados e valores que vocês cadastrarem.'}],
 accounts:[],
 cards:[],
 bills:[],
@@ -284,7 +284,23 @@ const reserved=()=>sum(ownBills().filter(b=>b.state==='reserved'),billValue);
 const reported=()=>sum(ownBills().filter(b=>b.state==='reported'),billValue);
 const owed=()=>open()+reserved()+reported();
 const future=()=>sum(S.future.filter(f=>ownerShown(f.owner)&&sameMonth(f)),f=>f.value);
-const real=k=>sum(ownTrans().filter(t=>t.kind===k&&t.category!=='transfer-self'&&t.category!=='transfer-spouse'&&!finaCoupleTransferTxIds.has(String(t.id||'').replace(/^real-/,''))),t=>t.value);
+// Fluxo de caixa sempre considera 01 ate hoje no mes CALENDARIO do Brasil,
+ // independentemente do mes selecionado no calendario de faturas.
+const finaCurrentBankMonth=()=>{
+ const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',year:'numeric',month:'numeric',day:'numeric'}).formatToParts(new Date());
+ const get=k=>Number(parts.find(x=>x.type===k)?.value||0);
+ return {month:get('month')-1,year:get('year'),day:get('day')};
+};
+const finaCashIsInternal=t=>t.category==='transfer-self'||t.category==='transfer-spouse'||
+ finaCoupleTransferTxIds.has(String(t.id||'').replace(/^real-/,''));
+const finaCurrentCashTransactions=()=>{
+ const current=finaCurrentBankMonth();
+ return (S.transactions||[]).filter(t=>
+  t.real===true&&ownerShown(t.owner)&&t.month===current.month&&t.year===current.year&&
+  Number(String(t.date||'').slice(0,2))<=current.day&&String(t.status||'POSTED').toUpperCase()!=='PENDING'
+ );
+};
+const real=k=>sum(finaCurrentCashTransactions().filter(t=>t.kind===k&&!finaCashIsInternal(t)),t=>t.value);
 const monthResult=()=>{
  if(S.scope!=='casal') return ownerProjected(S.scope);
  const base=coupleBaseBalance();
@@ -427,16 +443,49 @@ function invoiceForm(){
  <button class="btn" type="submit">Salvar valor da fatura</button>${btn('Cancelar','cancel')}
  </form>`;
 }
+
+// Extrato completo das contas bancarias no mes atual.
+// Compras de cartao ficam somente em faturas e nunca duplicam Entrou/Saiu.
+function finaCashLedger(){
+ const today=finaCurrentBankMonth(),month=String(today.month+1).padStart(2,'0');
+ const filtered=(S.cashflowFilter==='in'||S.cashflowFilter==='out')?S.cashflowFilter:'all';
+ const visible=finaCurrentCashTransactions();
+ const shown=visible.filter(t=>filtered==='all'||(t.kind===filtered&&!finaCashIsInternal(t)));
+ const last=window.FinaBankLastSnapshotAt?
+    new Date(window.FinaBankLastSnapshotAt).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'aguardando';
+ const buttons=[['all','Todos'],['in','Entrou'],['out','Saiu']].map(([key,label])=>
+  `<button type="button" class="btn soft mini ${filtered===key?'active':''}" data-act="cash-filter" data-value="${key}">${label}</button>`).join('');
+ const rows=shown.map(t=>{
+  const internal=finaCashIsInternal(t),isIn=t.kind==='in';
+  const nameText=String(t.name||'Movimentação bancária').trim();
+  return `<div class="line" style="padding:10px 0"><div class="row start" style="gap:9px"><div style="min-width:0;flex:1"><strong class="line-title">${escape(nameText)}</strong><span class="line-detail">${escape(String(t.date||''))}/${t.year} · ${escape(t.bank||'Banco')} · ${escape(name(t.owner))}</span>${internal?'<span class="line-detail">Transferência interna · não entra nos totais</span>':''}</div><strong style="white-space:nowrap">${internal?'↔':isIn?'+':'−'} ${display(t.value)}</strong></div></div>`;
+ }).join('');
+ const noData=window.FinaBankCacheState==='waiting'?
+   'Consultando as contas bancárias. Não confundir ausência de dados com saldo zerado.':
+   'Nenhum lançamento desse tipo foi encontrado nos extratos autorizados do período.';
+ const from='01/'+month+'/'+today.year;
+ const to=String(today.day).padStart(2,'0')+'/'+month+'/'+today.year;
+ return `<section class="card" id="finaCashLedger">
+  <div class="row"><div><div class="cardtitle">Extrato bancário · ${escape(from)} a ${escape(to)}</div><small class="line-detail">${visible.length} lançamento(s) autorizados · último lançamento: ${escape(visible[0]?.date||'nenhum no período')} · consulta: ${escape(last)}</small></div><button type="button" class="btn soft mini" data-act="cash-refresh">↻ Atualizar</button></div>
+  <div class="action-menu" style="margin:8px 0">${buttons}</div>
+  <div class="row"><span>Entrou: <b>${display(real('in'))}</b></span><span>Saiu: <b>${display(real('out'))}</b></span></div>
+  ${window.FinaCashDataError?'<p class="hint" role="alert">'+escape(window.FinaCashDataError)+'</p>':''}
+  ${window.FinaCashRefreshStatus?'<p class="hint">'+escape(window.FinaCashRefreshStatus)+'</p>':''}
+  <div style="max-height:480px;overflow-y:auto">${rows||'<p class="muted">'+noData+'</p>'}</div>
+  <p class="hint">Somente extratos bancários confirmados. Transferências entre contas próprias e entre os dois membros aparecem identificadas, mas não somam como entrada ou gasto. As movimentações do parceiro anteriores à entrada no casal permanecem protegidas.</p>
+ </section>`;
+}
+
 function home(){
  const self=selfOwner(),partner=partnerOwner();
  const personBlock=o=>`<div><button class="portrait ${S.scope===o?'active':''}" style="height:${S.photoSize}px;width:${S.photoSize}px" data-act="scope" data-scope="${o}">${S.profiles[o].photo?`<img class="photo-avatar" src="${S.profiles[o].photo}" alt="Foto de ${escape(name(o))}">`:escape((name(o)||'?').charAt(0).toUpperCase())}</button><div class="profilelabel">${escape(name(o))}<small style="display:block">${roleLabel(o)}</small></div></div>`;
  let people=`<div class="profiles">${personBlock(self)}<button class="heart ${S.scope==='casal'?'active':''}" data-act="scope" data-scope="casal">♥</button>${personBlock(partner)}</div>`;
- return `${people}${celebrationBanner()}<section class="primary-info" style="position:relative"><div class="title">${S.scope==='casal'?'Saldo real das contas do casal':'Saldo bancário de '+escape(name(S.scope))}</div><button style="position:absolute;top:12px;right:12px" class="btn soft mini" data-act="show">${S.showMoney?'◉':'◎'}</button><div class="big">${display(scopeBalance())}</div><div class="muted">${S.scope==='casal'?(partnerReady()?'Soma dos saldos bancários reais de ambos, atualizados pela sincronização':'Soma das contas do titular; aguardando conexão do parceiro'):'Saldo bancário original importado: já inclui entradas e saídas efetivadas'} · sem limite de crédito</div></section>
+ return `${people}${!window.FinaPushConnected?'<div style="margin:8px 0"><button class="btn soft" data-act="push-enable" type="button">🔔 Ativar notificações bancárias neste aparelho</button></div>':'<p class="hint">🔔 Notificações bancárias ativadas neste aparelho.</p>'}${celebrationBanner()}<section class="primary-info" style="position:relative"><div class="title">${S.scope==='casal'?'Saldo real das contas do casal':'Saldo bancário de '+escape(name(S.scope))}</div><button style="position:absolute;top:12px;right:12px" class="btn soft mini" data-act="show">${S.showMoney?'◉':'◎'}</button><div class="big">${display(scopeBalance())}</div><div class="muted">${S.scope==='casal'?(partnerReady()?'Soma dos saldos bancários reais de ambos, atualizados pela sincronização':'Soma das contas do titular; aguardando conexão do parceiro'):'Saldo bancário original importado: já inclui entradas e saídas efetivadas'} · sem limite de crédito</div></section>
 <p class="projection-separation-note">O <b>coração</b> mostra a soma real das contas bancárias dos dois. As <b>fotos</b> mostram os saldos individuais. O <b>Resultado</b> considera separadamente compromissos pendentes e previsões, sem descontar pagamentos já realizados novamente.</p>
 ${window.FinaBankCacheState==='cached'?'<p class="hint">Últimos saldos bancários confirmados e salvos neste aparelho. Atualizando com o banco em segundo plano…</p>':''}
 <div class="personrow">${[self,partner].map(o=>`<button data-act="scope" data-scope="${o}" class="${S.scope===o?'active':''}"><span class="bubbleavatar">${escape((name(o)||'?').charAt(0).toUpperCase())}</span><span><b>${escape(name(o))}</b><small class="person-projection-label">${roleLabel(o)} · saldo ajustado</small><small class="person-projection-value">${S.showMoney?money(ownerAdjusted(o)):'•••••'}</small></span></button>`).join('')}</div>
-<div class="fourstats">${[['↑','green','Entrou',real('in'),'banks'],['↓','red','Saiu',real('out'),'banks'],['▣','blue','Fatura + contas',open(),'bills'],['−','gold','Resultado',monthResult(),'forecast']].map(([icon,color,label,v,link])=>`<button data-act="open" data-target="${link}"><span class="round ${color}">${icon}</span><small>${label}</small><b>${display(v)}</b></button>`).join('')}</div>
-${S.scope===partnerOwner()&&partnerReady()&&!ownTrans().length?'<div class="hint">Movimentações anteriores ao vínculo do casal não são exibidas retroativamente. O saldo atual e os compromissos continuam compartilhados; novas entradas e saídas passam a aparecer após o vínculo.</div>':''}
+<div class="fourstats">${[['↑','green','Entrou',real('in'),'cash-in'],['↓','red','Saiu',real('out'),'cash-out'],['▣','blue','Fatura + contas',open(),'bills'],['−','gold','Resultado',monthResult(),'forecast']].map(([icon,color,label,v,link])=>`<button data-act="${link.startsWith('cash-')?'cash-filter':'open'}" ${link.startsWith('cash-')?'data-value="'+link.slice(5)+'"':'data-target="'+link+'"'}><span class="round ${color}">${icon}</span><small>${label}</small><b>${display(v)}</b></button>`).join('')}</div>
+${finaCashLedger()}
 <button class="home-forecast-line" type="button" data-act="open" data-target="forecast" aria-label="Abrir variáveis a receber"><span class="home-forecast-icon">◷</span><span class="home-forecast-text"><strong>Variáveis a receber</strong><small>Recebimentos futuros</small></span><strong class="home-forecast-amount">${display(future())}</strong><span class="home-forecast-chevron" aria-hidden="true">›</span></button>
 ${card('Acessos rápidos',`<div class="quickgrid">${[['Faturas + Contas','▤','bills'],['Bancos e cartões','▥','banks'],['Conversa FINA','✧','chat']].map(([label,i,key])=>`<button data-act="open" data-target="${key}"><span>${i}</span>${label}</button>`).join('')}</div>`)}
 <section class="card home-commitments"><div class="home-commitments-title-row"><div class="cardtitle">Resumo dos compromissos</div><button class="btn mini home-commitments-add" type="button" data-act="home-add" aria-expanded="${!!S.homeAdd}" aria-label="Adicionar compromisso">+ Adicionar</button></div><div class="home-commitments-heading"><span>Compromissos do mês · ${ownBills().length} item(ns)</span><button class="home-commitments-link" data-act="open" data-target="bills">Ver detalhes ›</button></div>${S.homeAdd?newBillForm():''}<div class="home-commitments-list">${ownBills().map(b=>row(b.name+(b.name==='Financiamento apartamento'?' · Itaú':''),`${name(b.owner)} · ${roleLabel(b.owner)} · ${status[b.state]} · Dia ${b.day}`,display(billValue(b)),`<span class="pill ${b.state==='posted'?'ok':b.state==='reserved'?'wait':b.state==='reported'?'reported':''}">${status[b.state]}</span>`)).join('')||'<p class="muted">Nenhum compromisso cadastrado para este mês.</p>'}</div></section>
@@ -484,11 +533,7 @@ function forecast(){return `${heading('Variáveis a receber','Planeje recebiment
 function calendar(){const dt=new Date(S.year,S.month,1),name=dt.toLocaleDateString('pt-BR',{month:'long',year:'numeric'}),days=new Date(S.year,S.month+1,0).getDate();let cells='<div class="calendar">'+['D','S','T','Q','Q','S','S'].map(x=>`<div style="text-align:center;font-size:10px">${x}</div>`).join('');for(let i=0;i<dt.getDay();i++)cells+='<div></div>';for(let i=1;i<=days;i++){let bs=ownBills().filter(b=>b.day===i&&pending(b)).length;cells+=`<div class="date">${i}${bs?`<em>${bs} conta${bs>1?'s':''}</em>`:''}</div>`}cells+='</div>';return `${heading('Calendário','Acompanhe os dias, vencimentos e variáveis a receber por mês.')}${switcher()}${card('Navegação mensal',`<div class="row"><button class="btn soft mini" data-act="prev-month">‹ Anterior</button><strong style="text-transform:capitalize">${name}</strong><button class="btn soft mini" data-act="next-month">Próximo ›</button></div><div style="margin-top:12px">${cells}</div>`)}${card('Compromissos de '+escape(monthLabel()),ownBills().map(b=>row(b.name,`Dia ${b.day} · ${status[b.state]}`,money(billValue(b)))).join('')||'<p class="muted">Sem registros confirmados neste mês.</p>')}`}
 function finaBankChatAlerts(){
  const owner=selfOwner();
- const alerts=(S.transactions||[]).filter(t=>
-   t.real&&t.owner===owner&&t.value>0&&sameMonth(t)&&
-   t.category!=='transfer-self'&&t.category!=='transfer-spouse'&&
-   !finaCoupleTransferTxIds.has(String(t.id||'').replace(/^real-/,''))
- ).slice(0,10);
+ const alerts=finaCurrentCashTransactions().filter(t=>t.owner===owner&&t.value>0&&!finaCashIsInternal(t)).slice(0,10);
  if(!alerts.length)return '<p class="muted">Movimentações recentes aparecerão aqui após a sincronização bancária.</p>';
  return alerts.map(t=>'<div class="chatbubble">'+escape(name(t.owner))+': '+(t.kind==='in'?'entrada ':'saída ')+
   money(t.value)+' · '+escape(String(t.name||'Movimentação').replace(/\s+/g,' ').slice(0,65))+
@@ -604,7 +649,7 @@ ${card('Datas comemorativas do casal',`<p>Personalize nomes, aniversários, casa
 function settings(){return `${heading('Configurações','Navegação principal enxuta. As ferramentas adicionais ficam organizadas aqui.')}
 ${card('Instalação da FINA',`<p id="finaInstallStatus">Instale a FINA como aplicativo no celular.</p><button class="btn" type="button" data-act="install-fina">Instalar FINA</button><small style="display:block;margin-top:8px">A confirmação é feita pelo Chrome/Android.</small>`)}
 ${card('Notificações no celular',`<p id="finaPushStatus" role="status">Ative os avisos de movimentações bancárias confirmadas. As notificações podem aparecer mesmo com a FINA fechada.</p><div class="action-menu"><button class="btn" type="button" data-act="push-enable">Ativar notificações</button><button class="btn soft" type="button" data-act="push-disable">Desativar neste aparelho</button></div><p class="muted">No iPhone, instale a FINA na Tela de Início antes de ativar. Os avisos abrem a conversa após a sincronização bancária.</p>`)}
-${card('Preferências',`<div class="row"><span class="strong">Avisos financeiros</span><button class="toggle ${S.notifs?'on':''}" data-act="notifs"></button></div><div class="row"><span class="strong">Avisos de aniversários</span><button class="toggle ${S.birthdays?'on':''}" data-act="birthdays"></button></div><p>Aniversários: dois dias antes e no dia. Bodas: arte e legenda no mês do casamento. ${btn('Editar datas, fotos e nomes','open','data-target="profile"')}</p>`)}
+${card('Preferências',`<div class="row"><span class="strong">Notificações push neste aparelho</span><button class="toggle ${window.FinaPushConnected?'on':''}" data-act="notifs" aria-label="Ativar ou desativar notificações"></button></div><div class="row"><span class="strong">Avisos de aniversários</span><button class="toggle ${S.birthdays?'on':''}" data-act="birthdays"></button></div><p>Aniversários: dois dias antes e no dia. Bodas: arte e legenda no mês do casamento. ${btn('Editar datas, fotos e nomes','open','data-target="profile"')}</p>`)}
 ${card('Atalhos para as demais configurações',[['profile','♡','Perfil, fotos, casamento e bodas'],['transfers','⇄','Transferências reconhecidas do banco'],['home','⌂','Tela inicial e saldos'],['banks','▥','Bancos, cartões e extratos'],['cards','▣','Cartões: virada, vencimento e meses'],['bills','▤','Faturas, reservas e pagamentos por mês'],['forecast','◷','Variáveis a receber'],['calendar','▦','Calendário'],['chat','✧','Assistente FINA'],['couple','♡','Casal, acesso e divisão'],['tests','✓','Diagnóstico']].map(([id,icon,text])=>`<button class="menuitem" data-act="open" data-target="${id}"><span>${icon}　${text}</span><span class="chevron">›</span></button>`).join(''))}
 <button class="btn light" style="width:100%" data-act="reset">Restaurar interface</button>`}
 function runTests(){
@@ -872,7 +917,13 @@ photoModal.addEventListener('click',e=>{
  }
 });
 
-el.addEventListener('click',event=>{const target=event.target.closest('button[data-act]');if(!target)return;const a=target.dataset.act,id=Number(target.dataset.id),b=S.bills.find(x=>x.id===id),r=S.refunds.find(x=>x.id===id);if(a==='open'){S.tab=target.dataset.target;S.add=false;S.invoiceAdd=false;S.formNotice='';S.edit=null;render(true);return}if(a==='bank-connect-own'){window.FinaBank?.connect?.();return}if(a==='bank-sync-own'){window.FinaBank?.sync?.();return}if(a==='install-fina'){window.FinaInstall?.();return}if(a==='push-enable'||a==='push-disable')return;if(a==='bank-sync-id'){const id=document.getElementById('finaPluggyItemId')?.value||'';const label=document.getElementById('finaPluggyItemLabel')?.value||'';window.FinaBank?.syncById?.(id,label);return}if(a==='bank-reauth-id'){const id=document.getElementById('finaPluggyItemId')?.value||'';window.FinaBank?.reauthById?.(id);return}if(a==='couple-create-code'){window.FinaCouple?.createInvite?.();return}if(a==='couple-accept-code'){const code=document.getElementById('finaCoupleCodeInput')?.value||'';window.FinaCouple?.acceptCode?.(code);return}if(a==='couple-copy-code'){window.FinaCouple?.copyCode?.();return}if(a==='open-card'){S.card=target.dataset.id;S.tab='cards';render(true);return}if(a==='scope')S.scope=target.dataset.scope;if(a==='show')S.showMoney=!S.showMoney;if(a==='theme')S.theme=S.theme==='light'?'dark':'light';if(a==='notifs'){S.notifs=!S.notifs;if(S.notifs)void window.FinaEnablePush?.();else void window.FinaDisablePush?.();}if(a==='birthdays')S.birthdays=!S.birthdays;if(a==='division')S.division=target.dataset.mode;if(a==='revoke'){S.consent=false;S.sharePending=false;if(S.scope==='naara')S.scope='casal'}if(a==='request-share')S.sharePending=true;if(a==='approve-share'){S.consent=true;S.sharePending=false}if(a==='choose-card')S.card=target.dataset.id;if(a==='reserve'&&b?.state==='open')b.state='reserved';if(a==='unreserve'&&b?.state==='reserved')b.state='open';if(a==='report'&&b&&['open','reserved'].includes(b.state))b.state='reported';if(a==='unreport'&&b?.state==='reported')b.state='open';if(a==='auto-credit'){
+el.addEventListener('click',event=>{const target=event.target.closest('button[data-act]');if(!target)return;const a=target.dataset.act,id=Number(target.dataset.id),b=S.bills.find(x=>x.id===id),r=S.refunds.find(x=>x.id===id);if(a==='cash-filter'){S.cashflowFilter=target.dataset.value||'all';render(false);document.getElementById('finaCashLedger')?.scrollIntoView({block:'nearest'});return}
+if(a==='cash-refresh'){
+ window.FinaCashRefreshStatus='Consultando os bancos...';render(false);
+ Promise.resolve(window.FinaBank?.sync?.()).then(()=>{window.FinaCashRefreshStatus='Consulta realizada. Confira a data do último lançamento abaixo.';render(false)}).catch(()=>{window.FinaCashRefreshStatus='Não foi possível consultar. Tente novamente em Bancos.';render(false)});
+ return
+}
+if(a==='open'){S.tab=target.dataset.target;S.add=false;S.invoiceAdd=false;S.formNotice='';S.edit=null;render(true);return}if(a==='bank-connect-own'){window.FinaBank?.connect?.();return}if(a==='bank-sync-own'){window.FinaBank?.sync?.();return}if(a==='install-fina'){window.FinaInstall?.();return}if(a==='push-enable'||a==='push-disable')return;if(a==='bank-sync-id'){const id=document.getElementById('finaPluggyItemId')?.value||'';const label=document.getElementById('finaPluggyItemLabel')?.value||'';window.FinaBank?.syncById?.(id,label);return}if(a==='bank-reauth-id'){const id=document.getElementById('finaPluggyItemId')?.value||'';window.FinaBank?.reauthById?.(id);return}if(a==='couple-create-code'){window.FinaCouple?.createInvite?.();return}if(a==='couple-accept-code'){const code=document.getElementById('finaCoupleCodeInput')?.value||'';window.FinaCouple?.acceptCode?.(code);return}if(a==='couple-copy-code'){window.FinaCouple?.copyCode?.();return}if(a==='open-card'){S.card=target.dataset.id;S.tab='cards';render(true);return}if(a==='scope')S.scope=target.dataset.scope;if(a==='show')S.showMoney=!S.showMoney;if(a==='theme')S.theme=S.theme==='light'?'dark':'light';if(a==='notifs'){if(window.FinaPushConnected)void window.FinaDisablePush?.();else void window.FinaEnablePush?.();return;}if(a==='birthdays')S.birthdays=!S.birthdays;if(a==='division')S.division=target.dataset.mode;if(a==='revoke'){S.consent=false;S.sharePending=false;if(S.scope==='naara')S.scope='casal'}if(a==='request-share')S.sharePending=true;if(a==='approve-share'){S.consent=true;S.sharePending=false}if(a==='choose-card')S.card=target.dataset.id;if(a==='reserve'&&b?.state==='open')b.state='reserved';if(a==='unreserve'&&b?.state==='reserved')b.state='open';if(a==='report'&&b&&['open','reserved'].includes(b.state))b.state='reported';if(a==='unreport'&&b?.state==='reported')b.state='open';if(a==='auto-credit'){
   const id='auto-bank-credit-1500-20261110';
   if(!S.transactions.some(t=>t.id===id)){
    const account=S.accounts.find(x=>x.id==='s');
@@ -982,7 +1033,7 @@ async function finaEnablePush(){
   finaPushStatus('Este navegador não oferece notificações push. No iPhone, use a FINA instalada na Tela de Início.');return;
  }
  try{
-  const choice=await Notification.requestPermission();
+  const choice=Notification.permission==='granted'?'granted':await Notification.requestPermission();
   if(choice!=='granted'){S.notifs=false;finaPushStatus('Notificações não autorizadas neste aparelho.');return;}
   const reg=await navigator.serviceWorker.ready;
   let subscription=await reg.pushManager.getSubscription();
@@ -995,12 +1046,13 @@ async function finaEnablePush(){
    updated_at:new Date().toISOString()
   },{onConflict:'endpoint'});
   if(error)throw error;
-  S.notifs=true;
-  finaPushStatus('Notificações ativadas neste aparelho. Você receberá novos avisos depois da sincronização bancária.');
+  S.notifs=true;window.FinaPushConnected=true;
+  window.FinaRender?.();
+  finaPushStatus('Notificações ativadas e vinculadas à sua conta neste aparelho. Você receberá avisos após a sincronização bancária.');
   void finaSavePersistentState();
  }catch(e){
-  S.notifs=false;
-  finaPushStatus('Falha ao ativar notificações. Verifique a permissão do navegador e tente novamente.');
+  S.notifs=false;window.FinaPushConnected=false;
+  finaPushStatus('Falha ao vincular notificações. Verifique a permissão do navegador e tente novamente.');
  }
 }
 async function finaDisablePush(){
@@ -1017,11 +1069,13 @@ async function finaDisablePush(){
     await subscription.unsubscribe();
    }
   }
-  S.notifs=false;
+  S.notifs=false;window.FinaPushConnected=false;
+  window.FinaRender?.();
   finaPushStatus('Notificações deste aparelho desativadas.');
   void finaSavePersistentState();
  }catch{finaPushStatus('Não foi possível desativar. Tente novamente.');}
 }
+window.FinaPushConnected=false;
 window.FinaEnablePush=finaEnablePush;
 window.FinaDisablePush=finaDisablePush;
 function finaOpenChatFromPush(){S.tab='chat';window.FinaRender?.();}
@@ -1030,6 +1084,11 @@ if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('messag
 });
 window.addEventListener('fina:auth-ready',()=>{
  if(new URLSearchParams(location.search).get('fina')==='chat')setTimeout(finaOpenChatFromPush,0);
+ // A permissão que o usuário já concedeu não é o mesmo que um push inscrito.
+ // Tentar concluir a inscrição sem abrir nova janela de permissão.
+ if('Notification' in window&&Notification.permission==='granted'){
+  setTimeout(()=>{if(window.FinaCurrentUser)void finaEnablePush();},1500);
+ }
 });
 document.addEventListener('click',event=>{
  const button=event.target.closest('button[data-act="push-enable"],button[data-act="push-disable"]');
@@ -1559,14 +1618,41 @@ function finaSaveCachedBankData(user){
  try{localStorage.setItem(finaBankCacheKey(user.id),JSON.stringify(saved));}catch{}
 }
 
+// Busca completa paginada: .limit(500) perdia lancamentos sem avisar.
+async function finaReadAllAuthorizedBankTransactions(){
+ const rows=[],pageSize=500;
+ // Historico pedido: desde 01/11/2026, sem interromper as proximas atualizacoes.
+ const start='2026-11-01T03:00:00Z',end=new Date().toISOString();
+ for(let offset=0;offset<10000;offset+=pageSize){
+  const {data,error}=await sb.from('fina_bank_transactions')
+   .select('id,user_id,bank_account_id,description,amount,direction,occurred_at,category,status')
+   .gte('occurred_at',start).lte('occurred_at',end)
+   .order('occurred_at',{ascending:false})
+   .range(offset,offset+pageSize-1);
+  if(error)return {data:null,error};
+  rows.push(...(data||[]));
+  if(!data||data.length<pageSize)return {data:rows,error:null};
+ }
+ return {data:rows,error:new Error('Extrato superior a 10.000 lançamentos; consulta interrompida para evitar dados incompletos.')};
+}
+
 async function finaLoadRealBankData(){
   try{
     const user=window.FinaCurrentUser; if(!user)return;
+    const loadSequence=(window.FinaBankLoadSequence||0)+1;
+    window.FinaBankLoadSequence=loadSequence;
     const [{data:accounts,error:ae},{data:txs,error:te}]=await Promise.all([
       sb.from('fina_bank_accounts').select('id,user_id,institution_name,name,type,subtype,number_last4,balance,currency_code,credit_limit,available_credit_limit,updated_at').order('institution_name'),
-      sb.from('fina_bank_transactions').select('id,user_id,bank_account_id,description,amount,direction,occurred_at,category,status').order('occurred_at',{ascending:false}).limit(500)
+      finaReadAllAuthorizedBankTransactions()
     ]);
-    if(ae||te)return;
+    // A resposta de uma conta antiga nunca pode substituir o estado de outra sessão.
+    if(window.FinaCurrentUser?.id!==user.id||loadSequence!==window.FinaBankLoadSequence)return;
+    if(ae||te){
+      window.FinaCashDataError='Não foi possível carregar o extrato. A FINA não apresentará zero como se fosse uma consulta concluída.';
+      window.FinaRender?.();
+      return;
+    }
+    window.FinaCashDataError='';
     const bankById=new Map((accounts||[]).map(a=>[a.id,a]));
     const selfKey=window.FinaSelfOwnerKey||'lucas';
     const partnerKey=selfKey==='lucas'?'naara':'lucas';
@@ -1636,7 +1722,8 @@ async function finaLoadRealBankData(){
       else if(finaCoupleTransferTxIds.has(String(t.id)))category='transfer-spouse';
       else if(/\bparcela\s+0*\d+\s+de\s+0*\d+/i.test(desc)||/\bcontr\s+\d+\s+parc\s+0*\d+\s*\/\s*0*\d+/i.test(desc))category='financing';
       else if(descLower.includes('pagamento de fatura'))category='card-payment';
-      return {id:'real-'+t.id,owner:ownerForUserId(t.user_id),bank:prettyBank(a.institution_name||a.name||'Banco'),name:desc,value:Math.round((Number(t.amount)||0)*100),kind:t.direction==='credit'?'in':'out',date:String(localPart('day')).padStart(2,'0')+'/'+String(localPart('month')).padStart(2,'0'),category,month:localPart('month')-1,year:localPart('year'),real:true};
+      return {id:'real-'+t.id,owner:ownerForUserId(t.user_id),bank:prettyBank(a.institution_name||a.name||'Banco'),name:desc,value:Math.round((Number(t.amount)||0)*100),kind:t.direction==='credit'?'in':'out',date:String(localPart('day')).padStart(2,'0')+'/'+String(localPart('month')).padStart(2,'0'),category,month:localPart('month')-1,year:localPart('year'),real:true,
+        status:String(t.status||'').toUpperCase(),occurredAt:t.occurred_at};
     });
     window.FinaRealBankLoaded=true;
     window.FinaBankCacheState='live';
@@ -1646,7 +1733,7 @@ async function finaLoadRealBankData(){
     await finaLoadOfficialCardBills();
     finaSaveCachedBankData(user);
     render(false);
-  }catch(e){}
+  }catch(e){window.FinaCashDataError='Falha ao atualizar o extrato bancário. Confira a conexão.';window.FinaRender?.();}
 }
 window.addEventListener('fina:auth-ready',()=>{
  // Primeiro exibir o último dado real deste usuário. Depois sincronizar.
