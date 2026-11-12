@@ -433,6 +433,7 @@ function home(){
  let people=`<div class="profiles">${personBlock(self)}<button class="heart ${S.scope==='casal'?'active':''}" data-act="scope" data-scope="casal">♥</button>${personBlock(partner)}</div>`;
  return `${people}${celebrationBanner()}<section class="primary-info" style="position:relative"><div class="title">${S.scope==='casal'?'Saldo real das contas do casal':'Saldo bancário de '+escape(name(S.scope))}</div><button style="position:absolute;top:12px;right:12px" class="btn soft mini" data-act="show">${S.showMoney?'◉':'◎'}</button><div class="big">${display(scopeBalance())}</div><div class="muted">${S.scope==='casal'?(partnerReady()?'Soma dos saldos bancários reais de ambos, atualizados pela sincronização':'Soma das contas do titular; aguardando conexão do parceiro'):'Saldo bancário original importado: já inclui entradas e saídas efetivadas'} · sem limite de crédito</div></section>
 <p class="projection-separation-note">O <b>coração</b> mostra a soma real das contas bancárias dos dois. As <b>fotos</b> mostram os saldos individuais. O <b>Resultado</b> considera separadamente compromissos pendentes e previsões, sem descontar pagamentos já realizados novamente.</p>
+${window.FinaBankCacheState==='cached'?'<p class="hint">Últimos saldos bancários confirmados e salvos neste aparelho. Atualizando com o banco em segundo plano…</p>':''}
 <div class="personrow">${[self,partner].map(o=>`<button data-act="scope" data-scope="${o}" class="${S.scope===o?'active':''}"><span class="bubbleavatar">${escape((name(o)||'?').charAt(0).toUpperCase())}</span><span><b>${escape(name(o))}</b><small class="person-projection-label">${roleLabel(o)} · saldo ajustado</small><small class="person-projection-value">${S.showMoney?money(ownerAdjusted(o)):'•••••'}</small></span></button>`).join('')}</div>
 <div class="fourstats">${[['↑','green','Entrou',real('in'),'banks'],['↓','red','Saiu',real('out'),'banks'],['▣','blue','Fatura + contas',open(),'bills'],['−','gold','Resultado',monthResult(),'forecast']].map(([icon,color,label,v,link])=>`<button data-act="open" data-target="${link}"><span class="round ${color}">${icon}</span><small>${label}</small><b>${display(v)}</b></button>`).join('')}</div>
 ${S.scope===partnerOwner()&&partnerReady()&&!ownTrans().length?'<div class="hint">Movimentações anteriores ao vínculo do casal não são exibidas retroativamente. O saldo atual e os compromissos continuam compartilhados; novas entradas e saídas passam a aparecer após o vínculo.</div>':''}
@@ -953,7 +954,7 @@ let touchStart=null;screen.addEventListener('touchstart' ,e=>{if(S.tab==='calend
 window.addEventListener('fina:header-changed',()=>render());
 render();
 })();
-</script><script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.47.10/dist/umd/supabase.min.js"></script>
+</script><script src="/supabase.min.js"></script><script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js" async></script>
 <script>
 (()=>{
 'use strict';
@@ -1518,6 +1519,46 @@ async function finaLoadOfficialCardBills(){
  }catch{}
 }
 window.FinaLoadOfficialCardBills=finaLoadOfficialCardBills;
+// Cache bancário por identidade do Google: dados mínimos necessários para
+// mostrar a última situação confirmada, SEM credenciais Pluggy.
+const finaBankCacheKey=uid=>'fina_bank_snapshot_v3_'+String(uid);
+function finaRestoreCachedBankData(){
+ const user=window.FinaCurrentUser;
+ if(!user)return false;
+ let saved=null;
+ try{saved=JSON.parse(localStorage.getItem(finaBankCacheKey(user.id))||'null');}catch{}
+ if(!saved||saved.userId!==user.id||!Number.isFinite(saved.savedAt)||Date.now()-saved.savedAt>30*86400000)return false;
+ if(!Array.isArray(saved.accounts)||!Array.isArray(saved.cards)||!Array.isArray(saved.transactions))return false;
+ if(saved.accounts.length>80||saved.cards.length>80||saved.transactions.length>500)return false;
+ const realAccount=a=>a&&a.real===true&&['lucas','naara'].includes(a.owner)&&Number.isFinite(a.balance);
+ const realTransaction=t=>t&&t.real===true&&['lucas','naara'].includes(t.owner)&&Number.isFinite(t.value);
+ S.accounts=saved.accounts.filter(realAccount);
+ S.cards=saved.cards.filter(c=>c&&c.real===true&&['lucas','naara'].includes(c.owner));
+ S.transactions=saved.transactions.filter(realTransaction);
+ if(Array.isArray(saved.bankBills)&&saved.bankBills.length<=500){
+  S.bills=(S.bills||[]).filter(b=>!['bank','financing','forecast-card'].includes(b.type)).concat(
+   saved.bankBills.filter(b=>b&&['bank','financing','forecast-card'].includes(b.type))
+  );
+ }
+ if(Array.isArray(saved.loans)&&saved.loans.length<=30)S.loans=saved.loans;
+ window.FinaBankCacheState='cached';
+ window.FinaBankLastSnapshotAt=saved.savedAt;
+ window.FinaRender?.();
+ return true;
+}
+function finaSaveCachedBankData(user){
+ if(!user)return;
+ const saved={
+  schemaVersion:3,userId:user.id,savedAt:Date.now(),
+  accounts:(S.accounts||[]).filter(x=>x.real===true),
+  cards:(S.cards||[]).filter(x=>x.real===true),
+  transactions:(S.transactions||[]).filter(x=>x.real===true).slice(0,500),
+  bankBills:(S.bills||[]).filter(x=>['bank','financing','forecast-card'].includes(x.type)).slice(0,500),
+  loans:(S.loans||[]).slice(0,30)
+ };
+ try{localStorage.setItem(finaBankCacheKey(user.id),JSON.stringify(saved));}catch{}
+}
+
 async function finaLoadRealBankData(){
   try{
     const user=window.FinaCurrentUser; if(!user)return;
@@ -1598,12 +1639,26 @@ async function finaLoadRealBankData(){
       return {id:'real-'+t.id,owner:ownerForUserId(t.user_id),bank:prettyBank(a.institution_name||a.name||'Banco'),name:desc,value:Math.round((Number(t.amount)||0)*100),kind:t.direction==='credit'?'in':'out',date:String(localPart('day')).padStart(2,'0')+'/'+String(localPart('month')).padStart(2,'0'),category,month:localPart('month')-1,year:localPart('year'),real:true};
     });
     window.FinaRealBankLoaded=true;
+    window.FinaBankCacheState='live';
+    window.FinaBankLastSnapshotAt=Date.now();
+    render(false); // primeiro: dinheiro real e extratos, sem bloquear por faturas
     await loadFinaFinancings();
     await finaLoadOfficialCardBills();
+    finaSaveCachedBankData(user);
     render(false);
   }catch(e){}
 }
-window.addEventListener('fina:auth-ready',()=>setTimeout(()=>void finaLoadRealBankData(),0));
+window.addEventListener('fina:auth-ready',()=>{
+ // Primeiro exibir o último dado real deste usuário. Depois sincronizar.
+ if(!finaRestoreCachedBankData()){
+  // Nunca mostrar valores de outra sessão nem o exemplo inicial como dado bancário real.
+  S.accounts=[];S.cards=[];S.transactions=[];
+  S.bills=(S.bills||[]).filter(b=>!['bank','financing','forecast-card'].includes(b.type));
+  window.FinaBankCacheState='waiting';
+  window.FinaRender?.();
+ }
+ setTimeout(()=>void finaLoadRealBankData(),0);
+});
 window.addEventListener('fina:auth-ready',()=>{setTimeout(()=>void loadFinaBankItems(),0)});
 window.addEventListener('fina:auth-ready',()=>{setTimeout(()=>void loadFinaPluggyCredentialStatus(),350)});
 window.addEventListener('fina:auth-ready',()=>{setTimeout(()=>void loadFinaCoupleTransfers(),750)});
