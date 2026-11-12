@@ -271,7 +271,7 @@ const ownTrans=()=>S.transactions.filter(t=>ownerShown(t.owner)&&sameMonth(t));
 const ownRefunds=()=>S.refunds.filter(r=>ownerShown(r.owner)&&sameMonth(r));
 const cardRefundCredit=id=>sum(S.refunds.filter(r=>r.card===id&&r.state==='card'&&sameMonth(r)),r=>r.value);
 const billValue=b=>{
- if(b.type==='bank'&&b.source==='pluggy-bills')return Math.max(0,b.value);
+ if((b.type==='bank'&&b.source==='pluggy-bills')||(b.type==='forecast-card'&&b.source==='pending-card-tx'))return Math.max(0,b.value);
  // A fatura oficial prevalece sobre a previsão informada do mesmo cartão e mês.
  // O registro manual permanece preservado, porém não entra duas vezes nos totais.
  if(b.type==='manual'&&b.card&&S.bills.some(x=>x.type==='bank'&&x.source==='pluggy-bills'&&x.card===b.card&&x.owner===b.owner&&x.month===b.month&&x.year===b.year))return 0;
@@ -1358,7 +1358,9 @@ window.FinaLoadFinancings=loadFinaFinancings;
 async function finaLoadOfficialCardBills(){
  if(!window.FinaCurrentUser)return;
  try{
-  const {data,error}=await sb.rpc('fina_couple_card_bills');
+  const [{data,error},{data:pendingData,error:pendingError}]=await Promise.all([
+   sb.rpc('fina_couple_card_bills'),sb.rpc('fina_projected_card_spend')
+  ]);
   if(error||!Array.isArray(data))return;
   const self=window.FinaSelfOwnerKey||'lucas';
   const partner=self==='lucas'?'naara':'lucas';
@@ -1384,6 +1386,8 @@ async function finaLoadOfficialCardBills(){
    const digits=card?.digits?' •••• '+card.digits:'';
    const close=String(record.closing_date||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);
    const closingDate=close?close[3]+'/'+close[2]+'/'+close[1]:null;
+   if(card&&close)card.closing=Number(close[3]);
+   if(card)card.due=day;
    const status=total-paid<=0?'posted':'open';
    official.push({
     id:'pluggy-bill-'+String(record.id),owner,name:'Fatura '+bank+digits,
@@ -1395,7 +1399,35 @@ async function finaLoadOfficialCardBills(){
     bankAlreadyReflectedInBalance:status==='posted'
    });
   }
-  S.bills=(S.bills||[]).filter(b=>!(b.type==='bank'&&b.source==='pluggy-bills')).concat(official);
+  const projected=[];
+  if(!pendingError&&Array.isArray(pendingData)){
+   for(const item of pendingData){
+    const uid=String(item?.user_id||'');
+    if(uid!==selfId&&!window.FinaPartnerReady)continue;
+    const owner=uid===selfId?self:partner;
+    const year=Number(item.year),month=Number(item.month),day=Number(item.day);
+    const value=Math.max(0,Math.round(Number(item.value||0)*100));
+    if(!Number.isInteger(year)||year<2020||year>2100||!Number.isInteger(month)||month<0||month>11||day<1||day>31||value<=0)continue;
+    const cardId='real-card-'+item.bank_account_id;
+    const card=cardMap.get(cardId);
+    if(official.some(x=>x.card===cardId&&x.month===month&&x.year===year))continue;
+    // Preservar o valor manual quando o casal estimou uma fatura maior
+    // do que as compras pendentes ainda conhecidas pelo banco.
+    if(S.bills.some(x=>x.type==='manual'&&x.card===cardId&&x.owner===owner&&x.month===month&&x.year===year&&pending(x)))continue;
+    const bank=card?.bank||'cartão';
+    projected.push({
+     id:'pending-card-'+cardId+'-'+year+'-'+month,
+     owner,card:cardId,name:'Próxima fatura estimada · '+bank+(card?.digits?' •••• '+card.digits:''),
+     value,day,month,year,type:'forecast-card',source:'pending-card-tx',state:'open',
+     estimated:true,recurring:false,
+     detail:'Projeção de '+Math.max(0,Number(item.purchases)||0)+' compra(s) pendente(s) · ainda não é a fatura oficial do banco'
+    });
+   }
+  }
+  S.bills=(S.bills||[]).filter(b=>!(
+    (b.type==='bank'&&b.source==='pluggy-bills')||
+    (b.type==='forecast-card'&&b.source==='pending-card-tx')
+   )).concat(official,projected);
   window.FinaRender?.();
  }catch{}
 }
