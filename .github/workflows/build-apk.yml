@@ -16,6 +16,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validar JavaScript e regras essenciais antes de gerar APK
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Executar QA da FINA
+        run: node tests/check-web.mjs
+
       - name: Java 17
         uses: actions/setup-java@v4
         with:
