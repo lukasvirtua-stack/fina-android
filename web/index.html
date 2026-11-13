@@ -254,15 +254,10 @@ const ownerShown=o=>S.scope==='casal'?(o===selfOwner()||(o===partnerOwner()&&par
 const accessible=()=>true;
 const ownerBalance=o=>sum(S.accounts.filter(a=>a.owner===o),a=>a.balance);
 const partnerReady=()=>!!window.FinaPartnerReady;
-const coupleBaseBalance=()=>{
-  const titular=ownerBalance(selfOwner());
-  if(!partnerReady()) return titular;
-  const parceiro=ownerBalance(partnerOwner());
-  return Math.min(titular,parceiro);
-};
+const coupleBaseBalance=()=>ownerBalance(selfOwner())+(partnerReady()?ownerBalance(partnerOwner()):0);
 // Casal grande: soma dos saldos AJUSTADOS; cada pessoa selecionada: saldo ORIGINAL importado.
 // Coração: mostrar o dinheiro real somado de todas as contas bancárias dos dois.
-// O Resultado projetado mantém seu cálculo independente em coupleBaseBalance().
+// O Resultado projetado usa a mesma soma bancária e deduz as obrigações abertas de cada pessoa.
 const coupleRealBankBalance=()=>ownerBalance(selfOwner())+(partnerReady()?ownerBalance(partnerOwner()):0);
 const scopeBalance=()=>S.scope==='casal'?coupleRealBankBalance():ownerBalance(S.scope);
 const monthKey=(month,year)=>year*12+month;
@@ -302,36 +297,27 @@ const finaBankLedgerSelectedPeriod=()=>{
  return {month:date.getUTCMonth(),year:date.getUTCFullYear(),
   day:offset===0?now.day:new Date(Date.UTC(date.getUTCFullYear(),date.getUTCMonth()+1,0)).getUTCDate()};
 };
-const finaCashIsInternal=t=>t.category==='transfer-self'||t.category==='transfer-spouse'||
- finaCoupleTransferTxIds.has(String(t.id||'').replace(/^real-/,''));
+const finaCashIsInternal=t=>t.category==='transfer-self'||String(t.category||'').toLowerCase().includes('same person transfer');
 const finaCurrentCashTransactions=(current=finaCurrentBankMonth())=>{
  return (S.transactions||[]).filter(t=>
   t.real===true&&ownerShown(t.owner)&&t.month===current.month&&t.year===current.year&&
   Number(String(t.date||'').slice(0,2))<=current.day&&String(t.status||'POSTED').toUpperCase()!=='PENDING'
  );
 };
-const finaCashCountable=t=>
- t.category!=='transfer-self' &&
- (S.scope!=='casal' || !finaCashIsInternal(t));
+const finaCashCountable=t=>!finaCashIsInternal(t);
 const real=k=>{
  const now=finaCurrentBankMonth(),snapshot=window.FinaCashTotalsByOwner;
  const transferKey=Array.from(finaCoupleTransferTxIds).sort().join('|');
  if(snapshot&&snapshot.userId===window.FinaCurrentUser?.id&&
    snapshot.ownerKey===selfOwner()&&snapshot.year===now.year&&snapshot.month===now.month&&
    (snapshot.transferKey===transferKey||window.FinaBankCacheState==='cached')){
-   if(S.scope==='casal')return Number(snapshot.coupleTotals?.[k])||0;
+   if(S.scope==='casal')return (Number(snapshot.totals?.[selfOwner()]?.[k])||0)+(partnerReady()?(Number(snapshot.totals?.[partnerOwner()]?.[k])||0):0);
    if(ownerShown(S.scope))return Number(snapshot.totals?.[S.scope]?.[k])||0;
    return 0;
  }
  return sum(finaCurrentCashTransactions().filter(t=>t.kind===k&&finaCashCountable(t)),t=>t.value);
 };
-const monthResult=()=>{
- if(S.scope!=='casal') return ownerProjected(S.scope);
- const base=coupleBaseBalance();
- const receivables=sum(S.future.filter(f=>sameMonth(f)&&(f.owner===selfOwner()||(partnerReady()&&f.owner===partnerOwner()))),f=>f.value);
- const openBills=sum(S.bills.filter(b=>sameMonth(b)&&pending(b)&&(b.owner===selfOwner()||(partnerReady()&&b.owner===partnerOwner()))),billValue);
- return base+receivables-openBills;
-};
+const monthResult=()=>S.scope==='casal'?ownerProjected(selfOwner())+ownerProjected(partnerOwner()):ownerProjected(S.scope);
 const ownerReserved=o=>sum(S.bills.filter(b=>b.owner===o&&sameMonth(b)&&['reserved','reported'].includes(b.state)),billValue);
 const ownerOpen=o=>sum(S.bills.filter(b=>b.owner===o&&sameMonth(b)&&pending(b)),billValue);
 // Base bancária já inclui TED/Pix efetivados: não somar transações ao saldo novamente.
@@ -1942,7 +1928,7 @@ function finaSaveCachedBankData(user){
     {...cash,savedAt}:null,
   accounts:(S.accounts||[]).filter(x=>x.real===true),
   cards:(S.cards||[]).filter(x=>x.real===true),
-  transactions:(S.transactions||[]).filter(x=>x.real===true&&['lucas','naara'].includes(window.FinaSelfOwnerKey)&&x.owner===window.FinaSelfOwnerKey).slice(0,500),
+  transactions:(S.transactions||[]).filter(x=>x.real===true&&['lucas','naara'].includes(x.owner)&&ownerShown(x.owner)).slice(0,500),
   bankBills:(S.bills||[]).filter(x=>['bank','financing','forecast-card'].includes(x.type)).slice(0,500),
   loans:(S.loans||[]).slice(0,30)
  };
@@ -2018,16 +2004,16 @@ async function finaLoadRealBankDataOnce(){
       const part=k=>Number(parts.find(p=>p.type===k)?.value||0);
       if(part('year')!==cashToday.year||part('month')!==cashToday.month+1||part('day')>cashToday.day)continue;
       const cat=String(movement.category||'').toLowerCase();
-      const sameOwnerTransfer=cat.includes('same person transfer')||cat==='transfer-self';
-      if(sameOwnerTransfer)continue;
       const betweenPartners=cat==='transfer-spouse'||window.FinaGetCoupleTransferTxIds().has(String(movement.id||''));
+      const sameOwnerTransfer=!betweenPartners&&(cat.includes('same person transfer')||cat==='transfer-self');
+      if(sameOwnerTransfer)continue;
       const kind=movement.direction==='credit'?'in':movement.direction==='debit'?'out':null;
       if(!kind)continue;
       const owner=ownerForUserId(movement.user_id);
       const amount=Math.round(Math.abs(Number(movement.amount||0))*100);
       if(Number.isFinite(amount)&&amount>0){
         cashTotals[owner][kind]+=amount;
-        if(!betweenPartners)cashCoupleTotals[kind]+=amount;
+        cashCoupleTotals[kind]+=amount;
       }
     }
     window.FinaCashTotalsByOwner={userId:user.id,ownerKey:selfKey,month:cashToday.month,year:cashToday.year,
@@ -2089,8 +2075,8 @@ async function finaLoadRealBankDataOnce(){
       const catLower=rawCategory.toLowerCase();
       const descLower=desc.toLowerCase();
       let category=rawCategory;
-      if(catLower.includes('same person transfer'))category='transfer-self';
-      else if(window.FinaGetCoupleTransferTxIds().has(String(t.id)))category='transfer-spouse';
+      if(catLower==='transfer-spouse'||window.FinaGetCoupleTransferTxIds().has(String(t.id)))category='transfer-spouse';
+      else if(catLower.includes('same person transfer')||catLower==='transfer-self')category='transfer-self';
       else if(/\bparcela\s+0*\d+\s+de\s+0*\d+/i.test(desc)||/\bcontr\s+\d+\s+parc\s+0*\d+\s*\/\s*0*\d+/i.test(desc))category='financing';
       else if(descLower.includes('pagamento de fatura'))category='card-payment';
       return {id:'real-'+t.id,owner:ownerForUserId(t.user_id),bank:prettyBank(a.institution_name||a.name||'Banco'),name:desc,value:Math.round((Number(t.amount)||0)*100),kind:t.direction==='credit'?'in':'out',date:String(localPart('day')).padStart(2,'0')+'/'+String(localPart('month')).padStart(2,'0'),category,month:localPart('month')-1,year:localPart('year'),real:true,
