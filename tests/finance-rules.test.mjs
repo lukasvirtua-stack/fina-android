@@ -105,3 +105,56 @@ test('Resultado do Casal soma as duas projeções individuais', () => {
 test('Cache mantém extrato dos dois integrantes autorizados', () => {
   assert.match(html, /transactions:\(S\.transactions\|\|\[\]\)\.filter\(x=>x\.real===true&&\['lucas','naara'\]\.includes\(x\.owner\)&&ownerShown\(x\.owner\)\)/);
 });
+
+test('Contas, cartões e compromissos mantêm ordenação fixa', () => {
+  const code=segment('const finaOwnerRank=', '\nconst seed=');
+  const accounts=[
+    {id:'b',owner:'naara',name:'Nubank',balance:7},
+    {id:'a',owner:'lucas',name:'Santander',balance:600},
+    {id:'c',owner:'lucas',name:'Itaú',balance:1},
+    {id:'d',owner:'naara',name:'Bradesco',balance:0}
+  ];
+  const bills=[
+    {id:'z',owner:'naara',name:'Condomínio',day:10,state:'open'},
+    {id:'y',owner:'lucas',name:'Internet',day:10,state:'reserved'},
+    {id:'x',owner:'naara',name:'Enel',day:5,state:'posted'}
+  ];
+  const x=run(code,'({ banks:accounts.slice().sort(finaBankSort).map(x=>x.id), bills:bills.slice().sort(finaBillSort).map(x=>x.id) })',{accounts,bills});
+  assert.equal(x.banks.join(','),'c,a,d,b');
+  assert.equal(x.bills.join(','),'x,y,z');
+  bills[1].state='posted';
+  const after=run(code,'bills.slice().sort(finaBillSort).map(x=>x.id)',{bills});
+  assert.equal(after.join(','),'x,y,z','Pago/Reservado não deve mover a conta');
+});
+
+test('Atualização com dados iguais não recria telas nem perde a rolagem',()=>{
+  const code=segment('function render(goTop=false){','\nfunction finaNormText(');
+  let screenChanges=0,navChanges=0;
+  const screen={scrollTop:75,set innerHTML(v){this.html=v;screenChanges++},get innerHTML(){return this.html}};
+  const bottom={set innerHTML(v){this.html=v;navChanges++},get innerHTML(){return this.html}};
+  const S={tab:'home',theme:'light',value:1};
+  const ctx={
+    S,screen,bottom,el:{classList:{toggle(){}}},window:{},document:{getElementById:()=>null},
+    tabs:[['home','⌂','Início']],views:{home:()=>'<section>'+S.value+'</section>'},
+    header:()=>'<header>FINA</header>',ensureCycle:()=>{},finaRecordHistoryView:()=>{},
+    setTimeout:()=>0,clearTimeout:()=>{},finaRenderTimer:null,
+    finaLastScreenMarkup:'',finaLastNavMarkup:''
+  };
+  run(code,'render(false);render(false);',ctx);
+  assert.equal(screenChanges,1,'Um mesmo conteúdo não deve ser recriado');
+  assert.equal(navChanges,1,'Navegação não deve piscar');
+  assert.equal(screen.scrollTop,75);
+  S.value=2;
+  run(code,'render(false)',ctx);
+  assert.equal(screenChanges,2);
+  assert.equal(screen.scrollTop,75);
+});
+
+test('Últimos dados locais são isolados pelo Google e não apagam cache antes da identidade',()=>{
+  assert.match(html,/const finaLocalUserStateKey=uid=>/);
+  assert.match(html,/localStorage\.getItem\(finaLocalUserStateKey\(user\.id\)\)/);
+  assert.match(html,/localStorage\.setItem\(finaLocalUserStateKey\(user\.id\),JSON\.stringify\(data\.state\)\)/);
+  assert.doesNotMatch(html,/localStorage\.getItem\('fina_state_v1'\)/);
+  assert.match(html,/if\(window\.FinaBankCacheState!=='live'\)window\.FinaRestoreCachedBankData/);
+  assert.match(html,/finaRenderTimer=setTimeout/);
+});
