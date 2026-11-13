@@ -34,23 +34,27 @@ test('Casal soma saldos das duas pessoas; individual conserva seu saldo', () => 
   }
 });
 
-test('Pix/TED entre Lucas e Naara contam; transferências próprias não contam', () => {
+test('Pix/TED do casal contam só individualmente; transferências próprias nunca contam', () => {
   const code = segment('const finaCashIsInternal=', '\nconst finaCurrentCashTransactions=')
     + '\n' + segment('const finaCashCountable=', '\nconst real=');
-  const result = run(code, '({ propria:finaCashCountable({category:"transfer-self"}), propriaRaw:finaCashCountable({category:"Same person transfer"}), parceiro:finaCashCountable({category:"transfer-spouse"}), comum:finaCashCountable({category:"bank"}) })', {});
-  assert.equal(result.propria, false);
-  assert.equal(result.propriaRaw, false);
-  assert.equal(result.parceiro, true);
-  assert.equal(result.comum, true);
+  for (const scope of ['casal','lucas','naara']) {
+    const ctx = { S:{scope},finaCoupleTransferTxIds:new Set(['pix-relacionado']) };
+    const result = run(code, '({ propria:finaCashCountable({category:"transfer-self"}), propriaRaw:finaCashCountable({category:"Same person transfer"}), parceiro:finaCashCountable({category:"transfer-spouse"}), parceiroVinculado:finaCashCountable({id:"real-pix-relacionado",category:"bank"}), comum:finaCashCountable({category:"bank"}) })', ctx);
+    assert.equal(result.propria, false);
+    assert.equal(result.propriaRaw, false);
+    assert.equal(result.parceiro, scope !== 'casal');
+    assert.equal(result.parceiroVinculado, scope !== 'casal');
+    assert.equal(result.comum, true);
+  }
 });
 
-test('Entrou/Saiu do Casal somam exatamente os totais de Lucas e Naara', () => {
+test('Snapshot do Casal exclui Pix entre integrantes; individuais preservam suas pontas', () => {
   const code = segment('const real=k=>{', '\nconst monthResult=');
   const snapshot = { userId:'u', ownerKey:'lucas', year:2026, month:10, transferKey:'',
     totals:{lucas:{in:240604,out:491361},naara:{in:239000,out:493795}},
-    coupleTotals:{in:0,out:0} };
+    coupleTotals:{in:246604,out:752156}, coupleTransferPolicy:'individual-only' };
   for (const [scope, expectedIn, expectedOut] of [
-    ['casal', 479604, 985156], ['lucas', 240604, 491361], ['naara', 239000, 493795]
+    ['casal', 246604, 752156], ['lucas', 240604, 491361], ['naara', 239000, 493795]
   ]) {
     const ctx = { window:{FinaCurrentUser:{id:'u'},FinaCashTotalsByOwner:snapshot,FinaBankCacheState:'live'},
       S:{scope},finaCoupleTransferTxIds:new Set(),
@@ -61,6 +65,11 @@ test('Entrou/Saiu do Casal somam exatamente os totais de Lucas e Naara', () => {
     assert.equal(results[0], expectedIn);
     assert.equal(results[1], expectedOut);
   }
+});
+
+test('Cálculo bancário de Casal não acumula Pix entre integrantes', () => {
+  assert.match(html, /if\(!betweenPartners\)cashCoupleTotals\[kind\]\+=amount;/);
+  assert.match(html, /coupleTransferPolicy:'individual-only'/);
 });
 
 test('Resultado do Casal soma as duas projeções individuais', () => {
