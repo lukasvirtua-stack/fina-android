@@ -488,7 +488,7 @@ function finaCashLedger(){
   ${window.FinaCashDataError?'<p class="hint" role="alert">'+escape(window.FinaCashDataError)+'</p>':''}
   ${window.FinaCashRefreshStatus?'<p class="hint">'+escape(window.FinaCashRefreshStatus)+'</p>':''}
   <div style="max-height:480px;overflow-y:auto">${rows||'<p class="muted">'+noData+'</p>'}</div>
-  <p class="hint">Somente extratos bancários confirmados. Transferências entre contas próprias e entre os dois membros aparecem identificadas, mas não somam como entrada ou gasto. Movimentações anteriores à participação no casal permanecem protegidas.</p>
+  <p class="hint">Somente extratos bancários confirmados. Transferências entre contas próprias não entram nos totais. Transferências entre os dois integrantes contam individualmente e se compensam no total do casal. O histórico dos meses sincronizados está disponível aos dois.</p>
  </section>`;
 }
 
