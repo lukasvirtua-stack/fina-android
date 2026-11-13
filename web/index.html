@@ -310,7 +310,8 @@ const real=k=>{
  const now=finaCurrentBankMonth(),snapshot=window.FinaCashTotalsByOwner;
  const transferKey=Array.from(finaCoupleTransferTxIds).sort().join('|');
  if(snapshot&&snapshot.userId===window.FinaCurrentUser?.id&&
-   snapshot.year===now.year&&snapshot.month===now.month&&snapshot.transferKey===transferKey){
+   snapshot.ownerKey===selfOwner()&&snapshot.year===now.year&&snapshot.month===now.month&&
+   (snapshot.transferKey===transferKey||window.FinaBankCacheState==='cached')){
    if(S.scope==='casal')return Number(snapshot.coupleTotals?.[k])||0;
    if(ownerShown(S.scope))return Number(snapshot.totals?.[S.scope]?.[k])||0;
    return 0;
@@ -595,8 +596,11 @@ let finaCoupleTransfers=[];
 let finaCoupleTransferTxIds=new Set();
 async function loadFinaCoupleTransfers(){
   if(!window.FinaCurrentUser||!window.FinaPartnerReady){finaCoupleTransfers=[];finaCoupleTransferTxIds=new Set();return;}
+  // O cliente autenticado e inicializado pelo modulo bancario, em outro escopo JS.
+  const client=window.FinaSupabase;
+  if(!client)return;
   try{
-    const results=await Promise.all([sb.rpc('fina_couple_transfer_status'),sb.rpc('fina_couple_transfer_links')]);
+    const results=await Promise.all([client.rpc('fina_couple_transfer_status'),client.rpc('fina_couple_transfer_links')]);
     const data=results[0].data,error=results[0].error,links=results[1].data,linkError=results[1].error;
     if(error)return;
     finaCoupleTransferTxIds=new Set();
@@ -618,7 +622,7 @@ async function loadFinaCoupleTransfers(){
       return {id:x.transfer_id,sender:x.sender_name||'Quem enviou',receiver:x.receiver_name||'Quem recebeu',value:Math.round((Number(x.amount)||0)*100),date:d.toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric'}),month:mo,year:yr,status:x.status||'sender_confirmed'};
     });
     render(false);
-  }catch{}
+  }catch(e){console.warn('FINA: falha ao conciliar transferências do casal',e?.message||e);}
 }
 function transferHistoryRows(){
  const realCouple=finaCoupleTransfers.filter(t=>t.month===S.monthForBills&&t.year===S.billYear);
@@ -1413,6 +1417,11 @@ async function loadCoupleStatus(user){
    S.profiles.lucas.displayName=selfName||'Você';S.profiles.naara.displayName='Outra pessoa';S.activeEditor='lucas';
    window.FinaHeaderGreeting='Olá, '+selfName;
  }
+ window.FinaOwnerResolvedForUserId=(row&&Number(row.member_count)>0)?user.id:null;
+ if(window.FinaOwnerResolvedForUserId===user.id){
+   window.FinaCashTotalsByOwner=null;
+   window.FinaRestoreCachedBankData?.();
+ }
  window.dispatchEvent(new Event('fina:header-changed'));window.FinaCouple?.paint?.();
  setTimeout(async()=>{await window.FinaLoadCoupleTransfers?.();await finaLoadRealBankData();},0);
 }
@@ -1693,13 +1702,14 @@ async function finaLoadOfficialCardBills(){
 window.FinaLoadOfficialCardBills=finaLoadOfficialCardBills;
 // Cache bancário por identidade do Google: dados mínimos necessários para
 // mostrar a última situação confirmada, SEM credenciais Pluggy.
-const finaBankCacheKey=uid=>'fina_bank_snapshot_v4_'+String(uid);
+const finaBankCacheKey=uid=>'fina_bank_snapshot_v5_'+String(uid);
 function finaRestoreCachedBankData(){
  const user=window.FinaCurrentUser;
- if(!user)return false;
+ if(!user||window.FinaOwnerResolvedForUserId!==user.id)return false;
  let saved=null;
  try{saved=JSON.parse(localStorage.getItem(finaBankCacheKey(user.id))||'null');}catch{}
- if(!saved||saved.userId!==user.id||!Number.isFinite(saved.savedAt)||Date.now()-saved.savedAt>30*86400000)return false;
+ if(!saved||saved.userId!==user.id||saved.ownerKey!==window.FinaSelfOwnerKey||
+    !Number.isFinite(saved.savedAt)||Date.now()-saved.savedAt>30*86400000)return false;
  if(!Array.isArray(saved.accounts)||!Array.isArray(saved.cards)||!Array.isArray(saved.transactions))return false;
  if(saved.accounts.length>80||saved.cards.length>80||saved.transactions.length>500)return false;
  const realAccount=a=>a&&a.real===true&&['lucas','naara'].includes(a.owner)&&Number.isFinite(a.balance);
@@ -1707,6 +1717,11 @@ function finaRestoreCachedBankData(){
  S.accounts=saved.accounts.filter(realAccount);
  S.cards=saved.cards.filter(c=>c&&c.real===true&&['lucas','naara'].includes(c.owner));
  S.transactions=saved.transactions.filter(realTransaction);
+ const summary=saved.cashTotals;
+ if(summary?.userId===user.id&&summary?.ownerKey===window.FinaSelfOwnerKey&&
+    summary.savedAt===saved.savedAt&&Date.now()-saved.savedAt<86400000){
+   window.FinaCashTotalsByOwner=summary;
+ }
  if(Array.isArray(saved.bankBills)&&saved.bankBills.length<=500){
   S.bills=(S.bills||[]).filter(b=>!['bank','financing','forecast-card'].includes(b.type)).concat(
    saved.bankBills.filter(b=>b&&['bank','financing','forecast-card'].includes(b.type))
@@ -1718,10 +1733,15 @@ function finaRestoreCachedBankData(){
  window.FinaRender?.();
  return true;
 }
+window.FinaRestoreCachedBankData=finaRestoreCachedBankData;
 function finaSaveCachedBankData(user){
- if(!user)return;
+ if(!user||window.FinaOwnerResolvedForUserId!==user.id)return;
+ const savedAt=Date.now();
+ const cash=window.FinaCashTotalsByOwner;
  const saved={
-  schemaVersion:3,userId:user.id,savedAt:Date.now(),
+  schemaVersion:5,userId:user.id,ownerKey:window.FinaSelfOwnerKey,savedAt,
+  cashTotals:cash?.userId===user.id&&cash?.ownerKey===window.FinaSelfOwnerKey?
+    {...cash,savedAt}:null,
   accounts:(S.accounts||[]).filter(x=>x.real===true),
   cards:(S.cards||[]).filter(x=>x.real===true),
   transactions:(S.transactions||[]).filter(x=>x.real===true&&['lucas','naara'].includes(window.FinaSelfOwnerKey)&&x.owner===window.FinaSelfOwnerKey).slice(0,500),
@@ -1752,7 +1772,8 @@ async function finaReadAllAuthorizedBankTransactions(){
 let finaBankLoadInFlight=null;
 async function finaLoadRealBankData(){
  const userId=window.FinaCurrentUser?.id;
- if(!userId)return;
+ // Não atribuir saldo ou movimentação a uma pessoa antes de resolver o papel da conta Google.
+ if(!userId||window.FinaOwnerResolvedForUserId!==userId)return;
  if(finaBankLoadInFlight?.userId===userId)return finaBankLoadInFlight.promise;
  const promise=finaLoadRealBankDataOnce();
  finaBankLoadInFlight={userId,promise};
@@ -1761,7 +1782,8 @@ async function finaLoadRealBankData(){
 }
 async function finaLoadRealBankDataOnce(){
   try{
-    const user=window.FinaCurrentUser; if(!user)return;
+    const user=window.FinaCurrentUser; if(!user||window.FinaOwnerResolvedForUserId!==user.id)return;
+    const loadingOwnerKey=window.FinaSelfOwnerKey;
     const loadSequence=(window.FinaBankLoadSequence||0)+1;
     window.FinaBankLoadSequence=loadSequence;
     const [{data:accounts,error:ae},{data:txs,error:te}]=await Promise.all([
@@ -1769,7 +1791,8 @@ async function finaLoadRealBankDataOnce(){
       finaReadAllAuthorizedBankTransactions()
     ]);
     // A resposta de uma conta antiga nunca pode substituir o estado de outra sessão.
-    if(window.FinaCurrentUser?.id!==user.id||loadSequence!==window.FinaBankLoadSequence)return;
+    if(window.FinaCurrentUser?.id!==user.id||loadSequence!==window.FinaBankLoadSequence||
+       window.FinaOwnerResolvedForUserId!==user.id||window.FinaSelfOwnerKey!==loadingOwnerKey)return;
     if(ae||te){
       window.FinaCashDataError='Não foi possível carregar o extrato. A FINA não apresentará zero como se fosse uma consulta concluída.';
       window.FinaRender?.();
@@ -1809,7 +1832,7 @@ async function finaLoadRealBankDataOnce(){
         if(!betweenPartners)cashCoupleTotals[kind]+=amount;
       }
     }
-    window.FinaCashTotalsByOwner={userId:user.id,month:cashToday.month,year:cashToday.year,
+    window.FinaCashTotalsByOwner={userId:user.id,ownerKey:selfKey,month:cashToday.month,year:cashToday.year,
       totals:cashTotals,coupleTotals:cashCoupleTotals,
       transferKey:Array.from(window.FinaGetCoupleTransferTxIds()).sort().join('|'),savedAt:Date.now()};
     const prettyBank=v=>{
@@ -1953,7 +1976,10 @@ async function applySession(session){
  }
  const key=user.id+':'+(session.access_token||'').slice(-12);
  if(finaAppliedSessionKey===key)return;
- finaAppliedSessionKey=key;window.FinaCurrentUser=user;window.FinaCurrentSession=session;
+ finaAppliedSessionKey=key;
+ window.FinaOwnerResolvedForUserId=null;
+ window.FinaCashTotalsByOwner=null;
+ window.FinaCurrentUser=user;window.FinaCurrentSession=session;
 
  // A interface abre com o estado local imediatamente; rede apenas atualiza em segundo plano.
  let selfName=cleanName(user.user_metadata?.full_name||user.user_metadata?.name||user.email?.split('@')[0]||'Você');
