@@ -596,10 +596,32 @@ function finaLearnedRulesPanel(){
 }
 
 function billList(b){return `<div class="line"><div class="row start"><div style="flex:1;min-width:0"><span class="line-title">${escape(b.name)}</span><span class="line-detail">${escape(b.detail)} · Dia ${b.day}</span><span class="pill ${b.state==='posted'?'ok':b.state==='reserved'?'wait':b.state==='reported'?'reported':''}">${status[b.state]}</span> <span class="line-detail">${b.estimated?'Estimativa • aguardando banco':b.type==='bank'?'Fatura oficial · somente leitura':b.type==='financing'?'Financiamento bancário · somente leitura':b.type==='shared'?'Conta do casal · cadastrada manualmente':'Manual recorrente'}</span></div><strong>${money(billValue(b))}</strong></div><div class="action-menu">${billActions(b)}</div>${S.edit===b.id?`<form data-form="edit" data-id="${b.id}" class="formgrid" style="margin-top:12px"><label class="wide">Descrição<input name="name" value="${escape(b.name)}" required></label><label>Valor (R$)<input name="value" value="${(b.value/100).toFixed(2)}" type="text" inputmode="decimal" autocomplete="off" placeholder="1500 ou 1.500,00" required></label><label>Dia<input name="day" type="number" value="${b.day}" min="1" max="31" required></label><button class="btn" type="submit">Salvar edição</button>${btn('Cancelar','cancel')}</form>`:''}${S.finaTeaching?.billId===String(b.id)?finaTeachingPanel(b):''}</div>`}
+// Agendamentos futuros do banco sao informativos; nunca entram nos totais.
+function finaScheduledBankPreview(){
+ const scheduled=(S.transactions||[]).filter(t=>
+  t.real===true&&t.status==='PENDING'&&t.kind==='out'&&
+  ownerShown(t.owner)&&t.month===S.monthForBills&&t.year===S.billYear&&
+  Date.parse(String(t.occurredAt||''))>Date.now()
+ );
+ if(!scheduled.length)return '';
+ const seen=new Set();
+ const rows=scheduled.filter(t=>{
+  if(seen.has(t.id))return false;
+  seen.add(t.id);return true;
+ }).sort((a,b)=>String(a.occurredAt).localeCompare(String(b.occurredAt)))
+ .map(t=>row(t.name||'Pagamento agendado',
+   name(t.owner)+' · '+(t.bank||'Banco')+' · '+(t.date||''),
+   display(t.value),
+   '<span class="pill wait">Agendado · não debitado</span>'
+ )).join('');
+ return card('Pagamentos futuros informados pelo banco',
+  rows+'<p class="muted">Agendamentos disponíveis pelo Open Finance. Não incluem todos os boletos DDA e só entram em Saiu quando o banco confirmar o débito.</p>');
+}
 function bills(){if(!accessible())return heading('Faturas + Contas','Sem autorização.');return `${heading('Faturas + Contas','Reserve ou informe pagamentos; a baixa bancária acontece automaticamente após o extrato confirmar.')} ${switcher()}${monthPicker()}<div class="statgrid"><div class="stat"><small>Em aberto</small><strong>${display(open())}</strong></div><div class="stat"><small>Reservado</small><strong>${display(reserved())}</strong></div><div class="stat"><small>Informado</small><strong>${display(reported())}</strong></div><div class="stat"><small>Pendente total</small><strong>${display(owed())}</strong></div></div>
 ${card('↶ Estornos das faturas',ownRefunds().map(refundRow).join('')||'<p>Sem estornos.</p>')}
 <section class="card"><div class="row"><div class="cardtitle">Faturas de cartão</div>${btn('+ Informar fatura','add-invoice')}</div>${S.invoiceAdd?invoiceForm():''}${S.formNotice?`<p class="hint" role="status">${escape(S.formNotice)}</p>`:''}${ownBills().filter(b=>b.card).map(billList).join('')||'<p>Nenhuma fatura.</p>'}</section>
 <section class="card"><div class="row"><div class="cardtitle">Contas e financiamentos</div>${btn('+ Adicionar','add-bill')}</div>${ownBills().filter(b=>!b.card).map(billList).join('')||'<p>Nenhuma conta.</p>'}${S.add?newBillForm():''}${finaLearnedRulesPanel()}</section>
+${finaScheduledBankPreview()}
 ${card('Fechamento e próximo mês',`<div class="row"><div><strong>Confirmado pelo banco</strong><span class="line-detail">${money(sum(ownBills().filter(b=>b.state==='posted'),b=>billValue(b)))}</span></div><div><strong>Pendente e previsto</strong><span class="line-detail">${money(owed())}</span></div></div><p class="muted">${monthOffset()<0?'Mês encerrado ou histórico de pagamentos demonstrativos.':monthOffset()===0?'Mês vigente: valores reais entram pelo banco, reservas mantêm cor até a confirmação.':'Previsões podem repetir o último valor, mas a fatura bancária oficial tem prioridade.'}</p>`)}
  `}
 function forecast(){return `${heading('Variáveis a receber','Planeje recebimentos futuros sem alterá-los no extrato.')}${switcher()}${card('Entradas previstas',S.future.filter(x=>ownerShown(x.owner)&&x.month===S.monthForBills).map(x=>row(x.name,`${name(x.owner)} · Dia ${x.day}`,money(x.value),`<div class="action-menu">${btn('Excluir','delete-forecast',`data-id="${x.id}"`)}</div>`)).join('')||'<p>Não há previsões.</p>')}${card('Nova variável a receber',`<form data-form="forecast" class="formgrid"><label class="wide">Descrição<input name="name" required placeholder="Comissão, salário..."></label><label>Valor (R$)<input name="value" type="text" inputmode="decimal" autocomplete="off" placeholder="1500 ou 1.500,00" required></label><label>Dia<input name="day" type="number" min="1" max="31" value="25" required></label><label class="wide">Responsável<select name="owner"><option value="${selfOwner()}">${escape(name(selfOwner()))}</option>${S.consent?'<option value="'+partnerOwner()+'">'+escape(name(partnerOwner()))+'</option>':''}</select></label><button class="btn wide" type="submit">Adicionar variável</button></form>`)}${card('Resultado projetado',`<div style="font-size:24px;font-weight:720">${display(monthResult())}</div><p class="muted">Saldo ajustado ${display(scopeBalance())} + variáveis a receber ${display(future())} − contas ainda abertas ${display(open())}. Entrou/Saiu já são parte do saldo importado e não são somados novamente.</p>`)}`}
