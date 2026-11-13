@@ -467,15 +467,20 @@ function finaCashLedger(){
  const today=finaCurrentBankMonth(),month=String(today.month+1).padStart(2,'0');
  const filtered=(S.cashflowFilter==='in'||S.cashflowFilter==='out')?S.cashflowFilter:'all';
  const visible=finaCurrentCashTransactions();
- const shown=visible.filter(t=>filtered==='all'||(t.kind===filtered&&!finaCashIsInternal(t)));
+ const shown=visible.filter(t=>filtered==='all'||(t.kind===filtered&&finaCashCountable(t)));
  const last=window.FinaBankLastSnapshotAt?
     new Date(window.FinaBankLastSnapshotAt).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'aguardando';
  const buttons=[['all','Todos'],['in','Entrou'],['out','Saiu']].map(([key,label])=>
   `<button type="button" class="btn soft mini ${filtered===key?'active':''}" data-act="cash-filter" data-value="${key}">${label}</button>`).join('');
  const rows=shown.map(t=>{
-  const internal=finaCashIsInternal(t),isIn=t.kind==='in';
+  const internal=!finaCashCountable(t),isIn=t.kind==='in';
+  const transferBetweenCouple=t.category==='transfer-spouse'||
+    finaCoupleTransferTxIds.has(String(t.id||'').replace(/^real-/,''));
+  const note=transferBetweenCouple
+    ?(S.scope==='casal'?'Transferência entre o casal · não soma no consolidado':'Transferência entre o casal · contabilizada individualmente')
+    :(internal?'Transferência entre contas próprias · não entra nos totais':'');
   const nameText=String(t.name||'Movimentação bancária').trim();
-  return `<div class="line" style="padding:10px 0"><div class="row start" style="gap:9px"><div style="min-width:0;flex:1"><strong class="line-title">${escape(nameText)}</strong><span class="line-detail">${escape(String(t.date||''))}/${t.year} · ${escape(t.bank||'Banco')} · ${escape(name(t.owner))}</span>${internal?'<span class="line-detail">Transferência interna · não entra nos totais</span>':''}</div><strong style="white-space:nowrap">${internal?'↔':isIn?'+':'−'} ${display(t.value)}</strong></div></div>`;
+  return `<div class="line" style="padding:10px 0"><div class="row start" style="gap:9px"><div style="min-width:0;flex:1"><strong class="line-title">${escape(nameText)}</strong><span class="line-detail">${escape(String(t.date||''))}/${t.year} · ${escape(t.bank||'Banco')} · ${escape(name(t.owner))}</span>${note?'<span class="line-detail">'+escape(note)+'</span>':''}</div><strong style="white-space:nowrap">${internal?'↔':isIn?'+':'−'} ${display(t.value)}</strong></div></div>`;
  }).join('');
  const noData=window.FinaBankCacheState==='waiting'?
    'Consultando as contas bancárias. Não confundir ausência de dados com saldo zerado.':
