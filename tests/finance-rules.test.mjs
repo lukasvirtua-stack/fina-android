@@ -211,6 +211,6 @@ test('Busca rápida mostra saldos autorizados e não acessa dados de outra sess�
  assert.equal(S.accounts.length,2);
  assert.equal(S.accounts.find(x=>x.owner==='lucas')?.balance,68570);
  assert.equal(S.accounts.find(x=>x.owner==='naara')?.balance,714);
- await vm.runInNewContext(source+'\nfinaLoadEarlyBankBalances("other-google")',ctx,{timeout:3000});
+ await vm.runInNewContext('finaLoadEarlyBankBalances("other-google")',ctx,{timeout:3000});
  assert.equal(reads,1,'Outra conta não pode consultar os saldos da sessão anterior');
 });
