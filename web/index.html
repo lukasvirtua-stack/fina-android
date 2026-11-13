@@ -312,7 +312,7 @@ const real=k=>{
  const transferKey=Array.from(finaCoupleTransferTxIds).sort().join('|');
  if(snapshot&&snapshot.userId===window.FinaCurrentUser?.id&&
    snapshot.ownerKey===selfOwner()&&snapshot.year===now.year&&snapshot.month===now.month&&
-   (snapshot.transferKey===transferKey||window.FinaBankCacheState==='cached')&&
+   snapshot.transferKey===transferKey&&
    (S.scope!=='casal'||snapshot.coupleTransferPolicy==='individual-only')){
    if(S.scope==='casal')return Number(snapshot.coupleTotals?.[k])||0;
    if(ownerShown(S.scope))return Number(snapshot.totals?.[S.scope]?.[k])||0;
