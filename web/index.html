@@ -2165,6 +2165,8 @@ async function finaLoadRealBankDataOnce(){
     window.FinaBankBalancesReady=true;
     window.FinaBankCacheState='live';
     window.FinaBankLastSnapshotAt=Date.now();
+    // Gravar o extrato assim que confirmado; faturas e financiamentos podem demorar mais.
+    finaSaveCachedBankData(user);
     // Sem cache, mostrar valores reais assim que prontos. Com cache, evitar tela intermediaria.
     if(!hadWarmSnapshot)window.FinaRender?.();
     await loadFinaFinancings();
