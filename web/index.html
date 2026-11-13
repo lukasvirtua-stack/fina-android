@@ -235,6 +235,9 @@ window.FinaApplyPersistentState=(p)=>{
 };
 // Cache de preferencias e compromissos so apos identificar o Google.
 const finaLocalUserStateKey=uid=>'fina_user_state_v2_'+String(uid);
+// Segundo script (acesso bancário) roda em outro escopo: expor explicitamente helpers compartilhados.
+window.FinaBankSort=finaBankSort;
+window.FinaLocalUserStateKey=finaLocalUserStateKey;
 try{
   const shared=JSON.parse(localStorage.getItem('fina_shared_profiles_v1')||'null');
   if(shared?.profiles){
@@ -1200,6 +1203,9 @@ const gate=document.getElementById('finaAuthGate'),status=document.getElementByI
 const login=document.getElementById('finaGoogleLogin'),bar=document.getElementById('finaUserBar');
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const S=window.FinaState;
+// Helpers criados pelo módulo visual, disponíveis também ao módulo de bancos.
+const finaBankSort=window.FinaBankSort;
+const finaLocalUserStateKey=window.FinaLocalUserStateKey;
 window.FinaSupabase=sb;
 window.FinaCurrentUser=null;
 window.FinaCurrentSession=null;
