@@ -794,6 +794,11 @@ window.addEventListener('popstate',event=>{
 window.addEventListener('fina:auth-ready',()=>setTimeout(finaInitHistoryNavigation,0));
 
 window.FinaRender=()=>render(false);
+// Expor os helpers da lógica financeira ao carregador bancário (script separado).
+// Sem mudar visual, modelos ou dados; somente corrigir referências fora do escopo.
+window.FinaCurrentBankMonth=()=>finaCurrentBankMonth();
+window.FinaGetCoupleTransferTxIds=()=>finaCoupleTransferTxIds;
+window.FinaLoadCoupleTransfers=()=>loadFinaCoupleTransfers();
 function render(goTop=false){ensureCycle();el.classList.toggle('theme-dark',S.theme==='dark');screen.innerHTML=header()+(views[S.tab]||home)();bottom.innerHTML=tabs.map(([id,icon,name])=>`<button type="button" class="${S.tab===id?'active':''}" data-act="open" data-target="${id}"><span class="navicon">${icon}</span><span class="navname">${name}</span></button>`).join('');if(goTop)screen.scrollTop=0;const chat=document.getElementById('messages');if(chat)chat.scrollTop=chat.scrollHeight;finaRecordHistoryView();setTimeout(()=>{window.FinaCouple?.paint?.();window.FinaBank?.paint?.();if(window.FinaInstallState==='ready'){const n=document.getElementById('finaInstallStatus');if(n)n.textContent='Pronto para instalar neste aparelho.'}else if(window.matchMedia?.('(display-mode: standalone)').matches){const n=document.getElementById('finaInstallStatus');if(n)n.textContent='FINA já está instalada neste aparelho.'}},0)}
 function finaNormText(v){return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim()}
 function finaPaymentCandidates(b){
@@ -1221,20 +1226,20 @@ async function loadFinaSharedProfiles(){
    }));
  }catch{}
  window.dispatchEvent(new Event('fina:header-changed'));
- render(false);
+ window.FinaRender?.();
 }
 
 async function finaSaveSharedProfile(owner,displayName,dob,weddingDate){
  if(!window.FinaCoupleMemberIds?.[owner])await loadFinaSharedProfiles();
  const target=window.FinaCoupleMemberIds?.[owner];
- if(!target){S.photoNotice='Não foi possível identificar o perfil do casal.';render(false);return;}
+ if(!target){S.photoNotice='Não foi possível identificar o perfil do casal.';window.FinaRender?.();return;}
  const now=new Date().toISOString();
  const {error}=await sb.from('fina_profiles').update({
    display_name:String(displayName||'').trim().slice(0,70),
    birth_date:dob||null,
    updated_at:now
  }).eq('user_id',target);
- if(error){S.photoNotice='Não foi possível salvar os dados do casal.';render(false);return;}
+ if(error){S.photoNotice='Não foi possível salvar os dados do casal.';window.FinaRender?.();return;}
  if(window.FinaCoupleId){
    const {error:we}=await sb.from('fina_couples').update({wedding_date:weddingDate||null,updated_at:now}).eq('id',window.FinaCoupleId);
    if(we)S.photoNotice='Nome e nascimento foram salvos, mas a data do casal não foi atualizada.';
@@ -1246,9 +1251,9 @@ async function finaSaveSharedProfile(owner,displayName,dob,weddingDate){
 async function finaSaveSharedPhoto(owner,photoData,crop){
  if(!window.FinaCoupleMemberIds?.[owner])await loadFinaSharedProfiles();
  const target=window.FinaCoupleMemberIds?.[owner];
- if(!target){S.photoNotice='Não foi possível identificar o perfil da foto.';render(false);return;}
+ if(!target){S.photoNotice='Não foi possível identificar o perfil da foto.';window.FinaRender?.();return;}
  if(typeof photoData!=='string'||!photoData.startsWith('data:image/')||photoData.length>900000){
-   S.photoNotice='A foto ficou grande demais para sincronizar. Escolha outra imagem.';render(false);return;
+   S.photoNotice='A foto ficou grande demais para sincronizar. Escolha outra imagem.';window.FinaRender?.();return;
  }
  const now=new Date().toISOString();
  const {error}=await sb.from('fina_profiles').update({
@@ -1257,7 +1262,7 @@ async function finaSaveSharedPhoto(owner,photoData,crop){
    photo_updated_at:now,
    updated_at:now
  }).eq('user_id',target);
- if(error){S.photoNotice='A foto não pôde ser salva no perfil compartilhado.';render(false);return;}
+ if(error){S.photoNotice='A foto não pôde ser salva no perfil compartilhado.';window.FinaRender?.();return;}
  S.photoNotice='Foto de '+name(owner)+' atualizada nos dois aparelhos.';
  await loadFinaSharedProfiles();
 }
@@ -1317,7 +1322,7 @@ async function loadCoupleStatus(user){
    window.FinaHeaderGreeting='Olá, '+selfName;
  }
  window.dispatchEvent(new Event('fina:header-changed'));window.FinaCouple?.paint?.();
- setTimeout(async()=>{await loadFinaCoupleTransfers();await finaLoadRealBankData();},0);
+ setTimeout(async()=>{await window.FinaLoadCoupleTransfers?.();await finaLoadRealBankData();},0);
 }
 function paintCouple(){const summary=document.getElementById('finaCoupleSummary');if(!summary)return;const connected=document.getElementById('finaCoupleConnected'),setup=document.getElementById('finaCoupleSetup'),names=document.getElementById('finaCoupleNames'),generated=document.getElementById('finaCoupleGenerated'),codeNode=document.getElementById('finaCoupleCode');if(coupleState.connected){summary.textContent='Este acesso já faz parte do casal.';if(connected)connected.hidden=false;if(setup)setup.hidden=true;if(names)names.textContent=coupleState.titularName+' e '+coupleState.partnerName;}else{summary.textContent=coupleState.memberCount===1?'Uma conta conectada. Aguardando a outra pessoa.':'Conecte as duas contas Google.';if(connected)connected.hidden=true;if(setup)setup.hidden=false;if(generated)generated.hidden=!coupleState.code;if(codeNode&&coupleState.code)codeNode.textContent=coupleState.code;}}
 async function createCoupleInvite(){const status=document.getElementById('finaCoupleRealStatus');if(status)status.textContent='Gerando código…';const {data,error}=await sb.rpc('fina_create_couple_invite');if(error){if(status)status.textContent='Não foi possível gerar o código: '+error.message;return;}const row=Array.isArray(data)?data[0]:data;coupleState.code=String(row?.code||'');coupleState.expiresAt=row?.expires_at||null;coupleState.memberCount=Math.max(coupleState.memberCount,1);coupleState.isOwner=true;paintCouple();if(status)status.textContent='Código criado. Ele expira em 30 minutos.';await loadCoupleStatus(window.FinaCurrentUser);}
@@ -1689,7 +1694,7 @@ async function finaLoadRealBankDataOnce(){
     const creditAccounts=(accounts||[]).filter(isCreditAccount);
     const bankIds=new Set(bankAccounts.map(a=>a.id));
     // Fluxo mensal derivado dos extratos autorizados; cartões não entram nos totais.
-    const cashToday=finaCurrentBankMonth();
+    const cashToday=window.FinaCurrentBankMonth();
     const cashTotals={lucas:{in:0,out:0},naara:{in:0,out:0}};
     const cashCoupleTotals={in:0,out:0};
     const dateParts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',year:'numeric',month:'numeric',day:'numeric'});
@@ -1702,7 +1707,7 @@ async function finaLoadRealBankDataOnce(){
       const cat=String(movement.category||'').toLowerCase();
       const sameOwnerTransfer=cat.includes('same person transfer')||cat==='transfer-self';
       if(sameOwnerTransfer)continue;
-      const betweenPartners=cat==='transfer-spouse'||finaCoupleTransferTxIds.has(String(movement.id||''));
+      const betweenPartners=cat==='transfer-spouse'||window.FinaGetCoupleTransferTxIds().has(String(movement.id||''));
       const kind=movement.direction==='credit'?'in':movement.direction==='debit'?'out':null;
       if(!kind)continue;
       const owner=ownerForUserId(movement.user_id);
@@ -1714,7 +1719,7 @@ async function finaLoadRealBankDataOnce(){
     }
     window.FinaCashTotalsByOwner={userId:user.id,month:cashToday.month,year:cashToday.year,
       totals:cashTotals,coupleTotals:cashCoupleTotals,
-      transferKey:Array.from(finaCoupleTransferTxIds).sort().join('|'),savedAt:Date.now()};
+      transferKey:Array.from(window.FinaGetCoupleTransferTxIds()).sort().join('|'),savedAt:Date.now()};
     const prettyBank=v=>{
       const x=String(v||'Banco').trim().toUpperCase();
       if(x==='NUBANK')return 'Nubank';
@@ -1772,7 +1777,7 @@ async function finaLoadRealBankDataOnce(){
       const descLower=desc.toLowerCase();
       let category=rawCategory;
       if(catLower.includes('same person transfer'))category='transfer-self';
-      else if(finaCoupleTransferTxIds.has(String(t.id)))category='transfer-spouse';
+      else if(window.FinaGetCoupleTransferTxIds().has(String(t.id)))category='transfer-spouse';
       else if(/\bparcela\s+0*\d+\s+de\s+0*\d+/i.test(desc)||/\bcontr\s+\d+\s+parc\s+0*\d+\s*\/\s*0*\d+/i.test(desc))category='financing';
       else if(descLower.includes('pagamento de fatura'))category='card-payment';
       return {id:'real-'+t.id,owner:ownerForUserId(t.user_id),bank:prettyBank(a.institution_name||a.name||'Banco'),name:desc,value:Math.round((Number(t.amount)||0)*100),kind:t.direction==='credit'?'in':'out',date:String(localPart('day')).padStart(2,'0')+'/'+String(localPart('month')).padStart(2,'0'),category,month:localPart('month')-1,year:localPart('year'),real:true,
@@ -1781,11 +1786,11 @@ async function finaLoadRealBankDataOnce(){
     window.FinaRealBankLoaded=true;
     window.FinaBankCacheState='live';
     window.FinaBankLastSnapshotAt=Date.now();
-    render(false); // primeiro: dinheiro real e extratos, sem bloquear por faturas
+    window.FinaRender?.(); // primeiro: dinheiro real e extratos, sem bloquear por faturas
     await loadFinaFinancings();
     await finaLoadOfficialCardBills();
     finaSaveCachedBankData(user);
-    render(false);
+    window.FinaRender?.();
   }catch(e){console.warn('FINA: leitura financeira incompleta:',e?.message||e);window.FinaCashDataError='Falha ao atualizar o extrato bancário. Confira a conexão.';window.FinaRender?.();}
 }
 window.addEventListener('fina:auth-ready',()=>{
@@ -1802,7 +1807,7 @@ window.addEventListener('fina:auth-ready',()=>{
 });
 window.addEventListener('fina:auth-ready',()=>{setTimeout(()=>void loadFinaBankItems(),0)});
 window.addEventListener('fina:auth-ready',()=>{setTimeout(()=>void loadFinaPluggyCredentialStatus(),350)});
-window.addEventListener('fina:auth-ready',()=>{setTimeout(()=>void loadFinaCoupleTransfers(),750)});
+window.addEventListener('fina:auth-ready',()=>{setTimeout(()=>void window.FinaLoadCoupleTransfers?.(),750)});
 let finaDataRealtimeChannel=null;
 let finaDataRealtimeTimer=null;
 function finaScheduleRealtimeDataRefresh(){
@@ -1810,7 +1815,7 @@ function finaScheduleRealtimeDataRefresh(){
   finaDataRealtimeTimer=setTimeout(async()=>{
     if(!window.FinaCurrentUser)return;
     try{await finaLoadPersistentState(window.FinaCurrentUser);await finaLoadSharedBills();}catch{}
-    try{await loadFinaCoupleTransfers();}catch{}
+    try{await window.FinaLoadCoupleTransfers?.();}catch{}
     try{await finaLoadRealBankData();}catch{}
     try{await loadFinaFinancings();}catch{}
   },120);
@@ -1839,7 +1844,7 @@ async function finaRefreshVisibleData(){
   if(['INPUT','SELECT','TEXTAREA'].includes(tag)||S.add||S.homeAdd||S.invoiceAdd||S.edit)return;
   try{await finaLoadPersistentState(window.FinaCurrentUser);}catch{}
   try{await finaLoadRealBankData();}catch{}
-  try{await loadFinaCoupleTransfers();}catch{}
+  try{await window.FinaLoadCoupleTransfers?.();}catch{}
   try{await loadFinaSharedProfiles();}catch{}
 }
 window.addEventListener('focus',()=>setTimeout(()=>void finaRefreshVisibleData(),250));
