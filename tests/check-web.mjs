@@ -10,6 +10,8 @@ const required = [
   "const finaBankLedgerSelectedPeriod=",
   "const finaCurrentCashTransactions=",
   "const finaCashCountable=",
+  "const finaCashIsBetweenCouple=",
+  "coupleTransferPolicy:'individual-only'",
   "const real=k=>",
   "const coupleBaseBalance=()=>ownerBalance(selfOwner())+(partnerReady()?ownerBalance(partnerOwner()):0)",
   "let finaCoupleTransferTxIds",
@@ -46,7 +48,7 @@ console.log('FINA WEB QA PASS · scripts='+scripts.length+' · rules='+required.
 
 
 // Regressão executando AS FUNÇÕES FINANCEIRAS DO APLICATIVO (não uma cópia das regras).
-// Verifica ambos os logins, Pix próprios excluídos, Pix entre o casal incluídos e o fechamento do mês.
+// Verifica ambos os logins, Pix próprios excluídos, Pix entre o casal só individuais e fechamento do mês.
 import vm from 'node:vm';
 const ownerStart=app.indexOf('const selfOwner=');
 const ownerEnd=app.indexOf('const accessible=',ownerStart);
@@ -84,7 +86,7 @@ function checkCashRules(loggedIn){
  const results=[
    ['lucas','in',240604],['lucas','out',491361],
    ['naara','in',239000],['naara','out',493795],
-   ['casal','in',479604],['casal','out',985156]
+   ['casal','in',246604],['casal','out',752156]
  ];
  for(const [scope,direction,expectedCents] of results){
   assert.equal(context.check(scope,direction),expectedCents,
