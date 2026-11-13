@@ -216,21 +216,21 @@ test('Busca rápida mostra saldos autorizados e não acessa dados de outra sess�
 });
 
 test('Cache bancário restaura saldos reais entre os dois scripts isolados', () => {
- const browserModules=[...html.matchAll(/<script\\b([^>]*)>([\\s\\S]*?)<\\/script>/gi)]
-   .filter(x=>x[2].trim()&&!/\\bsrc=/.test(x[1]));
+ const browserModules=[...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
+   .filter(x=>x[2].trim()&&!/\bsrc=/.test(x[1]));
  assert.ok(browserModules.length>=3,'Os módulos inline devem estar presentes');
  const first=browserModules[1][2],second=browserModules[2][2];
- assert.match(first,/window\\.FinaBankSort=finaBankSort;/);
- assert.match(first,/window\\.FinaLocalUserStateKey=finaLocalUserStateKey;/);
- assert.match(second,/const finaBankSort=window\\.FinaBankSort;/);
- assert.match(second,/const finaLocalUserStateKey=window\\.FinaLocalUserStateKey;/);
+ assert.match(first,/window\.FinaBankSort=finaBankSort;/);
+ assert.match(first,/window\.FinaLocalUserStateKey=finaLocalUserStateKey;/);
+ assert.match(second,/const finaBankSort=window\.FinaBankSort;/);
+ assert.match(second,/const finaLocalUserStateKey=window\.FinaLocalUserStateKey;/);
  const c={window:{},S:{accounts:[],cards:[],transactions:[],bills:[],loans:[]},
    localStorage:{getItem:()=>null},Date};
  vm.createContext(c);
  // O primeiro módulo expõe os dois helpers; não estão no escopo global do segundo.
- vm.runInContext('(()=>{'+segment('const finaOwnerRank=', '\\nconst seed=')+
-  "\\nconst finaLocalUserStateKey=uid=>'fina_user_state_v2_'+String(uid);"+
-  '\\nwindow.FinaBankSort=finaBankSort;window.FinaLocalUserStateKey=finaLocalUserStateKey;})();',c,{timeout:1500});
+ vm.runInContext('(()=>{'+segment('const finaOwnerRank=', '\nconst seed=')+
+  "\nconst finaLocalUserStateKey=uid=>'fina_user_state_v2_'+String(uid);"+
+  '\nwindow.FinaBankSort=finaBankSort;window.FinaLocalUserStateKey=finaLocalUserStateKey;})();',c,{timeout:1500});
  assert.equal(typeof c.window.FinaBankSort,'function');
  assert.equal(typeof c.window.FinaLocalUserStateKey,'function');
  const id='google-lucas';
@@ -243,10 +243,10 @@ test('Cache bancário restaura saldos reais entre os dois scripts isolados', () 
  c.window.FinaSelfOwnerKey='lucas';
  c.window.FinaRender=()=>{};
  c.localStorage.getItem=key=>key==='fina_bank_snapshot_v5_'+id?JSON.stringify(saved):null;
- const restoreSource=segment('const finaBankCacheKey=uid=>','\\n// O saldo das contas chega antes do histórico');
+ const restoreSource=segment('const finaBankCacheKey=uid=>','\n// O saldo das contas chega antes do histórico');
  const result=vm.runInContext('(()=>{const finaBankSort=window.FinaBankSort;'+
    'const finaLocalUserStateKey=window.FinaLocalUserStateKey;'+
-   restoreSource+'\\nreturn finaRestoreCachedBankData();})()',c,{timeout:3000});
+   restoreSource+'\nreturn finaRestoreCachedBankData();})()',c,{timeout:3000});
  assert.equal(result,true,'Cache do celular deve restaurar sem ReferenceError');
  assert.equal(c.S.accounts.reduce((sum,x)=>sum+x.balance,0),69284);
  assert.equal(c.window.FinaBankCacheState,'cached');
@@ -254,10 +254,10 @@ test('Cache bancário restaura saldos reais entre os dois scripts isolados', () 
 });
 
 test('Leitura bancária usa ordenação disponível no módulo de banco',()=>{
- const second=[...html.matchAll(/<script\\b([^>]*)>([\\s\\S]*?)<\\/script>/gi)].filter(x=>x[2].trim()&&!/\\bsrc=/.test(x[1]))[2][2];
+ const second=[...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)].filter(x=>x[2].trim()&&!/\bsrc=/.test(x[1]))[2][2];
  const idx=second.indexOf('const finaBankSort=window.FinaBankSort;');
  assert.ok(idx>=0);
  assert.ok(second.indexOf('S.accounts=bankAccounts.map')>idx);
  assert.ok(second.indexOf('S.cards=creditAccounts.map')>idx);
- assert.match(second,/S\\.accounts=bankAccounts\\.map[\\s\\S]*?\\.sort\\(finaBankSort\\)/);
+ assert.match(second,/S\.accounts=bankAccounts\.map[\s\S]*?\.sort\(finaBankSort\)/);
 });
