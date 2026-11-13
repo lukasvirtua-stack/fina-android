@@ -294,10 +294,17 @@ const finaCurrentBankMonth=()=>{
  const get=k=>Number(parts.find(x=>x.type===k)?.value||0);
  return {month:get('month')-1,year:get('year'),day:get('day')};
 };
+// Navegação independente no extrato; não altera o saldo do mês atual na tela inicial.
+const finaBankLedgerSelectedPeriod=()=>{
+ const now=finaCurrentBankMonth();
+ const offset=Math.max(-12,Math.min(0,Number(S.bankLedgerOffset)||0));
+ const date=new Date(Date.UTC(now.year,now.month+offset,1));
+ return {month:date.getUTCMonth(),year:date.getUTCFullYear(),
+  day:offset===0?now.day:new Date(Date.UTC(date.getUTCFullYear(),date.getUTCMonth()+1,0)).getUTCDate()};
+};
 const finaCashIsInternal=t=>t.category==='transfer-self'||t.category==='transfer-spouse'||
  finaCoupleTransferTxIds.has(String(t.id||'').replace(/^real-/,''));
-const finaCurrentCashTransactions=()=>{
- const current=finaCurrentBankMonth();
+const finaCurrentCashTransactions=(current=finaCurrentBankMonth())=>{
  return (S.transactions||[]).filter(t=>
   t.real===true&&ownerShown(t.owner)&&t.month===current.month&&t.year===current.year&&
   Number(String(t.date||'').slice(0,2))<=current.day&&String(t.status||'POSTED').toUpperCase()!=='PENDING'
@@ -464,9 +471,9 @@ function invoiceForm(){
 // Extrato completo das contas bancarias no mes atual.
 // Compras de cartao ficam somente em faturas e nunca duplicam Entrou/Saiu.
 function finaCashLedger(){
- const today=finaCurrentBankMonth(),month=String(today.month+1).padStart(2,'0');
+ const today=finaBankLedgerSelectedPeriod(),month=String(today.month+1).padStart(2,'0');
  const filtered=(S.cashflowFilter==='in'||S.cashflowFilter==='out')?S.cashflowFilter:'all';
- const visible=finaCurrentCashTransactions();
+ const visible=finaCurrentCashTransactions(today);
  const shown=visible.filter(t=>filtered==='all'||(t.kind===filtered&&finaCashCountable(t)));
  const last=window.FinaBankLastSnapshotAt?
     new Date(window.FinaBankLastSnapshotAt).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'aguardando';
@@ -489,8 +496,13 @@ function finaCashLedger(){
  const to=String(today.day).padStart(2,'0')+'/'+month+'/'+today.year;
  return `<section class="card" id="finaCashLedger">
   <div class="row"><div><div class="cardtitle">Extrato bancário · ${escape(from)} a ${escape(to)}</div><small class="line-detail">${visible.length} lançamento(s) autorizados · último lançamento: ${escape(visible[0]?.date||'nenhum no período')} · consulta: ${escape(last)}</small></div><button type="button" class="btn soft mini" data-act="cash-refresh">↻ Atualizar</button></div>
+  <div class="action-menu" style="margin:8px 0">
+    <button type="button" class="btn soft mini" data-act="cash-month-prev" aria-label="Mês anterior">‹ Mês anterior</button>
+    <strong>${escape(month+'/'+String(today.year))}</strong>
+    <button type="button" class="btn soft mini" data-act="cash-month-next" ${Number(S.bankLedgerOffset||0)>=0?'disabled':''} aria-label="Próximo mês">Próximo mês ›</button>
+  </div>
   <div class="action-menu" style="margin:8px 0">${buttons}</div>
-  <div class="row"><span>Entrou: <b>${display(real('in'))}</b></span><span>Saiu: <b>${display(real('out'))}</b></span></div>
+  <div class="row"><span>Entrou: <b>${display(sum(visible.filter(t=>t.kind==='in'&&finaCashCountable(t)),t=>t.value))}</b></span><span>Saiu: <b>${display(sum(visible.filter(t=>t.kind==='out'&&finaCashCountable(t)),t=>t.value))}</b></span></div>
   ${window.FinaCashDataError?'<p class="hint" role="alert">'+escape(window.FinaCashDataError)+'</p>':''}
   ${window.FinaCashRefreshStatus?'<p class="hint">'+escape(window.FinaCashRefreshStatus)+'</p>':''}
   <div style="max-height:480px;overflow-y:auto">${rows||'<p class="muted">'+noData+'</p>'}</div>
@@ -520,8 +532,12 @@ function banks(){
  const creditCards=S.cards.filter(c=>ownerShown(c.owner));
  const totalAccounts=sum(accounts,a=>a.balance);
  const accountRows=accounts.map(a=>`<div class="bank-account-line"><div class="bank-account-identity"><span class="bank-dot ${escape(a.name.toLowerCase())}">${a.name==='Santander'?'S':a.name==='Nubank'?'nu':a.name==='Itaú'?'I':'B'}</span><div><strong>${escape(a.name)}</strong><small>${name(a.owner)} · Saldo em conta</small></div></div><strong class="bank-account-value">${display(a.balance)}</strong></div>`).join('');
- const txRows=S.transactions.filter(t=>ownerShown(t.owner)).slice().reverse().map(t=>row(t.name,`${name(t.owner)} · ${t.bank} · ${t.date}`,`<span class="${t.kind==='in'?'positive':'negative'}">${t.kind==='in'?'+':'−'} ${money(t.value)}</span>`,t.category==='refund'?'<span class="pill ok">Estorno devolvido na conta</span>':/^transfer-/.test(t.category||'')?'<span class="pill wait">Transferência · não soma Entrou/Saiu</span>':'')).join('')||'<p class="muted">Sem movimentações bancárias neste período.</p>';
- const movements=`<div class="bank-total-balance"><span>Saldo total das contas exibidas</span><strong>${display(totalAccounts)}</strong><small>Soma dos saldos bancários disponíveis neste filtro · não inclui limite do cartão</small></div><div class="bank-accounts-group">${accountRows||'<p class="muted">Nenhuma conta disponível.</p>'}</div><div class="bank-subheading"><strong>Últimas movimentações bancárias</strong><span class="muted">Inclui transferências identificadas</span></div>${txRows}<div class="hint">O total desta tela soma as contas exibidas. Na tela inicial, o total do casal é a soma dos saldos ajustados autorizados; tocando na inicial de uma pessoa, aparece o saldo bancário original dela. Créditos de cartão não contam como dinheiro em conta.</div>`;
+ const bankPeriod=finaBankLedgerSelectedPeriod();
+ const txAll=S.transactions.filter(t=>t.real===true&&ownerShown(t.owner)&&
+   t.month===bankPeriod.month&&t.year===bankPeriod.year).slice().reverse();
+ const maxBankRows=Math.max(50,Number(S.bankRowsVisible)||50);
+ const txRows=txAll.slice(0,maxBankRows).map(t=>row(t.name,`${name(t.owner)} · ${t.bank} · ${t.date}`,`<span class="${t.kind==='in'?'positive':'negative'}">${t.kind==='in'?'+':'−'} ${money(t.value)}</span>`,t.category==='refund'?'<span class="pill ok">Estorno devolvido na conta</span>':/^transfer-/.test(t.category||'')?'<span class="pill wait">Transferência · não soma Entrou/Saiu</span>':'')).join('')||'<p class="muted">Sem movimentações bancárias neste período.</p>';
+ const movements=`<div class="bank-total-balance"><span>Saldo total das contas exibidas</span><strong>${display(totalAccounts)}</strong><small>Soma dos saldos bancários disponíveis neste filtro · não inclui limite do cartão</small></div><div class="bank-accounts-group">${accountRows||'<p class="muted">Nenhuma conta disponível.</p>'}</div><div class="bank-subheading"><strong>Últimas movimentações bancárias</strong><span class="muted">Inclui transferências identificadas</span></div>${txRows}${txAll.length>maxBankRows?btn('Mostrar mais movimentações ('+String(txAll.length-maxBankRows)+')','bank-show-more'):''}<div class="hint">O total desta tela soma as contas exibidas. Na tela inicial, o total do casal é a soma dos saldos ajustados autorizados; tocando na inicial de uma pessoa, aparece o saldo bancário original dela. Créditos de cartão não contam como dinheiro em conta.</div>`;
  const cardRows=creditCards.map(c=>{
    const bankAccounts=accounts.filter(a=>a.owner===c.owner&&String(a.name||'').toLowerCase()===String(c.bank||'').toLowerCase());
    const bankBalance=bankAccounts.length?sum(bankAccounts,a=>a.balance):null;
@@ -1023,6 +1039,9 @@ if(a==='toggle-payment-rule'){
  if(!window.confirm(enabled?'Reativar regra automática?':'Desativar regra automática?'))return;
  void window.FinaSetLearningRule?.(id,enabled);return;
 }
+if(a==='cash-month-prev'){S.bankLedgerOffset=Math.max(-12,(Number(S.bankLedgerOffset)||0)-1);S.bankRowsVisible=50;render(false);return}
+if(a==='cash-month-next'){S.bankLedgerOffset=Math.min(0,(Number(S.bankLedgerOffset)||0)+1);S.bankRowsVisible=50;render(false);return}
+if(a==='bank-show-more'){S.bankRowsVisible=(Number(S.bankRowsVisible)||50)+50;render(false);return}
 if(a==='cash-filter'){S.cashflowFilter=target.dataset.value||'all';render(false);document.getElementById('finaCashLedger')?.scrollIntoView({block:'nearest'});return}
 if(a==='cash-refresh'){
  window.FinaCashRefreshStatus='Consultando os bancos...';render(false);
