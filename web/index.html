@@ -470,7 +470,7 @@ function finaCashLedger(){
   const transferBetweenCouple=t.category==='transfer-spouse'||
     finaCoupleTransferTxIds.has(String(t.id||'').replace(/^real-/,''));
   const note=transferBetweenCouple
-    ?(S.scope==='casal'?'Transferência entre o casal · não soma no consolidado':'Transferência entre o casal · contabilizada individualmente')
+    ?'Transferência entre vocês · soma em Entrou/Saiu'
     :(internal?'Transferência entre contas próprias · não entra nos totais':'');
   const nameText=String(t.name||'Movimentação bancária').trim();
   return `<div class="line" style="padding:10px 0"><div class="row start" style="gap:9px"><div style="min-width:0;flex:1"><strong class="line-title">${escape(nameText)}</strong><span class="line-detail">${escape(String(t.date||''))}/${t.year} · ${escape(t.bank||'Banco')} · ${escape(name(t.owner))}</span>${note?'<span class="line-detail">'+escape(note)+'</span>':''}</div><strong style="white-space:nowrap">${internal?'↔':isIn?'+':'−'} ${display(t.value)}</strong></div></div>`;
@@ -492,7 +492,7 @@ function finaCashLedger(){
   ${window.FinaCashDataError?'<p class="hint" role="alert">'+escape(window.FinaCashDataError)+'</p>':''}
   ${window.FinaCashRefreshStatus?'<p class="hint">'+escape(window.FinaCashRefreshStatus)+'</p>':''}
   <div style="max-height:480px;overflow-y:auto">${rows||'<p class="muted">'+noData+'</p>'}</div>
-  <p class="hint">Somente extratos bancários confirmados. Transferências entre contas próprias não entram nos totais. Transferências entre os dois integrantes contam individualmente e se compensam no total do casal. O histórico dos meses sincronizados está disponível aos dois.</p>
+  <p class="hint">Somente extratos bancários confirmados. Transferências entre contas próprias não entram nos totais. Transferências entre os dois integrantes somam em Entrou e Saiu, inclusive no Casal; no saldo líquido as duas pontas se compensam. O histórico dos meses sincronizados está disponível aos dois.</p>
  </section>`;
 }
 
@@ -522,7 +522,7 @@ function banks(){
  const txAll=S.transactions.filter(t=>t.real===true&&ownerShown(t.owner)&&
    t.month===bankPeriod.month&&t.year===bankPeriod.year).slice().reverse();
  const maxBankRows=Math.max(50,Number(S.bankRowsVisible)||50);
- const txRows=txAll.slice(0,maxBankRows).map(t=>row(t.name,`${name(t.owner)} · ${t.bank} · ${t.date}`,`<span class="${t.kind==='in'?'positive':'negative'}">${t.kind==='in'?'+':'−'} ${money(t.value)}</span>`,t.category==='refund'?'<span class="pill ok">Estorno devolvido na conta</span>':/^transfer-/.test(t.category||'')?'<span class="pill wait">Transferência · não soma Entrou/Saiu</span>':'')).join('')||'<p class="muted">Sem movimentações bancárias neste período.</p>';
+ const txRows=txAll.slice(0,maxBankRows).map(t=>row(t.name,`${name(t.owner)} · ${t.bank} · ${t.date}`,`<span class="${t.kind==='in'?'positive':'negative'}">${t.kind==='in'?'+':'−'} ${money(t.value)}</span>`,t.category==='refund'?'<span class="pill ok">Estorno devolvido na conta</span>':t.category==='transfer-self'?'<span class="pill wait">Transferência própria · não soma</span>':t.category==='transfer-spouse'?'<span class="pill ok">Entre vocês · soma Entrou/Saiu</span>':'')).join('')||'<p class="muted">Sem movimentações bancárias neste período.</p>';
  const movements=`<div class="bank-total-balance"><span>Saldo total das contas exibidas</span><strong>${display(totalAccounts)}</strong><small>Soma dos saldos bancários disponíveis neste filtro · não inclui limite do cartão</small></div><div class="bank-accounts-group">${accountRows||'<p class="muted">Nenhuma conta disponível.</p>'}</div><div class="bank-subheading"><strong>Últimas movimentações bancárias</strong><span class="muted">Inclui transferências identificadas</span></div>${txRows}${txAll.length>maxBankRows?btn('Mostrar mais movimentações ('+String(txAll.length-maxBankRows)+')','bank-show-more'):''}<div class="hint">O total desta tela soma as contas exibidas. Na tela inicial, o total do casal é a soma dos saldos ajustados autorizados; tocando na inicial de uma pessoa, aparece o saldo bancário original dela. Créditos de cartão não contam como dinheiro em conta.</div>`;
  const cardRows=creditCards.map(c=>{
    const bankAccounts=accounts.filter(a=>a.owner===c.owner&&String(a.name||'').toLowerCase()===String(c.bank||'').toLowerCase());
@@ -698,7 +698,7 @@ function transferHistoryRows(){
    t.status==='matched'?'<span class="pill ok">Duas pontas confirmadas</span>':'<span class="pill wait">Aguardando confirmação bancária</span>'
  )).join('');
  const transfers=transferRows().slice().reverse();
- const localRows=transfers.map(t=>row(t.name,name(t.owner)+' · '+t.bank+' · '+t.date+' · '+(t.category==='transfer-self'?'Entre contas próprias':'Entre cônjuges'),'<span class="'+(t.kind==='in'?'positive':'negative')+'">'+(t.kind==='in'?'+':'−')+' '+money(t.value)+'</span>','<span class="pill wait">Não soma Entrou/Saiu</span>')).join('');
+ const localRows=transfers.map(t=>row(t.name,name(t.owner)+' · '+t.bank+' · '+t.date+' · '+(t.category==='transfer-self'?'Entre contas próprias':'Entre cônjuges'),'<span class="'+(t.kind==='in'?'positive':'negative')+'">'+(t.kind==='in'?'+':'−')+' '+money(t.value)+'</span>',(t.category==='transfer-self'?'<span class="pill wait">Não soma Entrou/Saiu</span>':'<span class="pill ok">Soma Entrou/Saiu</span>'))).join('');
  return (realRows||localRows)?realRows+localRows:'<p>Sem transferências classificadas neste período.</p>';
 }
  function transfers(){
@@ -768,12 +768,14 @@ function runTests(){
  check('Entrada confirmada já incluída no saldo bancário',bank+15000===115000);check('Saldo do casal soma ajustes individuais, sem duplicar',ownerAdjusted('lucas')+ownerAdjusted('naara')===scopeForCouple());
  check('Transferência própria: impacto líquido zero',-12000+12000===0);
  check('Entre cônjuges: um diminui, outro aumenta',(-12000)+12000===0);
- check('Transferências não somam Entrou/Saiu',!['transfer-self','transfer-spouse'].some(k=>k==='salary'));
+ check('Transferência própria não entra em Entrou/Saiu',!finaCashCountable({category:'transfer-self'}));
+ check('Transferência entre Lucas e Naara entra em Entrou/Saiu',finaCashCountable({category:'transfer-spouse'}));
  check('Estorno pendente não altera fatura',82036===82036);
  check('Crédito confirmado na fatura reduz o devido',82036-7490===74546);
  check('Compra no cartão não reduz saldo bancário',bank===100000);
  check('Registros importados seguem somente leitura',S.bills.find(x=>x.id===4)?.type==='bank');
- check('Casal é soma de saldos ajustados',ownerAdjusted('lucas')+ownerAdjusted('naara')===(S.consent?scopeForCouple():ownerAdjusted('lucas')+ownerAdjusted('naara')));
+ check('Casal soma os saldos bancários dos dois',scopeForCouple()===ownerAdjusted('lucas')+ownerAdjusted('naara'));
+ check('Resultado casal soma projeções individuais',coupleBaseBalance()+sum(S.future.filter(f=>sameMonth(f)&&(f.owner===selfOwner()||(partnerReady()&&f.owner===partnerOwner()))),f=>f.value)-sum(S.bills.filter(b=>sameMonth(b)&&pending(b)&&(b.owner===selfOwner()||(partnerReady()&&b.owner===partnerOwner()))),billValue)===ownerProjected(selfOwner())+ownerProjected(partnerOwner()));
  check('Resultado separado considera contas abertas',ownerProjected('lucas')===ownerAdjusted('lucas')-ownerOpen('lucas')+sum(S.future.filter(f=>f.owner==='lucas'&&f.month===S.monthForBills),f=>f.value));
  check('Saldo bancário original não sofre efeito de reserva',ownerBalance('naara')===sum(S.accounts.filter(a=>a.owner==='naara'),a=>a.balance));
  check('Aniversário somente dois dias antes ou no dia',[0,1,2].every(d=>d>=0&&d<=2));
