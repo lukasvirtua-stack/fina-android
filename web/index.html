@@ -231,12 +231,10 @@ window.FinaApplyPersistentState=(p)=>{
     S.bills=bankOnly.concat(p.manualBills.map(x=>({...x,owner:(x.owner==='naara'?'naara':'lucas'),type:'manual'})));
   }
   if(Array.isArray(p.future))S.future=p.future.map(x=>({...x,owner:(x.owner==='naara'?'naara':'lucas')}));
-  render(false);
+  if(window.FinaRenderReady)window.FinaRender?.();
 };
-try{
-  const cached=JSON.parse(localStorage.getItem('fina_state_v1')||'null');
-  if(cached)window.FinaApplyPersistentState?.(cached);
-}catch{}
+// Cache de preferencias e compromissos so apos identificar o Google.
+const finaLocalUserStateKey=uid=>'fina_user_state_v2_'+String(uid);
 try{
   const shared=JSON.parse(localStorage.getItem('fina_shared_profiles_v1')||'null');
   if(shared?.profiles){
@@ -906,6 +904,7 @@ function render(goTop=false){
  if(goTop)screen.scrollTop=0;
  if(changedMain){const chat=document.getElementById('messages');if(chat)chat.scrollTop=chat.scrollHeight;}
  finaRecordHistoryView();
+ window.FinaRenderReady=true;
  if(changedMain||changedNav)setTimeout(()=>{window.FinaCouple?.paint?.();window.FinaBank?.paint?.();if(window.FinaInstallState==='ready'){const n=document.getElementById('finaInstallStatus');if(n)n.textContent='Pronto para instalar neste aparelho.'}else if(window.matchMedia?.('(display-mode: standalone)').matches){const n=document.getElementById('finaInstallStatus');if(n)n.textContent='FINA já está instalada neste aparelho.'}},0);
 }
 function finaNormText(v){return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim()}
@@ -1633,6 +1632,10 @@ async function loadCoupleStatus(user){
    window.FinaPartnerReady=Number(row.member_count)>=2;
    S.activeEditor=self;
    window.FinaHeaderGreeting='Olá, '+coupleState.titularName+(coupleState.partnerName?' e '+coupleState.partnerName:'');
+   // Restaura ultimo estado salvo antes de trazer atualizacoes do banco.
+   window.FinaOwnerResolvedForUserId=user.id;
+   window.FinaCashTotalsByOwner=null;
+   if(window.FinaBankCacheState!=='live')window.FinaRestoreCachedBankData?.();
    try{await finaLoadPersistentState(user);await finaLoadSharedBills();}catch{}
    try{await loadFinaSharedProfiles();finaStartSharedProfileRealtime();}catch{}
  }else{
@@ -1642,10 +1645,6 @@ async function loadCoupleStatus(user){
    window.FinaHeaderGreeting='Olá, '+selfName;
  }
  window.FinaOwnerResolvedForUserId=(row&&Number(row.member_count)>0)?user.id:null;
- if(window.FinaOwnerResolvedForUserId===user.id){
-   window.FinaCashTotalsByOwner=null;
-   window.FinaRestoreCachedBankData?.();
- }
  window.dispatchEvent(new Event('fina:header-changed'));window.FinaCouple?.paint?.();
  setTimeout(async()=>{await window.FinaLoadCoupleTransfers?.();await finaLoadRealBankData();},0);
 }
