@@ -185,12 +185,25 @@ test('Busca rápida mostra saldos autorizados e não acessa dados de outra sess�
  const S={accounts:[]};
  const window={FinaCurrentUser:{id:userId},FinaOwnerResolvedForUserId:userId,
   FinaSelfOwnerKey:'lucas',FinaRealBankLoaded:false,FinaRender:()=>{paints++}};
- const sb={from:table=>{assert.equal(table,'fina_bank_accounts');reads++;return {
-  select:()=>({eq:()=>({order:async()=>({data:[
-    {id:'1',user_id:userId,institution_name:'ITAU',balance:685.70,number_last4:'1234'},
-    {id:'2',user_id:'login-2',institution_name:'NUBANK',balance:7.14,number_last4:'5678'}
-  ],error:null})})})
- }};}};
+ const sb={
+  from:table=>{
+    assert.equal(table,'fina_bank_accounts');
+    reads++;
+    return {
+      select:()=>({
+        eq:()=>({
+          order:async()=>({
+            data:[
+              {id:'1',user_id:userId,institution_name:'ITAU',balance:685.70,number_last4:'1234'},
+              {id:'2',user_id:'login-2',institution_name:'NUBANK',balance:7.14,number_last4:'5678'}
+            ],
+            error:null
+          })
+        })
+      })
+    };
+  }
+ };
  const ctx={S,window,sb,console,finaBankSort:(a,b)=>a.owner.localeCompare(b.owner)};
  await vm.runInNewContext(source+'\nfinaLoadEarlyBankBalances("login-1")',ctx,{timeout:3000});
  assert.equal(reads,1);
