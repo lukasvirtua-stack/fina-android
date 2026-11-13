@@ -1,7 +1,7 @@
-const VERSION='fina-sw-v28-offline-snapshot-20261112';
+const VERSION='fina-sw-v29-balance-first-20261113';
 // Apenas arquivos públicos do aplicativo ficam no cache do Service Worker.
 // Nunca guardar extratos bancários, chaves de autenticação ou chamadas Supabase.
-const SHELL_CACHE='fina-shell-v28-offline-bank-20261112';
+const SHELL_CACHE='fina-shell-v29-balance-first-20261113';
 const APP_FILES=['/','/index.html','/manifest.webmanifest','/icon-192.png','/icon-512.png','/supabase.min.js'];
 self.addEventListener('install',event=>event.waitUntil((async()=>{
  const cache=await caches.open(SHELL_CACHE);

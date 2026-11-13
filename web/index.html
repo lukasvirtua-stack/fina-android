@@ -1,7 +1,7 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" translate="no">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta charset="utf-8"><meta name="google" content="notranslate"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>FINA — Finanças a Dois</title>
 <meta name="theme-color" content="#fbfaf7">
 <meta name="mobile-web-app-capable" content="yes">
@@ -510,13 +510,17 @@ function finaCashLedger(){
 
 function home(){
  const self=selfOwner(),partner=partnerOwner();
- const cashAvailable=window.FinaRealBankLoaded===true||window.FinaBankCacheState==='cached'||window.FinaBankCacheState==='live';
+ const balancesAvailable=!!window.FinaCurrentUser&&window.FinaOwnerResolvedForUserId===window.FinaCurrentUser.id&&
+  (S.accounts||[]).some(a=>a.real===true&&['lucas','naara'].includes(a.owner));
+ const cashAvailable=balancesAvailable&&(window.FinaRealBankLoaded===true||window.FinaBankCacheState==='cached'||window.FinaBankCacheState==='live');
  const personBlock=o=>`<div><button class="portrait ${S.scope===o?'active':''}" style="height:${S.photoSize}px;width:${S.photoSize}px" data-act="scope" data-scope="${o}">${S.profiles[o].photo?`<img class="photo-avatar" src="${S.profiles[o].photo}" alt="Foto de ${escape(name(o))}">`:escape((name(o)||'?').charAt(0).toUpperCase())}</button><div class="profilelabel">${escape(name(o))}</div></div>`;
  let people=`<div class="profiles">${personBlock(self)}<button class="heart ${S.scope==='casal'?'active':''}" data-act="scope" data-scope="casal">♥</button>${personBlock(partner)}</div>`;
- return `${people}${celebrationBanner()}<section class="primary-info" style="position:relative"><div class="title">${S.scope==='casal'?'Saldo real das contas do casal':'Saldo bancário de '+escape(name(S.scope))}</div><button style="position:absolute;top:12px;right:12px" class="btn soft mini" data-act="show">${S.showMoney?'◉':'◎'}</button><div class="big">${display(scopeBalance())}</div><div class="muted">${S.scope==='casal'?(partnerReady()?'Soma dos saldos bancários reais de ambos, atualizados pela sincronização':'Soma das suas contas; aguardando a conexão da outra pessoa'):'Saldo bancário original importado: já inclui entradas e saídas efetivadas'} · sem limite de crédito</div></section>
+ return `${people}${celebrationBanner()}<section class="primary-info" style="position:relative"><div class="title">${S.scope==='casal'?'Saldo real das contas do casal':'Saldo bancário de '+escape(name(S.scope))}</div><button style="position:absolute;top:12px;right:12px" class="btn soft mini" data-act="show">${S.showMoney?'◉':'◎'}</button><div class="big">${balancesAvailable?display(scopeBalance()):'—'}</div><div class="muted">${S.scope==='casal'?(partnerReady()?'Soma dos saldos bancários reais de ambos, atualizados pela sincronização':'Soma das suas contas; aguardando a conexão da outra pessoa'):'Saldo bancário original importado: já inclui entradas e saídas efetivadas'} · sem limite de crédito</div></section>
+${!balancesAvailable?'<p class="hint">Carregando saldos reais dos bancos… Até a confirmação, nenhum zero será tratado como saldo.</p>':''}
+${window.FinaCashDataError?'<p class="hint" role="alert">'+escape(window.FinaCashDataError)+'</p>':''}
 ${window.FinaBankCacheState==='cached'?'<p class="hint">Últimos saldos bancários confirmados e salvos neste aparelho. Atualizando com o banco em segundo plano…</p>':''}
-<div class="personrow">${[self,partner].map(o=>`<button data-act="scope" data-scope="${o}" class="${S.scope===o?'active':''}"><span class="bubbleavatar">${escape((name(o)||'?').charAt(0).toUpperCase())}</span><span><b>${escape(name(o))}</b><small class="person-projection-label">Saldo ajustado</small><small class="person-projection-value">${S.showMoney?money(ownerAdjusted(o)):'•••••'}</small></span></button>`).join('')}</div>
-<div class="fourstats">${[['↑','green','Entrou',cashAvailable?real('in'):null,'banks'],['↓','red','Saiu',cashAvailable?real('out'):null,'banks'],['▣','blue','Fatura + contas',open(),'bills'],['−','gold','Resultado',monthResult(),'forecast']].map(([icon,color,label,v,link])=>`<button data-act="${link.startsWith('cash-')?'cash-filter':'open'}" ${link.startsWith('cash-')?'data-value="'+link.slice(5)+'"':'data-target="'+link+'"'}><span class="round ${color}">${icon}</span><small>${label}</small><b>${v===null?'—':display(v)}</b></button>`).join('')}</div>
+<div class="personrow">${[self,partner].map(o=>`<button data-act="scope" data-scope="${o}" class="${S.scope===o?'active':''}"><span class="bubbleavatar">${escape((name(o)||'?').charAt(0).toUpperCase())}</span><span><b>${escape(name(o))}</b><small class="person-projection-label">Saldo ajustado</small><small class="person-projection-value">${!balancesAvailable?'—':S.showMoney?money(ownerAdjusted(o)):'•••••'}</small></span></button>`).join('')}</div>
+<div class="fourstats">${[['↑','green','Entrou',cashAvailable?real('in'):null,'banks'],['↓','red','Saiu',cashAvailable?real('out'):null,'banks'],['▣','blue','Fatura + contas',open(),'bills'],['−','gold','Resultado',cashAvailable?monthResult():null,'forecast']].map(([icon,color,label,v,link])=>`<button data-act="${link.startsWith('cash-')?'cash-filter':'open'}" ${link.startsWith('cash-')?'data-value="'+link.slice(5)+'"':'data-target="'+link+'"'}><span class="round ${color}">${icon}</span><small>${label}</small><b>${v===null?'—':display(v)}</b></button>`).join('')}</div>
 
 <button class="home-forecast-line" type="button" data-act="open" data-target="forecast" aria-label="Abrir variáveis a receber"><span class="home-forecast-icon">◷</span><span class="home-forecast-text"><strong>Variáveis a receber</strong><small>Recebimentos futuros</small></span><strong class="home-forecast-amount">${display(future())}</strong><span class="home-forecast-chevron" aria-hidden="true">›</span></button>
 ${card('Acessos rápidos',`<div class="quickgrid">${[['Faturas + Contas','▤','bills'],['Bancos e cartões','▥','banks'],['Conversa FINA','✧','chat']].map(([label,i,key])=>`<button data-act="open" data-target="${key}"><span>${i}</span>${label}</button>`).join('')}</div>`)}
@@ -1636,6 +1640,8 @@ async function loadCoupleStatus(user){
    window.FinaOwnerResolvedForUserId=user.id;
    window.FinaCashTotalsByOwner=null;
    if(window.FinaBankCacheState!=='live')window.FinaRestoreCachedBankData?.();
+   // O banco começa agora; faturas, fotos e perfis não bloqueiam saldos.
+   setTimeout(()=>{void finaLoadEarlyBankBalances(user.id);void finaLoadRealBankData();void window.FinaLoadCoupleTransfers?.();},0);
    try{await finaLoadPersistentState(user);await finaLoadSharedBills();}catch{}
    try{await loadFinaSharedProfiles();finaStartSharedProfileRealtime();}catch{}
  }else{
@@ -1644,9 +1650,11 @@ async function loadCoupleStatus(user){
    S.profiles.lucas.displayName=selfName||'Você';S.profiles.naara.displayName='Outra pessoa';S.activeEditor='lucas';
    window.FinaHeaderGreeting='Olá, '+selfName;
  }
- window.FinaOwnerResolvedForUserId=(row&&Number(row.member_count)>0)?user.id:null;
+ // O acesso individual também mostra os próprios bancos, sem grupo de casal.
+ window.FinaOwnerResolvedForUserId=user.id;
  window.dispatchEvent(new Event('fina:header-changed'));window.FinaCouple?.paint?.();
- setTimeout(async()=>{await window.FinaLoadCoupleTransfers?.();await finaLoadRealBankData();},0);
+ if(!row||Number(row.member_count)===0)
+  setTimeout(()=>{void finaLoadEarlyBankBalances(user.id);void finaLoadRealBankData();},0);
 }
 function paintCouple(){const summary=document.getElementById('finaCoupleSummary');if(!summary)return;const connected=document.getElementById('finaCoupleConnected'),setup=document.getElementById('finaCoupleSetup'),names=document.getElementById('finaCoupleNames'),generated=document.getElementById('finaCoupleGenerated'),codeNode=document.getElementById('finaCoupleCode');if(coupleState.connected){summary.textContent='Este acesso já faz parte do casal.';if(connected)connected.hidden=false;if(setup)setup.hidden=true;if(names)names.textContent=coupleState.titularName+' e '+coupleState.partnerName;}else{summary.textContent=coupleState.memberCount===1?'Uma conta conectada. Aguardando a outra pessoa.':'Conecte as duas contas Google.';if(connected)connected.hidden=true;if(setup)setup.hidden=false;if(generated)generated.hidden=!coupleState.code;if(codeNode&&coupleState.code)codeNode.textContent=coupleState.code;}}
 async function createCoupleInvite(){const status=document.getElementById('finaCoupleRealStatus');if(status)status.textContent='Gerando código…';const {data,error}=await sb.rpc('fina_create_couple_invite');if(error){if(status)status.textContent='Não foi possível gerar o código: '+error.message;return;}const row=Array.isArray(data)?data[0]:data;coupleState.code=String(row?.code||'');coupleState.expiresAt=row?.expires_at||null;coupleState.memberCount=Math.max(coupleState.memberCount,1);coupleState.isOwner=true;paintCouple();if(status)status.textContent='Código criado. Ele expira em 30 minutos.';await loadCoupleStatus(window.FinaCurrentUser);}
@@ -1937,6 +1945,7 @@ function finaRestoreCachedBankData(){
  if(saved.accounts.length>80||saved.cards.length>80||saved.transactions.length>500)return false;
  const realAccount=a=>a&&a.real===true&&['lucas','naara'].includes(a.owner)&&Number.isFinite(a.balance);
  const realTransaction=t=>t&&t.real===true&&['lucas','naara'].includes(t.owner)&&Number.isFinite(t.value);
+ if(!saved.accounts.some(realAccount))return false;
  S.accounts=saved.accounts.filter(realAccount).sort(finaBankSort);
  S.cards=saved.cards.filter(c=>c&&c.real===true&&['lucas','naara'].includes(c.owner)).sort(finaBankSort);
  S.transactions=saved.transactions.filter(realTransaction);
@@ -1957,6 +1966,36 @@ function finaRestoreCachedBankData(){
  return true;
 }
 window.FinaRestoreCachedBankData=finaRestoreCachedBankData;
+// O saldo das contas chega antes do histórico e não depende da conciliação.
+let finaEarlyBalancesUser=null;
+async function finaLoadEarlyBankBalances(userId){
+ if(!userId||window.FinaCurrentUser?.id!==userId||window.FinaOwnerResolvedForUserId!==userId)return;
+ if((S.accounts||[]).some(a=>a.real===true)||window.FinaRealBankLoaded===true)return;
+ if(finaEarlyBalancesUser===userId)return;
+ finaEarlyBalancesUser=userId;
+ const expectedOwner=window.FinaSelfOwnerKey;
+ try{
+  const {data,error}=await sb.from('fina_bank_accounts')
+   .select('id,user_id,institution_name,name,type,number_last4,balance')
+   .eq('type','BANK').order('institution_name');
+  if(window.FinaCurrentUser?.id!==userId||window.FinaOwnerResolvedForUserId!==userId||
+     window.FinaSelfOwnerKey!==expectedOwner||window.FinaRealBankLoaded===true)return;
+  if(error||!Array.isArray(data)||!data.length)return;
+  const partner=expectedOwner==='lucas'?'naara':'lucas';
+  const prettyBank=v=>{const x=String(v||'Banco').trim().toUpperCase();
+    return x==='ITAU'||x==='ITAÚ'?'Itaú':x==='NUBANK'?'Nubank':x==='SANTANDER'?'Santander':x==='BRADESCO'?'Bradesco':String(v||'Banco').trim();};
+  S.accounts=data.map(a=>({
+   id:'real-'+a.id,owner:String(a.user_id)===String(userId)?expectedOwner:partner,
+   name:prettyBank(a.institution_name||a.name||'Banco'),
+   balance:Math.round(Number(a.balance||0)*100),real:true,
+   last4:a.number_last4||'',accountType:'BANK'
+  })).sort(finaBankSort);
+  window.FinaBankBalancesReady=true;
+  window.FinaBankLastSnapshotAt=Date.now();
+  window.FinaRender?.();
+ }catch(e){console.warn('FINA: saldos rápidos indisponíveis:',e?.message||e);}
+ finally{if(finaEarlyBalancesUser===userId)finaEarlyBalancesUser=null;}
+}
 function finaSaveCachedBankData(user){
  if(!user||window.FinaOwnerResolvedForUserId!==user.id)return;
  const savedAt=Date.now();
@@ -2123,8 +2162,11 @@ async function finaLoadRealBankDataOnce(){
     }).sort((a,b)=>String(b.occurredAt||'').localeCompare(String(a.occurredAt||''))||String(a.id).localeCompare(String(b.id)));
     const hadWarmSnapshot=window.FinaBankCacheState==='cached'||window.FinaRealBankLoaded===true;
     window.FinaRealBankLoaded=true;
+    window.FinaBankBalancesReady=true;
     window.FinaBankCacheState='live';
     window.FinaBankLastSnapshotAt=Date.now();
+    // Gravar o extrato assim que confirmado; faturas e financiamentos podem demorar mais.
+    finaSaveCachedBankData(user);
     // Sem cache, mostrar valores reais assim que prontos. Com cache, evitar tela intermediaria.
     if(!hadWarmSnapshot)window.FinaRender?.();
     await loadFinaFinancings();

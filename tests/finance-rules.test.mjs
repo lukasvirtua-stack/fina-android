@@ -158,3 +158,59 @@ test('Últimos dados locais são isolados pelo Google e não apagam cache antes 
   assert.match(html,/if\(window\.FinaBankCacheState!=='live'\)window\.FinaRestoreCachedBankData/);
   assert.match(html,/finaRenderTimer=setTimeout/);
 });
+
+test('Ao abrir, não confundir saldo indisponível com zero ou previsão', () => {
+ const source=segment('function home(){','\nfunction banks(){');
+ assert.match(source,/const balancesAvailable=/);
+ assert.match(source,/balancesAvailable\?display\(scopeBalance\(\)\):'—'/);
+ assert.match(source,/!balancesAvailable\?'—':S\.showMoney/);
+ assert.match(source,/cashAvailable\?monthResult\(\):null/);
+ assert.match(source,/Carregando saldos reais dos bancos/);
+ assert.match(html,/meta name="google" content="notranslate"/);
+});
+
+test('Consulta de saldos não espera histórico, perfis, fotos ou faturas', () => {
+ const couple=segment('async function loadCoupleStatus(user){','\nfunction paintCouple(){');
+ const trigger=couple.indexOf('void finaLoadEarlyBankBalances(user.id);void finaLoadRealBankData();');
+ assert.ok(trigger>=0,'Consulta bancária não foi disparada após identificação do Google');
+ const loadSlow=couple.indexOf('await finaLoadPersistentState(user);await finaLoadSharedBills();');
+ assert.ok(loadSlow>trigger,'Consulta de banco está bloqueada por outras consultas');
+ assert.match(couple,/window\.FinaOwnerResolvedForUserId=user\.id/);
+});
+
+test('Busca rápida mostra saldos autorizados e não acessa dados de outra sessão', async () => {
+ const source=segment('let finaEarlyBalancesUser=null;','\nfunction finaSaveCachedBankData(user){');
+ let reads=0,paints=0;
+ const userId='login-1';
+ const S={accounts:[]};
+ const window={FinaCurrentUser:{id:userId},FinaOwnerResolvedForUserId:userId,
+  FinaSelfOwnerKey:'lucas',FinaRealBankLoaded:false,FinaRender:()=>{paints++}};
+ const sb={
+  from:table=>{
+    assert.equal(table,'fina_bank_accounts');
+    reads++;
+    return {
+      select:()=>({
+        eq:()=>({
+          order:async()=>({
+            data:[
+              {id:'1',user_id:userId,institution_name:'ITAU',balance:685.70,number_last4:'1234'},
+              {id:'2',user_id:'login-2',institution_name:'NUBANK',balance:7.14,number_last4:'5678'}
+            ],
+            error:null
+          })
+        })
+      })
+    };
+  }
+ };
+ const ctx={S,window,sb,console,finaBankSort:(a,b)=>a.owner.localeCompare(b.owner)};
+ await vm.runInNewContext(source+'\nfinaLoadEarlyBankBalances("login-1")',ctx,{timeout:3000});
+ assert.equal(reads,1);
+ assert.equal(paints,1);
+ assert.equal(S.accounts.length,2);
+ assert.equal(S.accounts.find(x=>x.owner==='lucas')?.balance,68570);
+ assert.equal(S.accounts.find(x=>x.owner==='naara')?.balance,714);
+ await vm.runInNewContext('finaLoadEarlyBankBalances("other-google")',ctx,{timeout:3000});
+ assert.equal(reads,1,'Outra conta não pode consultar os saldos da sessão anterior');
+});
