@@ -43,3 +43,55 @@ try{
   }
 }finally{rmSync(folder,{recursive:true,force:true});}
 console.log('FINA WEB QA PASS · scripts='+scripts.length+' · rules='+required.length);
+
+
+// Regressão executando AS FUNÇÕES FINANCEIRAS DO APLICATIVO (não uma cópia das regras).
+// Verifica ambos os logins, Pix internos, Pix do casal e o fechamento do mês.
+import vm from 'node:vm';
+const ownerStart=app.indexOf('const selfOwner=');
+const ownerEnd=app.indexOf('const accessible=',ownerStart);
+const flowsStart=app.indexOf('const finaCashIsInternal=');
+const flowsEnd=app.indexOf('const monthResult=',flowsStart);
+assert(ownerStart>=0&&ownerEnd>ownerStart&&flowsStart>=0&&flowsEnd>flowsStart,
+  'Owner or cashflow implementation has changed; update financial QA before releasing');
+const liveRules=app.slice(ownerStart,ownerEnd)+app.slice(flowsStart,flowsEnd);
+const movement=(id,owner,kind,value,category='bank',status='POSTED')=>({
+  id:'real-'+id,owner,kind,value,category,status,month:10,year:2026,date:'09/11',real:true
+});
+const movements=[
+ movement('lucas-wages','lucas','in',240604),
+ movement('lucas-self-received','lucas','in',174879,'transfer-self'),
+ movement('lucas-self-sent','lucas','out',174879,'transfer-self'),
+ movement('lucas-to-naara','lucas','out',233000,'transfer-spouse'),
+ movement('lucas-normal-bill','lucas','out',258361),
+ movement('naara-from-lucas','naara','in',233000,'transfer-spouse'),
+ movement('naara-external-income','naara','in',6000),
+ movement('naara-normal-bill','naara','out',493795),
+ movement('should-not-count','naara','in',900000,'bank','PENDING'),
+ {...movement('card-purchase','naara','out',34500),real:false}
+];
+function checkCashRules(loggedIn){
+ const S={scope:'casal',transactions:movements};
+ const window={FinaSelfOwnerKey:loggedIn,FinaPartnerReady:true,
+   FinaCurrentUser:{id:loggedIn+'-google'},FinaCashTotalsByOwner:null};
+ const context={S,window,sum:(list,fn)=>list.reduce((sum,x)=>sum+fn(x),0),
+   finaCurrentBankMonth:()=>({year:2026,month:10,day:13}),
+   partnerReady:()=>true,finaCoupleTransferTxIds:new Set(['lucas-to-naara','naara-from-lucas'])};
+ vm.createContext(context);
+ vm.runInContext(liveRules+
+   '\nthis.check=(scope,kind)=>{S.scope=scope;return real(kind)};',context,
+   {timeout:1000});
+ const results=[
+   ['lucas','in',240604],['lucas','out',491361],
+   ['naara','in',239000],['naara','out',493795],
+   ['casal','in',246604],['casal','out',752156]
+ ];
+ for(const [scope,direction,expectedCents] of results){
+  assert.equal(context.check(scope,direction),expectedCents,
+    loggedIn+' · '+scope+' · '+direction+' must follow bank-only rules');
+ }
+}
+checkCashRules('lucas');
+checkCashRules('naara');
+console.log('FINA FINANCIAL RULES PASS · logins=2 · assertions=12 · no duplicated Pix');
+
