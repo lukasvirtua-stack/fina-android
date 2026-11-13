@@ -536,12 +536,11 @@ ${card('↶ Estornos — sempre no topo',S.refunds.filter(r=>r.card===c.id&&same
 ${card('Compras importadas (resumo)',row('Compras do ciclo',`Cartão •••• ${c.digits} · antes dos estornos`,money(b?.value||0)))}
 ${card('Adicionar estorno ao app',`<form data-form="refund" class="formgrid"><label class="wide">Descrição<input name="name" placeholder="Compra cancelada" required maxlength="80"></label><label>Valor em R$<input name="value" type="text" inputmode="decimal" autocomplete="off" placeholder="1500 ou 1.500,00" required></label><label>Cartão<select name="card">${cards.map(k=>`<option value="${k.id}" ${k.id===c.id?'selected':''}>${escape(k.name)}</option>`).join('')}</select></label><button class="btn wide" type="submit">Registrar estorno pendente</button></form>`)}
 <div class="hint">Estorno pendente não muda os totais. Crédito confirmado pela emissora reduz a fatura; devolução bancária efetiva aparece em Entrou como devolução, sem reduzir a mesma fatura.</div>`}
-function billActions(b){if(['shared','bank','financing','forecast-card'].includes(b.type))return '';let a='';if(b.state==='open')a+=btn('Reservar','reserve',`data-id="${b.id}"`);if(b.state==='reserved')a+=btn('Desfazer reserva','unreserve',`data-id="${b.id}"`);if(['open','reserved'].includes(b.state))a+=btn('Informar pagamento','report',`data-id="${b.id}"`);if(b.state==='reported')a+=btn('Desfazer informação','unreport',`data-id="${b.id}"`);if(pending(b)&&b.type==='manual')a+=btn('Editar','edit',`data-id="${b.id}"`)+btn('Excluir','delete',`data-id="${b.id}"`);return a}
-function billList(b){return `<div class="line"><div class="row start"><div style="flex:1;min-width:0"><span class="line-title">${escape(b.name)}</span><span class="line-detail">${escape(b.detail)} · Dia ${b.day}</span><span class="pill ${b.state==='posted'?'ok':b.state==='reserved'?'wait':b.state==='reported'?'reported':''}">${status[b.state]}</span> <span class="line-detail">${b.estimated?'Estimativa • aguardando banco':b.type==='bank'?'Fatura oficial · somente leitura':b.type==='financing'?'Financiamento bancário · somente leitura':b.type==='shared'?'Conta compartilhada · somente leitura':'Manual recorrente'}</span></div><strong>${money(billValue(b))}</strong></div><div class="action-menu">${billActions(b)}</div>${S.edit===b.id?`<form data-form="edit" data-id="${b.id}" class="formgrid" style="margin-top:12px"><label class="wide">Descrição<input name="name" value="${escape(b.name)}" required></label><label>Valor (R$)<input name="value" value="${(b.value/100).toFixed(2)}" type="text" inputmode="decimal" autocomplete="off" placeholder="1500 ou 1.500,00" required></label><label>Dia<input name="day" type="number" value="${b.day}" min="1" max="31" required></label><button class="btn" type="submit">Salvar edição</button>${btn('Cancelar','cancel')}</form>`:''}</div>`}
+function billActions(b){if(['bank','financing','forecast-card'].includes(b.type))return '';let a='';if(b.state==='open')a+=btn('Reservar','reserve',`data-id="${b.id}"`);if(b.state==='reserved')a+=btn('Desfazer reserva','unreserve',`data-id="${b.id}"`);if(['open','reserved'].includes(b.state))a+=btn('Informar pagamento','report',`data-id="${b.id}"`);if(b.state==='reported')a+=btn('Desfazer informação','unreport',`data-id="${b.id}"`);if(pending(b)&&['manual','shared'].includes(b.type))a+=btn('Editar','edit',`data-id="${b.id}"`)+btn('Excluir','delete',`data-id="${b.id}"`);return a}
+function billList(b){return `<div class="line"><div class="row start"><div style="flex:1;min-width:0"><span class="line-title">${escape(b.name)}</span><span class="line-detail">${escape(b.detail)} · Dia ${b.day}</span><span class="pill ${b.state==='posted'?'ok':b.state==='reserved'?'wait':b.state==='reported'?'reported':''}">${status[b.state]}</span> <span class="line-detail">${b.estimated?'Estimativa • aguardando banco':b.type==='bank'?'Fatura oficial · somente leitura':b.type==='financing'?'Financiamento bancário · somente leitura':b.type==='shared'?'Conta do casal · cadastrada manualmente':'Manual recorrente'}</span></div><strong>${money(billValue(b))}</strong></div><div class="action-menu">${billActions(b)}</div>${S.edit===b.id?`<form data-form="edit" data-id="${b.id}" class="formgrid" style="margin-top:12px"><label class="wide">Descrição<input name="name" value="${escape(b.name)}" required></label><label>Valor (R$)<input name="value" value="${(b.value/100).toFixed(2)}" type="text" inputmode="decimal" autocomplete="off" placeholder="1500 ou 1.500,00" required></label><label>Dia<input name="day" type="number" value="${b.day}" min="1" max="31" required></label><button class="btn" type="submit">Salvar edição</button>${btn('Cancelar','cancel')}</form>`:''}</div>`}
 function bills(){if(!accessible())return heading('Faturas + Contas','Sem autorização.');return `${heading('Faturas + Contas','Reserve ou informe pagamentos; a baixa bancária acontece automaticamente após o extrato confirmar.')} ${switcher()}${monthPicker()}<div class="statgrid"><div class="stat"><small>Em aberto</small><strong>${display(open())}</strong></div><div class="stat"><small>Reservado</small><strong>${display(reserved())}</strong></div><div class="stat"><small>Informado</small><strong>${display(reported())}</strong></div><div class="stat"><small>Pendente total</small><strong>${display(owed())}</strong></div></div>
-<p class="hint">Boletos e DDA pendentes: a Pluggy não informa boletos ainda não pagos. Cadastre a cobrança em <b>+ Adicionar</b> e mantenha-a pendente até o pagamento ser confirmado pelo extrato bancário.</p>
 ${card('↶ Estornos das faturas',ownRefunds().map(refundRow).join('')||'<p>Sem estornos.</p>')}
-${card('Contratos de financiamento reconhecidos',loanBoard())}<section class="card"><div class="row"><div class="cardtitle">Faturas de cartão</div>${btn('+ Informar fatura','add-invoice')}</div>${S.invoiceAdd?invoiceForm():''}${S.formNotice?`<p class="hint" role="status">${escape(S.formNotice)}</p>`:''}${ownBills().filter(b=>b.card).map(billList).join('')||'<p>Nenhuma fatura.</p>'}</section>
+<section class="card"><div class="row"><div class="cardtitle">Faturas de cartão</div>${btn('+ Informar fatura','add-invoice')}</div>${S.invoiceAdd?invoiceForm():''}${S.formNotice?`<p class="hint" role="status">${escape(S.formNotice)}</p>`:''}${ownBills().filter(b=>b.card).map(billList).join('')||'<p>Nenhuma fatura.</p>'}</section>
 <section class="card"><div class="row"><div class="cardtitle">Contas e financiamentos</div>${btn('+ Adicionar','add-bill')}</div>${ownBills().filter(b=>!b.card).map(billList).join('')||'<p>Nenhuma conta.</p>'}${S.add?newBillForm():''}</section>
 ${card('Fechamento e próximo mês',`<div class="row"><div><strong>Confirmado pelo banco</strong><span class="line-detail">${money(sum(ownBills().filter(b=>b.state==='posted'),b=>billValue(b)))}</span></div><div><strong>Pendente e previsto</strong><span class="line-detail">${money(owed())}</span></div></div><p class="muted">${monthOffset()<0?'Mês encerrado ou histórico de pagamentos demonstrativos.':monthOffset()===0?'Mês vigente: valores reais entram pelo banco, reservas mantêm cor até a confirmação.':'Previsões podem repetir o último valor, mas a fatura bancária oficial tem prioridade.'}</p>`)}
  `}
@@ -938,7 +937,15 @@ photoModal.addEventListener('click',e=>{
  }
 });
 
-el.addEventListener('click',event=>{const target=event.target.closest('button[data-act]');if(!target)return;const a=target.dataset.act,id=Number(target.dataset.id),b=S.bills.find(x=>x.id===id),r=S.refunds.find(x=>x.id===id);if(a==='cash-filter'){S.cashflowFilter=target.dataset.value||'all';render(false);document.getElementById('finaCashLedger')?.scrollIntoView({block:'nearest'});return}
+el.addEventListener('click',event=>{const target=event.target.closest('button[data-act]');if(!target)return;const a=target.dataset.act,id=Number(target.dataset.id),b=S.bills.find(x=>x.id===id),r=S.refunds.find(x=>x.id===id);
+ const sharedBill=target.dataset.id?S.bills.find(x=>x.type==='shared'&&String(x.id)===String(target.dataset.id)):null;
+ if(sharedBill&&['reserve','unreserve','report','unreport','edit','delete'].includes(a)){
+  if(a==='edit'){S.edit=sharedBill.id;render(false);return;}
+  if(a==='delete'&&!window.confirm('Excluir esta conta manual do casal?'))return;
+  void window.FinaChangeSharedManualBill?.(sharedBill,a);
+  return;
+ }
+if(a==='cash-filter'){S.cashflowFilter=target.dataset.value||'all';render(false);document.getElementById('finaCashLedger')?.scrollIntoView({block:'nearest'});return}
 if(a==='cash-refresh'){
  window.FinaCashRefreshStatus='Consultando os bancos...';render(false);
  Promise.resolve(window.FinaBank?.sync?.()).then(()=>{window.FinaCashRefreshStatus='Consulta realizada. Confira a data do último lançamento abaixo.';render(false)}).catch(()=>{window.FinaCashRefreshStatus='Não foi possível consultar. Tente novamente em Bancos.';render(false)});
@@ -991,7 +998,16 @@ if(['newbill','edit','forecast','refund','deposit','transfer','invoice'].include
   render();return;
  }
  if(type==='cardcycle'){const card=S.cards.find(c=>c.id===String(data.get('card')));const closing=Number(data.get('closing')),due=Number(data.get('due'));if(card&&Number.isInteger(closing)&&Number.isInteger(due)&&closing>=1&&closing<=28&&due>=1&&due<=28){card.closing=closing;card.due=due;card.source='manual_fallback';S.syncMessage='Ciclo do cartão salvo no app; os dados oficiais do banco prevalecem.';}}
- if(type==='edit'){const b=S.bills.find(x=>x.id===Number(form.dataset.id));if(b&&b.type==='manual'&&pending(b)&&value>0){b.name=String(data.get('name')).trim().slice(0,100);b.value=value;b.day=day;S.edit=null}}if(type==='newbill'&&value>0&&planningOwner){const nb={id:Date.now(),owner,name:String(data.get('name')).trim().slice(0,100),value,day,type:'manual',state:'open',detail:'Cadastro no app',recurring:data.get('recurring')==='on',month:S.monthForBills,year:S.billYear};S.bills.push(nb);if(owner===selfOwner())finaReconcileBill(nb);S.add=false;S.homeAdd=false}if(type==='forecast'&&value>0&&safeOwner)S.future.push({id:Date.now(),owner,name:String(data.get('name')).trim().slice(0,100),value,day,month:S.monthForBills,year:S.billYear});if(type==='refund'&&value>0){const c=S.cards.find(x=>x.id===data.get('card'));if(c&&(c.owner===selfOwner()||S.consent))S.refunds.push({id:Date.now(),owner:c.owner,card:c.id,name:String(data.get('name')).trim().slice(0,100),value,state:'pending',month:S.monthForBills,year:S.billYear})}if(type==='deposit'&&value>0&&safeOwner){
+ if(type==='edit'){
+ const shared=S.bills.find(x=>x.type==='shared'&&String(x.id)===String(form.dataset.id));
+ if(shared){
+  void window.FinaChangeSharedManualBill?.(shared,'edit',{
+   name:String(data.get('name')||'').trim(),value,day
+  });
+  return;
+ }
+}
+if(type==='edit'){const b=S.bills.find(x=>x.id===Number(form.dataset.id));if(b&&b.type==='manual'&&pending(b)&&value>0){b.name=String(data.get('name')).trim().slice(0,100);b.value=value;b.day=day;S.edit=null}}if(type==='newbill'&&value>0&&planningOwner){const nb={id:Date.now(),owner,name:String(data.get('name')).trim().slice(0,100),value,day,type:'manual',state:'open',detail:'Cadastro no app',recurring:data.get('recurring')==='on',month:S.monthForBills,year:S.billYear};S.bills.push(nb);if(owner===selfOwner())finaReconcileBill(nb);S.add=false;S.homeAdd=false}if(type==='forecast'&&value>0&&safeOwner)S.future.push({id:Date.now(),owner,name:String(data.get('name')).trim().slice(0,100),value,day,month:S.monthForBills,year:S.billYear});if(type==='refund'&&value>0){const c=S.cards.find(x=>x.id===data.get('card'));if(c&&(c.owner===selfOwner()||S.consent))S.refunds.push({id:Date.now(),owner:c.owner,card:c.id,name:String(data.get('name')).trim().slice(0,100),value,state:'pending',month:S.monthForBills,year:S.billYear})}if(type==='deposit'&&value>0&&safeOwner){
    const account=S.accounts.find(a=>a.owner===owner);
    if(account){account.balance+=value;S.transactions.unshift({id:'credit'+Date.now(),owner,bank:account.name,name:'Crédito confirmado pelo banco (teste)',value,kind:'in',date:'10/11',category:'salary',month:S.monthForBills});}
  }
@@ -1190,7 +1206,7 @@ async function finaLoadSharedBills(){
  const seen=new Set(current.filter(b=>b.type==='manual').map(fp));
  for(const item of data){
   if(!item||!['open','reserved','reported'].includes(item.state))continue;
-  const bill={...item,type:'shared',value:Math.round(Number(item.value)||0)};
+  const bill={...item,type:'shared',detail:'Conta do casal · cadastrada manualmente',value:Math.round(Number(item.value)||0)};
   if(bill.value<=0||seen.has(fp(bill)))continue;
   seen.add(fp(bill));current.push(bill);
  }
@@ -1210,6 +1226,31 @@ async function finaLoadSharedBills(){
  window.FinaRender?.();
 }
 window.FinaLoadSharedBills=finaLoadSharedBills;
+window.FinaChangeSharedManualBill=async(bill,operation,editFields={})=>{
+ const user=window.FinaCurrentUser;
+ if(!user||bill?.type!=='shared'||!bill.sourceUserId)return;
+ const match=String(bill.id||'').match(/^shared-[0-9a-f-]{36}-([0-9]+)$/i);
+ if(!match){S.formNotice='Identificador da conta compartilhada inválido.';window.FinaRender?.();return;}
+ const args={
+  p_owner_id:String(bill.sourceUserId),p_bill_id:match[1],p_operation:operation,
+  p_edit_name:operation==='edit'?editFields.name:null,
+  p_edit_value:operation==='edit'?editFields.value:null,
+  p_edit_day:operation==='edit'?editFields.day:null
+ };
+ S.formNotice='Salvando conta manual compartilhada...';window.FinaRender?.();
+ try{
+  const {data,error}=await sb.rpc('fina_change_shared_manual_bill',args);
+  if(window.FinaCurrentUser?.id!==user.id)return;
+  if(error||!data?.ok)throw new Error(error?.message||'Atualização rejeitada');
+  S.edit=null;S.formNotice='';
+  await finaLoadSharedBills();
+  window.FinaRender?.();
+ }catch(e){
+  S.formNotice='Não foi possível atualizar a conta. Confira a conexão e tente novamente.';
+  window.FinaRender?.();
+ }
+};
+
 async function finaSavePersistentState(){
   const user=window.FinaCurrentUser; if(!user)return;
   const state=window.FinaExportPersistentState?.(); if(!state)return;
