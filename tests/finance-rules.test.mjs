@@ -67,6 +67,25 @@ test('Snapshot do Casal exclui Pix entre integrantes; individuais preservam suas
   }
 });
 
+test('Cache antigo não impede a exclusão do Pix ao reconhecer vínculo depois', () => {
+  const code = segment('const finaCashIsInternal=', '\nconst finaCurrentCashTransactions=')
+    + '\n' + segment('const finaCashCountable=', '\nconst monthResult=');
+  const S = {scope:'casal'};
+  const bankMovements = [
+    {id:'real-pix',category:'bank',kind:'out',value:233000},
+    {id:'real-conta',category:'bank',kind:'out',value:752156}
+  ];
+  const snapshot = {userId:'u',ownerKey:'lucas',year:2026,month:10,
+    transferKey:'',coupleTransferPolicy:'individual-only',coupleTotals:{out:985156}};
+  const ctx = { S, window:{FinaCurrentUser:{id:'u'},FinaCashTotalsByOwner:snapshot,FinaBankCacheState:'cached'},
+    finaCoupleTransferTxIds:new Set(['pix']),
+    finaCurrentBankMonth:()=>({year:2026,month:10,day:13}),
+    finaCurrentCashTransactions:()=>bankMovements,
+    sum:(list,fn)=>list.reduce((total,x)=>total+fn(x),0),
+    selfOwner:()=> 'lucas',partnerOwner:()=> 'naara',partnerReady:()=>true,ownerShown:()=>true };
+  assert.equal(run(code,'real("out")',ctx),752156);
+});
+
 test('Cálculo bancário de Casal não acumula Pix entre integrantes', () => {
   assert.match(html, /if\(!betweenPartners\)cashCoupleTotals\[kind\]\+=amount;/);
   assert.match(html, /coupleTransferPolicy:'individual-only'/);
