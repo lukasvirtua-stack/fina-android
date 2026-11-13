@@ -542,12 +542,48 @@ ${card('↶ Estornos — sempre no topo',S.refunds.filter(r=>r.card===c.id&&same
 ${card('Compras importadas (resumo)',row('Compras do ciclo',`Cartão •••• ${c.digits} · antes dos estornos`,money(b?.value||0)))}
 ${card('Adicionar estorno ao app',`<form data-form="refund" class="formgrid"><label class="wide">Descrição<input name="name" placeholder="Compra cancelada" required maxlength="80"></label><label>Valor em R$<input name="value" type="text" inputmode="decimal" autocomplete="off" placeholder="1500 ou 1.500,00" required></label><label>Cartão<select name="card">${cards.map(k=>`<option value="${k.id}" ${k.id===c.id?'selected':''}>${escape(k.name)}</option>`).join('')}</select></label><button class="btn wide" type="submit">Registrar estorno pendente</button></form>`)}
 <div class="hint">Estorno pendente não muda os totais. Crédito confirmado pela emissora reduz a fatura; devolução bancária efetiva aparece em Entrou como devolução, sem reduzir a mesma fatura.</div>`}
-function billActions(b){if(['bank','financing','forecast-card'].includes(b.type))return '';let a='';if(b.state==='open')a+=btn('Reservar','reserve',`data-id="${b.id}"`);if(b.state==='reserved')a+=btn('Desfazer reserva','unreserve',`data-id="${b.id}"`);if(['open','reserved'].includes(b.state))a+=btn('Informar pagamento','report',`data-id="${b.id}"`);if(b.state==='reported')a+=btn('Desfazer informação','unreport',`data-id="${b.id}"`);if(pending(b)&&['manual','shared'].includes(b.type))a+=btn('Editar','edit',`data-id="${b.id}"`)+btn('Excluir','delete',`data-id="${b.id}"`);return a}
-function billList(b){return `<div class="line"><div class="row start"><div style="flex:1;min-width:0"><span class="line-title">${escape(b.name)}</span><span class="line-detail">${escape(b.detail)} · Dia ${b.day}</span><span class="pill ${b.state==='posted'?'ok':b.state==='reserved'?'wait':b.state==='reported'?'reported':''}">${status[b.state]}</span> <span class="line-detail">${b.estimated?'Estimativa • aguardando banco':b.type==='bank'?'Fatura oficial · somente leitura':b.type==='financing'?'Financiamento bancário · somente leitura':b.type==='shared'?'Conta do casal · cadastrada manualmente':'Manual recorrente'}</span></div><strong>${money(billValue(b))}</strong></div><div class="action-menu">${billActions(b)}</div>${S.edit===b.id?`<form data-form="edit" data-id="${b.id}" class="formgrid" style="margin-top:12px"><label class="wide">Descrição<input name="name" value="${escape(b.name)}" required></label><label>Valor (R$)<input name="value" value="${(b.value/100).toFixed(2)}" type="text" inputmode="decimal" autocomplete="off" placeholder="1500 ou 1.500,00" required></label><label>Dia<input name="day" type="number" value="${b.day}" min="1" max="31" required></label><button class="btn" type="submit">Salvar edição</button>${btn('Cancelar','cancel')}</form>`:''}</div>`}
+function billActions(b){if(['bank','financing','forecast-card'].includes(b.type))return '';let a='';if(b.state==='open')a+=btn('Reservar','reserve',`data-id="${b.id}"`);if(b.state==='reserved')a+=btn('Desfazer reserva','unreserve',`data-id="${b.id}"`);if(['open','reserved'].includes(b.state))a+=btn('Informar pagamento','report',`data-id="${b.id}"`);if(b.state==='reported')a+=btn('Desfazer informação','unreport',`data-id="${b.id}"`);if(pending(b)&&['manual','shared'].includes(b.type))a+=btn('Editar','edit',`data-id="${b.id}"`)+btn('Excluir','delete',`data-id="${b.id}"`);if(['manual','shared'].includes(b.type)&&
+ (pending(b)||(b.state==='posted'&&b.reconciliationConfidence==='inferred')))
+ a+=btn(b.state==='posted'?'Revisar associação':'Ensinar FINA','teach-bill',`data-id="${b.id}"`);
+ return a}
+
+function finaTeachingPanel(b){
+ const t=S.finaTeaching;
+ if(!t||String(t.billId)!==String(b.id))return '';
+ const intro='<p class="hint">Escolha o débito confirmado. A FINA só associa movimentos existentes, sem retirar dinheiro da conta.</p>';
+ const list=t.loading?'<p class="muted">Consultando débitos bancários...</p>':
+  t.error?'<p class="hint">'+escape(t.error)+'</p>':
+  !t.candidates?.length?'<p class="muted">Nenhum débito de mesmo valor e data compatível. Mantenha a conta pendente até a confirmação.</p>':
+  t.candidates.map(c=>'<div class="line" style="padding:10px 0">'+
+   '<strong>'+escape(c.description||'Débito bancário')+'</strong>'+
+   '<span class="line-detail">'+escape(c.bank||'Banco')+' · '+escape(c.date||'')+' · '+money(c.amountCents)+'</span>'+
+   (c.matchName?'<small class="muted">Beneficiário compatível</small>':'<small class="muted">Nome diferente: confira antes de confirmar</small>')+
+   '<label class="line-detail" style="display:block;margin-top:7px"><input type="checkbox" data-payment-remember="'+escape(c.transactionId)+'"> Aprender este pagamento para próximos meses com mesmo banco, valor e vencimento</label>'+
+   btn('Confirmar débito','confirm-bill-bank','data-bill-id="'+escape(String(b.id))+'" data-transaction-id="'+escape(c.transactionId)+'"')+
+   '</div>').join('');
+ return '<div class="hint" style="margin-top:10px"><strong>FINA · Reconhecer pagamento</strong>'+
+ intro+list+btn('Fechar','close-teach-bill')+'</div>';
+}
+function finaLearnedRulesPanel(){
+ if(!S.finaLearningRulesView)return '<div class="action-menu">'+btn('Regras aprendidas','view-payment-rules')+'</div>';
+ const items=S.finaLearningRules;
+ const rows=items===null?'<p class="muted">Buscando regras...</p>':
+  !items?.length?'<p class="muted">Nenhuma regra ensinada. Use Ensinar FINA em um compromisso.</p>':
+  items.map(r=>'<div class="line"><strong>'+escape(r.billName)+'</strong>'+
+   '<span class="line-detail">'+escape(r.bankName||'Banco')+' · '+money(r.amountCents)+
+   ' · vencimento dia '+escape(String(r.dueDay))+'</span>'+
+   '<span class="line-detail">'+escape(r.description||'Pagamento')+'</span>'+
+   btn(r.enabled?'Desativar':'Ativar','toggle-payment-rule',
+    'data-rule-id="'+escape(r.id)+'" data-enabled="'+(!r.enabled)+'"')+'</div>').join('');
+ return '<div class="hint"><strong>Regras aprendidas</strong><p>Somente mesmo banco, valor, descrição e vencimento. Vocês podem desativar qualquer regra.</p>'+
+ rows+btn('Fechar','close-payment-rules')+'</div>';
+}
+
+function billList(b){return `<div class="line"><div class="row start"><div style="flex:1;min-width:0"><span class="line-title">${escape(b.name)}</span><span class="line-detail">${escape(b.detail)} · Dia ${b.day}</span><span class="pill ${b.state==='posted'?'ok':b.state==='reserved'?'wait':b.state==='reported'?'reported':''}">${status[b.state]}</span> <span class="line-detail">${b.estimated?'Estimativa • aguardando banco':b.type==='bank'?'Fatura oficial · somente leitura':b.type==='financing'?'Financiamento bancário · somente leitura':b.type==='shared'?'Conta do casal · cadastrada manualmente':'Manual recorrente'}</span></div><strong>${money(billValue(b))}</strong></div><div class="action-menu">${billActions(b)}</div>${S.edit===b.id?`<form data-form="edit" data-id="${b.id}" class="formgrid" style="margin-top:12px"><label class="wide">Descrição<input name="name" value="${escape(b.name)}" required></label><label>Valor (R$)<input name="value" value="${(b.value/100).toFixed(2)}" type="text" inputmode="decimal" autocomplete="off" placeholder="1500 ou 1.500,00" required></label><label>Dia<input name="day" type="number" value="${b.day}" min="1" max="31" required></label><button class="btn" type="submit">Salvar edição</button>${btn('Cancelar','cancel')}</form>`:''}${S.finaTeaching?.billId===String(b.id)?finaTeachingPanel(b):''}</div>`}
 function bills(){if(!accessible())return heading('Faturas + Contas','Sem autorização.');return `${heading('Faturas + Contas','Reserve ou informe pagamentos; a baixa bancária acontece automaticamente após o extrato confirmar.')} ${switcher()}${monthPicker()}<div class="statgrid"><div class="stat"><small>Em aberto</small><strong>${display(open())}</strong></div><div class="stat"><small>Reservado</small><strong>${display(reserved())}</strong></div><div class="stat"><small>Informado</small><strong>${display(reported())}</strong></div><div class="stat"><small>Pendente total</small><strong>${display(owed())}</strong></div></div>
 ${card('↶ Estornos das faturas',ownRefunds().map(refundRow).join('')||'<p>Sem estornos.</p>')}
 <section class="card"><div class="row"><div class="cardtitle">Faturas de cartão</div>${btn('+ Informar fatura','add-invoice')}</div>${S.invoiceAdd?invoiceForm():''}${S.formNotice?`<p class="hint" role="status">${escape(S.formNotice)}</p>`:''}${ownBills().filter(b=>b.card).map(billList).join('')||'<p>Nenhuma fatura.</p>'}</section>
-<section class="card"><div class="row"><div class="cardtitle">Contas e financiamentos</div>${btn('+ Adicionar','add-bill')}</div>${ownBills().filter(b=>!b.card).map(billList).join('')||'<p>Nenhuma conta.</p>'}${S.add?newBillForm():''}</section>
+<section class="card"><div class="row"><div class="cardtitle">Contas e financiamentos</div>${btn('+ Adicionar','add-bill')}</div>${ownBills().filter(b=>!b.card).map(billList).join('')||'<p>Nenhuma conta.</p>'}${S.add?newBillForm():''}${finaLearnedRulesPanel()}</section>
 ${card('Fechamento e próximo mês',`<div class="row"><div><strong>Confirmado pelo banco</strong><span class="line-detail">${money(sum(ownBills().filter(b=>b.state==='posted'),b=>billValue(b)))}</span></div><div><strong>Pendente e previsto</strong><span class="line-detail">${money(owed())}</span></div></div><p class="muted">${monthOffset()<0?'Mês encerrado ou histórico de pagamentos demonstrativos.':monthOffset()===0?'Mês vigente: valores reais entram pelo banco, reservas mantêm cor até a confirmação.':'Previsões podem repetir o último valor, mas a fatura bancária oficial tem prioridade.'}</p>`)}
  `}
 function forecast(){return `${heading('Variáveis a receber','Planeje recebimentos futuros sem alterá-los no extrato.')}${switcher()}${card('Entradas previstas',S.future.filter(x=>ownerShown(x.owner)&&x.month===S.monthForBills).map(x=>row(x.name,`${name(x.owner)} · Dia ${x.day}`,money(x.value),`<div class="action-menu">${btn('Excluir','delete-forecast',`data-id="${x.id}"`)}</div>`)).join('')||'<p>Não há previsões.</p>')}${card('Nova variável a receber',`<form data-form="forecast" class="formgrid"><label class="wide">Descrição<input name="name" required placeholder="Comissão, salário..."></label><label>Valor (R$)<input name="value" type="text" inputmode="decimal" autocomplete="off" placeholder="1500 ou 1.500,00" required></label><label>Dia<input name="day" type="number" min="1" max="31" value="25" required></label><label class="wide">Responsável<select name="owner"><option value="${selfOwner()}">${escape(name(selfOwner()))}</option>${S.consent?'<option value="'+partnerOwner()+'">'+escape(name(partnerOwner()))+'</option>':''}</select></label><button class="btn wide" type="submit">Adicionar variável</button></form>`)}${card('Resultado projetado',`<div style="font-size:24px;font-weight:720">${display(monthResult())}</div><p class="muted">Saldo ajustado ${display(scopeBalance())} + variáveis a receber ${display(future())} − contas ainda abertas ${display(open())}. Entrou/Saiu já são parte do saldo importado e não são somados novamente.</p>`)}`}
@@ -560,7 +596,7 @@ function finaBankChatAlerts(){
   money(t.value)+' · '+escape(String(t.name||'Movimentação').replace(/\s+/g,' ').slice(0,65))+
   ' · '+escape(String(t.date||''))+'</div>').join('');
 }
-function chat(){return `<div class="cardtitle" style="margin-top:12px">Conversas</div><div class="chatbox" id="messages">${S.messages.map(x=>`<div class="chatbubble ${x.mine?'me':''}">${escape(x.text)}</div>`).join('')}</div><form data-form="chat" class="chatentry"><input name="message" placeholder="Escreva à FINA..." required><button class="btn soft" type="button" data-act="chat-dictate" aria-label="Ditar mensagem">🎙</button><button class="btn" type="submit">➤</button></form><div class="action-menu">${['Meu saldo','O que saiu?','Minhas faturas','Onde aparecem estornos?'].map(x=>btn(x,'ask',`data-message="${escape(x)}"`)).join('')}</div><div id="finaVoiceStatus" class="hint" role="status">Consultas baseadas nos dados bancários disponíveis. O modelo de IA generativa ainda não está conectado. Nenhuma mensagem executa pagamentos ou transferências.</div>`}
+function chat(){return `<div class="cardtitle" style="margin-top:12px">Conversas</div><div class="chatbox" id="messages">${S.messages.map(x=>`<div class="chatbubble ${x.mine?'me':''}">${escape(x.text)}</div>`).join('')}</div><form data-form="chat" class="chatentry"><input name="message" placeholder="Escreva à FINA..." required><button class="btn soft" type="button" data-act="chat-dictate" aria-label="Ditar mensagem">🎙</button><button class="btn" type="submit">➤</button></form><div class="action-menu">${['Meu saldo','O que saiu?','Minhas faturas','Ensinar pagamento'].map(x=>btn(x,'ask',`data-message="${escape(x)}"`)).join('')}</div><div id="finaVoiceStatus" class="hint" role="status">A FINA entende consultas e pedidos de identificação de pagamentos. Você escolhe o débito e ela aprende a regra. A IA generativa ainda não está conectada. Nenhum comando executa Pix ou pagamentos.</div>`}
 // Comandos de voz utilizam recursos do navegador; não disparam operações financeiras.
 document.addEventListener('click',event=>{
  const control=event.target.closest('button[data-act="chat-dictate"],button[data-act="chat-speak"]');
@@ -839,7 +875,19 @@ function finaReconcileBill(b){
 function finaReconcileManualBills(){return false;}
 function post(b){if(!b||!pending(b))return;let a=S.accounts.find(a=>a.owner===b.owner);if(!a)return;const amount=billValue(b);a.balance-=amount;b.state='posted';if(b.loanId){const loan=S.loans.find(l=>l.id===b.loanId);const due=loan?.current+monthOffset();if(loan&&due>=1&&due<=loan.total)loan.paid=Math.max(loan.paid,due)}S.transactions.unshift({id:'p'+Date.now(),owner:b.owner,bank:a.name,name:'Baixa simulada · '+b.name,value:amount,kind:'out',date:'10/11',category:'expense',month:S.monthForBills});}
 function confirmRefund(r,where){if(!r||r.state!=='pending')return;if(where==='cash'){let a=S.accounts.find(a=>a.owner===r.owner);if(!a)return;a.balance+=r.value;S.transactions.unshift({id:'r'+r.id,owner:r.owner,bank:a.name,name:'Devolução confirmada · '+r.name,value:r.value,kind:'in',date:'10/11',category:'refund',month:S.monthForBills})}r.state=where}
-function answer(msg){S.messages.push({mine:true,text:msg});const t=msg.toLowerCase();let reply;if(!accessible()&&/casal|saldo|resultado/.test(t))reply='Não posso calcular os valores do casal sem consentimento recíproco.';else if(/estorn|devol/.test(t))reply=`Estornos aguardando: ${ownRefunds().filter(r=>r.state==='pending').length}. Aparecem no topo da fatura. Um crédito na fatura reduz o devido; uma devolução para a conta aparece no extrato como entrada de estorno.`;else if(/(?:naara|lucas).*(?:para|→|->).*(?:naara|lucas)|\btransfer[eê]ncia\b/.test(t)){
+function answer(msg){S.messages.push({mine:true,text:msg});const t=msg.toLowerCase();let reply;
+if(/(?:ensinar|ensina|aprend|conciliar|conferir pagamento|baixar|dar baixa|paguei)/.test(t)){
+ const norm=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+ const cleaned=norm(t).replace(/\b(fina|ensinar|ensina|aprender|aprenda|conciliar|conferir|pagamento|baixar|baixa|dar|paguei|foi|pago|paga|da|do|de|o|a|que|minha|meu)\b/g,' ').replace(/\s+/g,' ').trim();
+ const eligible=S.bills.filter(b=>['manual','shared'].includes(b.type)&&
+ (pending(b)||(b.state==='posted'&&b.reconciliationConfidence==='inferred')));
+ const matching=eligible.filter(b=>cleaned.length>=3&&norm(b.name).includes(cleaned));
+ if(matching.length===1){
+  const b=matching[0];S.tab='bills';S.monthForBills=b.month;S.billYear=b.year;S.scope=b.owner;
+  void window.FinaTeachPayment?.(b);
+  reply='Abri o reconhecimento bancário de '+b.name+'. Escolha o débito e, se desejar, ensine a regra para os próximos meses.';
+ }else reply='Para ensinar um pagamento, vá a Faturas + Contas e toque em Ensinar FINA na conta. Vou mostrar os débitos candidatos sem dar baixa por adivinhação.';
+}else if(!accessible()&&/casal|saldo|resultado/.test(t))reply='Não posso calcular os valores do casal sem consentimento recíproco.';else if(/estorn|devol/.test(t))reply=`Estornos aguardando: ${ownRefunds().filter(r=>r.state==='pending').length}. Aparecem no topo da fatura. Um crédito na fatura reduz o devido; uma devolução para a conta aparece no extrato como entrada de estorno.`;else if(/(?:naara|lucas).*(?:para|→|->).*(?:naara|lucas)|\btransfer[eê]ncia\b/.test(t)){
  const realTransfers=finaCoupleTransfers.filter(x=>x.month===S.monthForBills&&x.year===S.billYear);
  reply=realTransfers.length
   ?'Transferências bancárias do mês: '+realTransfers.map(x=>x.sender+' → '+x.receiver+' · '+money(x.value)+' · '+(x.status==='matched'?'ambos os bancos confirmaram':'aguardando confirmação da outra ponta')).join('; ')+'. Transferências entre vocês não entram em Entrou/Saiu.'
@@ -954,6 +1002,27 @@ el.addEventListener('click',event=>{const target=event.target.closest('button[da
   void window.FinaChangeSharedManualBill?.(sharedBill,a);
   return;
  }
+
+if(a==='teach-bill'){
+ const bill=S.bills.find(x=>String(x.id)===String(target.dataset.id)&&['manual','shared'].includes(x.type));
+ if(bill)void window.FinaTeachPayment?.(bill);return;
+}
+if(a==='close-teach-bill'){S.finaTeaching=null;render(false);return;}
+if(a==='confirm-bill-bank'){
+ const tx=String(target.dataset.transactionId||'');
+ const state=S.finaTeaching;
+ if(!state||String(state.billId)!==String(target.dataset.billId))return;
+ const remember=!!Array.from(document.querySelectorAll('input[data-payment-remember]')).find(x=>x.dataset.paymentRemember===tx)?.checked;
+ if(!window.confirm('Confirmar que este débito bancário pagou este compromisso?'))return;
+ void window.FinaConfirmPaymentFromBank?.(state,tx,remember);return;
+}
+if(a==='view-payment-rules'){S.finaLearningRulesView=true;S.finaLearningRules=null;render(false);void window.FinaLoadLearningRules?.();return;}
+if(a==='close-payment-rules'){S.finaLearningRulesView=false;render(false);return;}
+if(a==='toggle-payment-rule'){
+ const id=target.dataset.ruleId,enabled=target.dataset.enabled==='true';
+ if(!window.confirm(enabled?'Reativar regra automática?':'Desativar regra automática?'))return;
+ void window.FinaSetLearningRule?.(id,enabled);return;
+}
 if(a==='cash-filter'){S.cashflowFilter=target.dataset.value||'all';render(false);document.getElementById('finaCashLedger')?.scrollIntoView({block:'nearest'});return}
 if(a==='cash-refresh'){
  window.FinaCashRefreshStatus='Consultando os bancos...';render(false);
@@ -1239,6 +1308,70 @@ async function finaLoadSharedBills(){
  window.FinaRender?.();
 }
 window.FinaLoadSharedBills=finaLoadSharedBills;
+
+window.FinaLoadLearningRules=async()=>{
+ if(!window.FinaCurrentUser)return;
+ const {data,error}=await sb.rpc('fina_list_learned_payment_rules');
+ if(!S.finaLearningRulesView)return;
+ S.finaLearningRules=error?[]:Array.isArray(data)?data:[];
+ window.FinaRender?.();
+};
+window.FinaSetLearningRule=async(ruleId,enabled)=>{
+ if(!window.FinaCurrentUser)return;
+ const {data,error}=await sb.rpc('fina_set_learned_payment_rule',{p_rule_id:ruleId,p_enabled:enabled});
+ S.formNotice=error||!data?.ok?'Não foi possível atualizar a regra.':
+   enabled?'Regra ativada novamente.':'Regra desativada.';
+ await window.FinaLoadLearningRules();
+ window.FinaRender?.();
+};
+window.FinaTeachPayment=async bill=>{
+ const user=window.FinaCurrentUser;
+ if(!user||!bill||!['manual','shared'].includes(bill.type))return;
+ const partnerBill=bill.type==='shared';
+ const parsed=partnerBill?String(bill.id).match(/^shared-[0-9a-f-]{36}-([0-9]+)$/i):null;
+ const ownerId=partnerBill?bill.sourceUserId:user.id;
+ const databaseId=partnerBill?parsed?.[1]:String(bill.id);
+ if(!ownerId||!databaseId)return;
+ const state={billId:String(bill.id),ownerId:String(ownerId),databaseId:String(databaseId),
+  loading:true,candidates:[],error:'',saving:false};
+ S.finaTeaching=state;window.FinaRender?.();
+ try{
+  const {data,error}=await sb.rpc('fina_payment_candidates',
+   {p_bill_user_id:state.ownerId,p_bill_id:state.databaseId});
+  if(window.FinaCurrentUser?.id!==user.id||S.finaTeaching!==state)return;
+  if(error)throw error;
+  state.candidates=Array.isArray(data)?data:[];
+ }catch(e){
+  state.error='Não foi possível buscar débitos confirmados. Confira a conexão.';
+ }finally{
+  if(S.finaTeaching===state){state.loading=false;window.FinaRender?.();}
+ }
+};
+window.FinaConfirmPaymentFromBank=async(state,transactionId,remember)=>{
+ const user=window.FinaCurrentUser;
+ if(!user||S.finaTeaching!==state||state.saving)return;
+ state.saving=true;state.loading=true;window.FinaRender?.();
+ try{
+  const {data,error}=await sb.rpc('fina_confirm_bill_payment',{
+    p_bill_user_id:state.ownerId,p_bill_id:state.databaseId,
+    p_transaction_id:transactionId,p_remember:!!remember
+  });
+  if(window.FinaCurrentUser?.id!==user.id)return;
+  if(error||!data?.ok)throw error||new Error('Confirmação rejeitada');
+  S.finaTeaching=null;
+  S.formNotice=remember?'Pagamento confirmado. Regra guardada para os próximos meses.':
+    'Pagamento confirmado. Saldo e Saiu não foram descontados novamente.';
+  await finaLoadPersistentState(user);
+  await finaLoadSharedBills();
+  if(S.finaLearningRulesView)await window.FinaLoadLearningRules();
+  window.FinaRender?.();
+ }catch(e){
+  state.loading=false;state.saving=false;
+  state.error='Esse débito não pôde ser associado. Confira titular, valor, data e se já foi usado.';
+  window.FinaRender?.();
+ }
+};
+
 window.FinaChangeSharedManualBill=async(bill,operation,editFields={})=>{
  const user=window.FinaCurrentUser;
  if(!user||bill?.type!=='shared'||!bill.sourceUserId)return;
