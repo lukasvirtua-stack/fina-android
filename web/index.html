@@ -1640,6 +1640,8 @@ async function loadCoupleStatus(user){
    window.FinaOwnerResolvedForUserId=user.id;
    window.FinaCashTotalsByOwner=null;
    if(window.FinaBankCacheState!=='live')window.FinaRestoreCachedBankData?.();
+   // O banco começa agora; faturas, fotos e perfis não bloqueiam saldos.
+   setTimeout(()=>{void finaLoadEarlyBankBalances(user.id);void finaLoadRealBankData();void window.FinaLoadCoupleTransfers?.();},0);
    try{await finaLoadPersistentState(user);await finaLoadSharedBills();}catch{}
    try{await loadFinaSharedProfiles();finaStartSharedProfileRealtime();}catch{}
  }else{
@@ -1648,9 +1650,11 @@ async function loadCoupleStatus(user){
    S.profiles.lucas.displayName=selfName||'Você';S.profiles.naara.displayName='Outra pessoa';S.activeEditor='lucas';
    window.FinaHeaderGreeting='Olá, '+selfName;
  }
- window.FinaOwnerResolvedForUserId=(row&&Number(row.member_count)>0)?user.id:null;
+ // O acesso individual também mostra os próprios bancos, sem grupo de casal.
+ window.FinaOwnerResolvedForUserId=user.id;
  window.dispatchEvent(new Event('fina:header-changed'));window.FinaCouple?.paint?.();
- setTimeout(async()=>{await window.FinaLoadCoupleTransfers?.();await finaLoadRealBankData();},0);
+ if(!row||Number(row.member_count)===0)
+  setTimeout(()=>{void finaLoadEarlyBankBalances(user.id);void finaLoadRealBankData();},0);
 }
 function paintCouple(){const summary=document.getElementById('finaCoupleSummary');if(!summary)return;const connected=document.getElementById('finaCoupleConnected'),setup=document.getElementById('finaCoupleSetup'),names=document.getElementById('finaCoupleNames'),generated=document.getElementById('finaCoupleGenerated'),codeNode=document.getElementById('finaCoupleCode');if(coupleState.connected){summary.textContent='Este acesso já faz parte do casal.';if(connected)connected.hidden=false;if(setup)setup.hidden=true;if(names)names.textContent=coupleState.titularName+' e '+coupleState.partnerName;}else{summary.textContent=coupleState.memberCount===1?'Uma conta conectada. Aguardando a outra pessoa.':'Conecte as duas contas Google.';if(connected)connected.hidden=true;if(setup)setup.hidden=false;if(generated)generated.hidden=!coupleState.code;if(codeNode&&coupleState.code)codeNode.textContent=coupleState.code;}}
 async function createCoupleInvite(){const status=document.getElementById('finaCoupleRealStatus');if(status)status.textContent='Gerando código…';const {data,error}=await sb.rpc('fina_create_couple_invite');if(error){if(status)status.textContent='Não foi possível gerar o código: '+error.message;return;}const row=Array.isArray(data)?data[0]:data;coupleState.code=String(row?.code||'');coupleState.expiresAt=row?.expires_at||null;coupleState.memberCount=Math.max(coupleState.memberCount,1);coupleState.isOwner=true;paintCouple();if(status)status.textContent='Código criado. Ele expira em 30 minutos.';await loadCoupleStatus(window.FinaCurrentUser);}
@@ -1962,6 +1966,36 @@ function finaRestoreCachedBankData(){
  return true;
 }
 window.FinaRestoreCachedBankData=finaRestoreCachedBankData;
+// O saldo das contas chega antes do histórico e não depende da conciliação.
+let finaEarlyBalancesUser=null;
+async function finaLoadEarlyBankBalances(userId){
+ if(!userId||window.FinaCurrentUser?.id!==userId||window.FinaOwnerResolvedForUserId!==userId)return;
+ if((S.accounts||[]).some(a=>a.real===true)||window.FinaRealBankLoaded===true)return;
+ if(finaEarlyBalancesUser===userId)return;
+ finaEarlyBalancesUser=userId;
+ const expectedOwner=window.FinaSelfOwnerKey;
+ try{
+  const {data,error}=await sb.from('fina_bank_accounts')
+   .select('id,user_id,institution_name,name,type,number_last4,balance')
+   .eq('type','BANK').order('institution_name');
+  if(window.FinaCurrentUser?.id!==userId||window.FinaOwnerResolvedForUserId!==userId||
+     window.FinaSelfOwnerKey!==expectedOwner||window.FinaRealBankLoaded===true)return;
+  if(error||!Array.isArray(data)||!data.length)return;
+  const partner=expectedOwner==='lucas'?'naara':'lucas';
+  const prettyBank=v=>{const x=String(v||'Banco').trim().toUpperCase();
+    return x==='ITAU'||x==='ITAÚ'?'Itaú':x==='NUBANK'?'Nubank':x==='SANTANDER'?'Santander':x==='BRADESCO'?'Bradesco':String(v||'Banco').trim();};
+  S.accounts=data.map(a=>({
+   id:'real-'+a.id,owner:String(a.user_id)===String(userId)?expectedOwner:partner,
+   name:prettyBank(a.institution_name||a.name||'Banco'),
+   balance:Math.round(Number(a.balance||0)*100),real:true,
+   last4:a.number_last4||'',accountType:'BANK'
+  })).sort(finaBankSort);
+  window.FinaBankBalancesReady=true;
+  window.FinaBankLastSnapshotAt=Date.now();
+  window.FinaRender?.();
+ }catch(e){console.warn('FINA: saldos rápidos indisponíveis:',e?.message||e);}
+ finally{if(finaEarlyBalancesUser===userId)finaEarlyBalancesUser=null;}
+}
 function finaSaveCachedBankData(user){
  if(!user||window.FinaOwnerResolvedForUserId!==user.id)return;
  const savedAt=Date.now();
@@ -2128,6 +2162,7 @@ async function finaLoadRealBankDataOnce(){
     }).sort((a,b)=>String(b.occurredAt||'').localeCompare(String(a.occurredAt||''))||String(a.id).localeCompare(String(b.id)));
     const hadWarmSnapshot=window.FinaBankCacheState==='cached'||window.FinaRealBankLoaded===true;
     window.FinaRealBankLoaded=true;
+    window.FinaBankBalancesReady=true;
     window.FinaBankCacheState='live';
     window.FinaBankLastSnapshotAt=Date.now();
     // Sem cache, mostrar valores reais assim que prontos. Com cache, evitar tela intermediaria.
