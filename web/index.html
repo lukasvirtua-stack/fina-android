@@ -709,7 +709,7 @@ function transferHistoryRows(){
    t.status==='matched'?'<span class="pill ok">Duas pontas confirmadas</span>':'<span class="pill wait">Aguardando confirmação bancária</span>'
  )).join('');
  const transfers=transferRows().slice().reverse();
- const localRows=transfers.map(t=>row(t.name,name(t.owner)+' · '+t.bank+' · '+t.date+' · '+(t.category==='transfer-self'?'Entre contas próprias':'Entre cônjuges'),'<span class="'+(t.kind==='in'?'positive':'negative')+'">'+(t.kind==='in'?'+':'−')+' '+money(t.value)+'</span>',(t.category==='transfer-self'?'<span class="pill wait">Transferência própria · não soma Entrou/Saiu</span>':'<span class="pill ok">Entre Lucas e Naara · soma Entrou/Saiu</span>')).join('');
+ const localRows=transfers.map(t=>row(t.name,name(t.owner)+' · '+t.bank+' · '+t.date+' · '+(t.category==='transfer-self'?'Entre contas próprias':'Entre cônjuges'),'<span class="'+(t.kind==='in'?'positive':'negative')+'">'+(t.kind==='in'?'+':'−')+' '+money(t.value)+'</span>',(t.category==='transfer-self'?'<span class="pill wait">Transferência própria · não soma Entrou/Saiu</span>':'<span class="pill ok">Entre Lucas e Naara · soma Entrou/Saiu</span>'))).join('');
  return (realRows||localRows)?realRows+localRows:'<p>Sem transferências classificadas neste período.</p>';
 }
  function transfers(){
