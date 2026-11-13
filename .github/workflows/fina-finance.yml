@@ -1,0 +1,24 @@
+name: Regressão financeira FINA
+on:
+  push:
+    branches: [main]
+    paths:
+      - web/index.html
+      - tests/finance-rules.test.mjs
+      - .github/workflows/fina-finance.yml
+  pull_request:
+    paths:
+      - web/index.html
+      - tests/finance-rules.test.mjs
+      - .github/workflows/fina-finance.yml
+jobs:
+  financial-rules:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/finance-rules.test.mjs
