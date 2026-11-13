@@ -50,7 +50,7 @@ console.log('FINA WEB QA PASS · scripts='+scripts.length+' · rules='+required.
 // Verifica ambos os logins, Pix internos, Pix do casal e o fechamento do mês.
 import vm from 'node:vm';
 const ownerStart=app.indexOf('const selfOwner=');
-const ownerEnd=app.indexOf('const accessible=',ownerStart);
+const ownerEnd=app.indexOf('const monthKey=',ownerStart);
 const flowsStart=app.indexOf('const finaCashIsInternal=');
 const flowsEnd=app.indexOf('const monthResult=',flowsStart);
 const projectionEnd=app.indexOf('const scopeForCouple=',flowsEnd);
