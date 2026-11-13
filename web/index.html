@@ -746,7 +746,7 @@ ${card('Divisão de despesas',`<p style="margin-bottom:11px">A divisão é opcio
 ${card('Datas comemorativas do casal',`<p>Personalize nomes, aniversários, casamento e fotos. ${btn('Configurar perfil e bodas','open','data-target="profile"')}</p>`)}${card('Compromissos importantes',loanBoard())}`}
 function settings(){return `${heading('Configurações','Navegação principal enxuta. As ferramentas adicionais ficam organizadas aqui.')}
 ${card('Instalação da FINA',`<p id="finaInstallStatus">Instale a FINA como aplicativo no celular.</p><button class="btn" type="button" data-act="install-fina">Instalar FINA</button><small style="display:block;margin-top:8px">A confirmação é feita pelo Chrome/Android.</small>`)}
-${card('Notificações no celular',`<p id="finaPushStatus" role="status">Ative os avisos de movimentações bancárias confirmadas. As notificações podem aparecer mesmo com a FINA fechada.</p><div class="action-menu"><button class="btn" type="button" data-act="push-enable">Ativar notificações</button></div><p class="muted">No iPhone, instale a FINA na Tela de Início antes de ativar. Os avisos abrem a conversa após a sincronização bancária.</p>`)}
+${card('Notificações no celular',`<p id="finaPushStatus" role="status">Ative os avisos de movimentações bancárias confirmadas. As notificações podem aparecer mesmo com a FINA fechada.</p><div class="action-menu"><button class="btn" type="button" data-act="push-enable">Ativar notificações</button><button class="btn soft" type="button" data-act="push-test">Testar notificação</button></div><p class="muted">No iPhone, instale a FINA na Tela de Início antes de ativar. Os avisos abrem a conversa após a sincronização bancária.</p>`)}
 ${card('Preferências',`<div class="row"><span class="strong">Notificações push neste aparelho</span><button class="toggle ${window.FinaPushConnected?'on':''}" data-act="notifs" aria-label="Ativar ou desativar notificações"></button></div><div class="row"><span class="strong">Avisos de aniversários</span><button class="toggle ${S.birthdays?'on':''}" data-act="birthdays"></button></div>`)}
 ${card('Atalhos para as demais configurações',[['profile','♡','Perfil, fotos, casamento e bodas'],['transfers','⇄','Transferências reconhecidas do banco'],['banks','▥','Bancos, cartões e extratos'],['cards','▣','Cartões: virada, vencimento e meses'],['bills','▤','Faturas, reservas e pagamentos por mês'],['forecast','◷','Variáveis a receber'],['calendar','▦','Calendário'],['chat','✧','Assistente FINA'],['couple','♡','Casal, acesso e divisão'],['tests','✓','Diagnóstico']].map(([id,icon,text])=>`<button class="menuitem" data-act="open" data-target="${id}"><span>${icon}　${text}</span><span class="chevron">›</span></button>`).join(''))}
 `}
@@ -1070,7 +1070,7 @@ if(a==='cash-refresh'){
  Promise.resolve(window.FinaBank?.sync?.()).then(()=>{window.FinaCashRefreshStatus='Consulta realizada. Confira a data do último lançamento abaixo.';render(false)}).catch(()=>{window.FinaCashRefreshStatus='Não foi possível consultar. Tente novamente em Bancos.';render(false)});
  return
 }
-if(a==='open'){S.tab=target.dataset.target;S.add=false;S.invoiceAdd=false;S.formNotice='';S.edit=null;render(true);return}if(a==='bank-connect-own'){window.FinaBank?.connect?.();return}if(a==='bank-sync-own'){window.FinaBank?.sync?.();return}if(a==='install-fina'){window.FinaInstall?.();return}if(a==='push-enable'||a==='push-disable')return;if(a==='bank-sync-id'){const id=document.getElementById('finaPluggyItemId')?.value||'';const label=document.getElementById('finaPluggyItemLabel')?.value||'';window.FinaBank?.syncById?.(id,label);return}if(a==='bank-reauth-id'){const id=document.getElementById('finaPluggyItemId')?.value||'';window.FinaBank?.reauthById?.(id);return}if(a==='couple-create-code'){window.FinaCouple?.createInvite?.();return}if(a==='couple-accept-code'){const code=document.getElementById('finaCoupleCodeInput')?.value||'';window.FinaCouple?.acceptCode?.(code);return}if(a==='couple-copy-code'){window.FinaCouple?.copyCode?.();return}if(a==='open-card'){S.card=target.dataset.id;S.tab='cards';render(true);return}if(a==='scope')S.scope=target.dataset.scope;if(a==='show')S.showMoney=!S.showMoney;if(a==='theme')S.theme=S.theme==='light'?'dark':'light';if(a==='notifs'){if(window.FinaPushConnected)void window.FinaDisablePush?.();else void window.FinaEnablePush?.();return;}if(a==='birthdays')S.birthdays=!S.birthdays;if(a==='division')S.division=target.dataset.mode;if(a==='revoke'){S.consent=false;S.sharePending=false;if(S.scope==='naara')S.scope='casal'}if(a==='request-share')S.sharePending=true;if(a==='approve-share'){S.consent=true;S.sharePending=false}if(a==='choose-card')S.card=target.dataset.id;if(a==='reserve'&&b?.state==='open')b.state='reserved';if(a==='unreserve'&&b?.state==='reserved')b.state='open';if(a==='report'&&b&&['open','reserved'].includes(b.state))b.state='reported';if(a==='unreport'&&b?.state==='reported')b.state='open';if(a==='auto-credit'){
+if(a==='open'){S.tab=target.dataset.target;S.add=false;S.invoiceAdd=false;S.formNotice='';S.edit=null;render(true);return}if(a==='bank-connect-own'){window.FinaBank?.connect?.();return}if(a==='bank-sync-own'){window.FinaBank?.sync?.();return}if(a==='install-fina'){window.FinaInstall?.();return}if(a==='push-enable'||a==='push-disable'||a==='push-test')return;if(a==='bank-sync-id'){const id=document.getElementById('finaPluggyItemId')?.value||'';const label=document.getElementById('finaPluggyItemLabel')?.value||'';window.FinaBank?.syncById?.(id,label);return}if(a==='bank-reauth-id'){const id=document.getElementById('finaPluggyItemId')?.value||'';window.FinaBank?.reauthById?.(id);return}if(a==='couple-create-code'){window.FinaCouple?.createInvite?.();return}if(a==='couple-accept-code'){const code=document.getElementById('finaCoupleCodeInput')?.value||'';window.FinaCouple?.acceptCode?.(code);return}if(a==='couple-copy-code'){window.FinaCouple?.copyCode?.();return}if(a==='open-card'){S.card=target.dataset.id;S.tab='cards';render(true);return}if(a==='scope')S.scope=target.dataset.scope;if(a==='show')S.showMoney=!S.showMoney;if(a==='theme')S.theme=S.theme==='light'?'dark':'light';if(a==='notifs'){if(window.FinaPushConnected)void window.FinaDisablePush?.();else void window.FinaEnablePush?.();return;}if(a==='birthdays')S.birthdays=!S.birthdays;if(a==='division')S.division=target.dataset.mode;if(a==='revoke'){S.consent=false;S.sharePending=false;if(S.scope==='naara')S.scope='casal'}if(a==='request-share')S.sharePending=true;if(a==='approve-share'){S.consent=true;S.sharePending=false}if(a==='choose-card')S.card=target.dataset.id;if(a==='reserve'&&b?.state==='open')b.state='reserved';if(a==='unreserve'&&b?.state==='reserved')b.state='open';if(a==='report'&&b&&['open','reserved'].includes(b.state))b.state='reported';if(a==='unreport'&&b?.state==='reported')b.state='open';if(a==='auto-credit'){
   const id='auto-bank-credit-1500-20261110';
   if(!S.transactions.some(t=>t.id===id)){
    const account=S.accounts.find(x=>x.id==='s');
@@ -1282,6 +1282,20 @@ async function finaDisablePush(){
   void finaSavePersistentState();
  }catch{finaPushStatus('Não foi possível desativar. Tente novamente.');}
 }
+async function finaSendPushTest(){
+ if(!window.FinaCurrentUser){finaPushStatus('Entre com Google para testar.');return;}
+ finaPushStatus('Enviando notificação de teste para este aparelho...');
+ try{
+  const {data,error}=await sb.functions.invoke('fina-push-selftest',{body:{}});
+  if(error||!data?.ok){
+   finaPushStatus(data?.error==='push_not_enabled'?'Ative as notificações antes de testar.':
+    data?.error==='rate_limited'?'Aguarde um minuto antes de repetir o teste.':
+    'Não foi possível enviar o teste. Verifique conexão e permissões.');
+   return;
+  }
+  finaPushStatus('Teste enviado. Confira a notificação do celular e toque para abrir a conversa.');
+ }catch{finaPushStatus('Falha ao enviar teste de notificação.');}
+}
 window.FinaPushConnected=false;
 window.FinaEnablePush=finaEnablePush;
 window.FinaDisablePush=finaDisablePush;
@@ -1298,9 +1312,10 @@ window.addEventListener('fina:auth-ready',()=>{
  }
 });
 document.addEventListener('click',event=>{
- const button=event.target.closest('button[data-act="push-enable"],button[data-act="push-disable"]');
+ const button=event.target.closest('button[data-act="push-enable"],button[data-act="push-disable"],button[data-act="push-test"]');
  if(!button)return;
  if(button.dataset.act==='push-enable')void finaEnablePush();
+ else if(button.dataset.act==='push-test')void finaSendPushTest();
  else void finaDisablePush();
 });
 
