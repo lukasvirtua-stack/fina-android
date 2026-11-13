@@ -181,6 +181,18 @@ const cents=raw=>{
  return Number.isSafeInteger(out)&&out>0&&out<=100000000000?out:null;
 };
 const sum=(ar,fn)=>ar.reduce((n,x)=>n+fn(x),0);
+// Nao ordenar pelo status ou pela chegada de respostas da rede: ambos mudam.
+const finaOwnerRank=o=>o==='lucas'?0:o==='naara'?1:2;
+const finaSortText=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
+const finaBankSort=(a,b)=>finaOwnerRank(a.owner)-finaOwnerRank(b.owner)||
+ finaSortText(a.bank||a.name).localeCompare(finaSortText(b.bank||b.name),'pt-BR')||
+ finaSortText(a.name).localeCompare(finaSortText(b.name),'pt-BR')||
+ String(a.last4||a.digits||'').localeCompare(String(b.last4||b.digits||''))||
+ String(a.id||'').localeCompare(String(b.id||''));
+const finaBillSort=(a,b)=>(Number(a.day)||32)-(Number(b.day)||32)||
+ finaOwnerRank(a.owner)-finaOwnerRank(b.owner)||
+ finaSortText(a.name).localeCompare(finaSortText(b.name),'pt-BR')||
+ String(a.id||'').localeCompare(String(b.id||''));
 const seed=()=>({tab:'home',scope:'casal',showMoney:true,consent:false,sharePending:false,division:'none',theme:'light',notifs:false,birthdays:true,photoSize:85,syncMessage:'Nenhuma nova confirmação bancária foi simulada.',month:10,year:2026,monthForBills:10,billYear:2026,edit:null,add:false,invoiceAdd:false,formNotice:'',card:'nubank',tests:[],messages:[{mine:false,text:'Olá! Sou a FINA. Vou usar somente dados reais sincronizados e valores que vocês cadastrarem.'}],
 accounts:[],
 cards:[],
@@ -264,7 +276,7 @@ const monthKey=(month,year)=>year*12+month;
  const selectedKey=()=>monthKey(S.monthForBills,S.billYear);
  const sameMonth=x=>x.month===S.monthForBills&&(x.year??2026)===S.billYear;
  const planningOwnerShown=o=>S.scope==='casal'||o===S.scope;
- const ownBills=()=>S.bills.filter(b=>planningOwnerShown(b.owner)&&b.state!=='removed'&&sameMonth(b));
+ const ownBills=()=>S.bills.filter(b=>planningOwnerShown(b.owner)&&b.state!=='removed'&&sameMonth(b)).sort(finaBillSort);
 const ownTrans=()=>S.transactions.filter(t=>ownerShown(t.owner)&&sameMonth(t));
 const ownRefunds=()=>S.refunds.filter(r=>ownerShown(r.owner)&&sameMonth(r));
 const cardRefundCredit=id=>sum(S.refunds.filter(r=>r.card===id&&r.state==='card'&&sameMonth(r)),r=>r.value);
@@ -865,13 +877,37 @@ window.addEventListener('popstate',event=>{
 
 window.addEventListener('fina:auth-ready',()=>setTimeout(finaInitHistoryNavigation,0));
 
-window.FinaRender=()=>render(false);
+// Agrupa atualizacoes de banco/casal sem destruir campos durante a digitacao.
+let finaRenderTimer=null,finaRenderAfterEditing=false,finaLastScreenMarkup='',finaLastNavMarkup='';
+const finaEditingField=()=>{const a=document.activeElement;return !!a&&screen.contains(a)&&(['INPUT','TEXTAREA','SELECT'].includes(a.tagName)||a.isContentEditable);};
+window.FinaRender=()=>{
+ if(finaEditingField()){finaRenderAfterEditing=true;return;}
+ clearTimeout(finaRenderTimer);
+ finaRenderTimer=setTimeout(()=>{finaRenderTimer=null;if(finaEditingField()){finaRenderAfterEditing=true;return;}render(false);},150);
+};
+screen.addEventListener('focusout',()=>{if(finaRenderAfterEditing)setTimeout(()=>{if(!finaEditingField()&&finaRenderAfterEditing){finaRenderAfterEditing=false;window.FinaRender?.();}},180);});
 // Expor os helpers da lógica financeira ao carregador bancário (script separado).
 // Sem mudar visual, modelos ou dados; somente corrigir referências fora do escopo.
 window.FinaCurrentBankMonth=()=>finaCurrentBankMonth();
 window.FinaGetCoupleTransferTxIds=()=>finaCoupleTransferTxIds;
 window.FinaLoadCoupleTransfers=()=>loadFinaCoupleTransfers();
-function render(goTop=false){ensureCycle();el.classList.toggle('theme-dark',S.theme==='dark');screen.innerHTML=header()+(views[S.tab]||home)();bottom.innerHTML=tabs.map(([id,icon,name])=>`<button type="button" class="${S.tab===id?'active':''}" data-act="open" data-target="${id}"><span class="navicon">${icon}</span><span class="navname">${name}</span></button>`).join('');if(goTop)screen.scrollTop=0;const chat=document.getElementById('messages');if(chat)chat.scrollTop=chat.scrollHeight;finaRecordHistoryView();setTimeout(()=>{window.FinaCouple?.paint?.();window.FinaBank?.paint?.();if(window.FinaInstallState==='ready'){const n=document.getElementById('finaInstallStatus');if(n)n.textContent='Pronto para instalar neste aparelho.'}else if(window.matchMedia?.('(display-mode: standalone)').matches){const n=document.getElementById('finaInstallStatus');if(n)n.textContent='FINA já está instalada neste aparelho.'}},0)}
+function render(goTop=false){
+ clearTimeout(finaRenderTimer);finaRenderTimer=null;
+ ensureCycle();el.classList.toggle('theme-dark',S.theme==='dark');
+ const main=header()+(views[S.tab]||home)();
+ const nav=tabs.map(([id,icon,title])=>`<button type="button" class="${S.tab===id?'active':''}" data-act="open" data-target="${id}"><span class="navicon">${icon}</span><span class="navname">${title}</span></button>`).join('');
+ const changedMain=main!==finaLastScreenMarkup,changedNav=nav!==finaLastNavMarkup;
+ if(changedMain){
+   const oldScroll=screen.scrollTop;
+   screen.innerHTML=main;finaLastScreenMarkup=main;
+   if(!goTop)screen.scrollTop=oldScroll;
+ }
+ if(changedNav){bottom.innerHTML=nav;finaLastNavMarkup=nav;}
+ if(goTop)screen.scrollTop=0;
+ if(changedMain){const chat=document.getElementById('messages');if(chat)chat.scrollTop=chat.scrollHeight;}
+ finaRecordHistoryView();
+ if(changedMain||changedNav)setTimeout(()=>{window.FinaCouple?.paint?.();window.FinaBank?.paint?.();if(window.FinaInstallState==='ready'){const n=document.getElementById('finaInstallStatus');if(n)n.textContent='Pronto para instalar neste aparelho.'}else if(window.matchMedia?.('(display-mode: standalone)').matches){const n=document.getElementById('finaInstallStatus');if(n)n.textContent='FINA já está instalada neste aparelho.'}},0);
+}
 function finaNormText(v){return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim()}
 function finaPaymentCandidates(b){
  if(!b||b.type!=='manual'||b.owner!==selfOwner()||!['open','reserved','reported'].includes(b.state))return [];
@@ -1902,8 +1938,8 @@ function finaRestoreCachedBankData(){
  if(saved.accounts.length>80||saved.cards.length>80||saved.transactions.length>500)return false;
  const realAccount=a=>a&&a.real===true&&['lucas','naara'].includes(a.owner)&&Number.isFinite(a.balance);
  const realTransaction=t=>t&&t.real===true&&['lucas','naara'].includes(t.owner)&&Number.isFinite(t.value);
- S.accounts=saved.accounts.filter(realAccount);
- S.cards=saved.cards.filter(c=>c&&c.real===true&&['lucas','naara'].includes(c.owner));
+ S.accounts=saved.accounts.filter(realAccount).sort(finaBankSort);
+ S.cards=saved.cards.filter(c=>c&&c.real===true&&['lucas','naara'].includes(c.owner)).sort(finaBankSort);
  S.transactions=saved.transactions.filter(realTransaction);
  const summary=saved.cashTotals;
  if(summary?.userId===user.id&&summary?.ownerKey===window.FinaSelfOwnerKey&&
@@ -2041,7 +2077,7 @@ async function finaLoadRealBankDataOnce(){
       real:true,
       last4:a.number_last4||'',
       accountType:a.subtype||a.type||'BANK'
-    }));
+    })).sort(finaBankSort);
 
     // Cartões ficam separados do saldo bancário.
     const previousCards=new Map((S.cards||[]).map(c=>[c.owner+'|'+c.digits,c]));
@@ -2064,7 +2100,7 @@ async function finaLoadRealBankDataOnce(){
         source:'bank',
         real:true
       };
-    });
+    }).sort(finaBankSort);
     if(S.cards.length&&!S.cards.some(c=>c.id===S.card))S.card=S.cards[0].id;
 
     // Entrou/Saiu usa somente extrato das contas bancárias; compras/créditos do cartão
@@ -2085,7 +2121,7 @@ async function finaLoadRealBankDataOnce(){
       else if(descLower.includes('pagamento de fatura'))category='card-payment';
       return {id:'real-'+t.id,owner:ownerForUserId(t.user_id),bank:prettyBank(a.institution_name||a.name||'Banco'),name:desc,value:Math.round((Number(t.amount)||0)*100),kind:t.direction==='credit'?'in':'out',date:String(localPart('day')).padStart(2,'0')+'/'+String(localPart('month')).padStart(2,'0'),category,month:localPart('month')-1,year:localPart('year'),real:true,
         status:String(t.status||'').toUpperCase(),occurredAt:t.occurred_at};
-    });
+    }).sort((a,b)=>String(b.occurredAt||'').localeCompare(String(a.occurredAt||''))||String(a.id).localeCompare(String(b.id)));
     window.FinaRealBankLoaded=true;
     window.FinaBankCacheState='live';
     window.FinaBankLastSnapshotAt=Date.now();
