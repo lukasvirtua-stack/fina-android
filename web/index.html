@@ -1351,7 +1351,7 @@ async function finaLoadPersistentState(user){
   const {data,error}=await sb.from('fina_user_state').select('state').eq('user_id',user.id).maybeSingle();
   if(error)return;
   if(data?.state){
-    try{localStorage.setItem('fina_state_v1',JSON.stringify(data.state));}catch{}
+    try{localStorage.setItem(finaLocalUserStateKey(user.id),JSON.stringify(data.state));}catch{}
     window.FinaApplyPersistentState?.(data.state);
   }
 }
@@ -1481,7 +1481,7 @@ window.FinaChangeSharedManualBill=async(bill,operation,editFields={})=>{
 async function finaSavePersistentState(){
   const user=window.FinaCurrentUser; if(!user)return;
   const state=window.FinaExportPersistentState?.(); if(!state)return;
-  try{localStorage.setItem('fina_state_v1',JSON.stringify(state));}catch{}
+  try{localStorage.setItem(finaLocalUserStateKey(user.id),JSON.stringify(state));}catch{}
   const {error}=await sb.from('fina_user_state').upsert({user_id:user.id,state,updated_at:new Date().toISOString()},{onConflict:'user_id'});
   if(error){console.warn('Erro ao salvar estado FINA',error.message);return;}
   if(Array.isArray(state.manualBills)&&state.manualBills.some(b=>b.type==='manual'&&['open','reserved','reported'].includes(b.state))){
@@ -2134,14 +2134,11 @@ async function finaLoadRealBankDataOnce(){
 window.addEventListener('fina:auth-ready',()=>{
  // Primeiro exibir o último dado real deste usuário. Depois sincronizar.
  if(window.FinaCashTotalsByOwner?.userId!==window.FinaCurrentUser?.id)window.FinaCashTotalsByOwner=null;
- if(!finaRestoreCachedBankData()){
-  // Nunca mostrar valores de outra sessão nem o exemplo inicial como dado bancário real.
-  S.accounts=[];S.cards=[];S.transactions=[];
-  S.bills=(S.bills||[]).filter(b=>!['bank','financing','forecast-card'].includes(b.type));
-  window.FinaBankCacheState='waiting';
-  window.FinaRender?.();
+ // Identidade ainda nao resolvida: preservar retrato do banco anterior da MESMA sessao.
+ if(window.FinaOwnerResolvedForUserId===window.FinaCurrentUser?.id){
+   window.FinaRestoreCachedBankData?.();
+   setTimeout(()=>void finaLoadRealBankData(),0);
  }
- setTimeout(()=>void finaLoadRealBankData(),0);
 });
 window.addEventListener('fina:auth-ready',()=>{setTimeout(()=>void loadFinaBankItems(),0)});
 window.addEventListener('fina:auth-ready',()=>{setTimeout(()=>void loadFinaPluggyCredentialStatus(),350)});
@@ -2201,10 +2198,20 @@ async function applySession(session){
  }
  const key=user.id+':'+(session.access_token||'').slice(-12);
  if(finaAppliedSessionKey===key)return;
+ // Renovacao de token preserva a mesma tela do mesmo usuario.
+ if(window.FinaCurrentUser?.id===user.id&&finaAppliedSessionKey){
+   finaAppliedSessionKey=key;window.FinaCurrentSession=session;return;
+ }
+ if(window.FinaCurrentUser?.id&&window.FinaCurrentUser.id!==user.id){
+   S.accounts=[];S.cards=[];S.transactions=[];S.bills=[];S.future=[];S.loans=[];
+   window.FinaRealBankLoaded=false;window.FinaBankCacheState='waiting';
+ }
  finaAppliedSessionKey=key;
  window.FinaOwnerResolvedForUserId=null;
  window.FinaCashTotalsByOwner=null;
  window.FinaCurrentUser=user;window.FinaCurrentSession=session;
+ try{const saved=JSON.parse(localStorage.getItem(finaLocalUserStateKey(user.id))||'null');if(saved)window.FinaApplyPersistentState?.(saved);}catch{}
+ try{localStorage.removeItem('fina_state_v1');}catch{}
 
  // A interface abre com o estado local imediatamente; rede apenas atualiza em segundo plano.
  let selfName=cleanName(user.user_metadata?.full_name||user.user_metadata?.name||user.email?.split('@')[0]||'Você');
