@@ -698,7 +698,7 @@ async function loadFinaCoupleTransfers(){
       const mo=Number(parts.find(p=>p.type==='month')?.value||1)-1;
       return {id:x.transfer_id,sender:x.sender_name||'Quem enviou',receiver:x.receiver_name||'Quem recebeu',value:Math.round((Number(x.amount)||0)*100),date:d.toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric'}),month:mo,year:yr,status:x.status||'sender_confirmed'};
     });
-    render(false);
+    window.FinaRender?.();
   }catch(e){console.warn('FINA: falha ao conciliar transferências do casal',e?.message||e);}
 }
 function transferHistoryRows(){
@@ -2107,7 +2107,7 @@ async function finaLoadRealBankDataOnce(){
     S.transactions=(txs||[]).filter(t=>bankIds.has(t.bank_account_id)).map(t=>{
       const a=bankById.get(t.bank_account_id)||{};
       const d=new Date(t.occurred_at);
-      const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',year:'numeric',month:'numeric',day:'numeric'}).formatToParts(d);
+      const parts=dateParts.formatToParts(d);
       const localPart=k=>Number(parts.find(x=>x.type===k)?.value||0);
       const desc=String(t.description||'Movimentação');
       const rawCategory=String(t.category||'bank');
@@ -2121,10 +2121,12 @@ async function finaLoadRealBankDataOnce(){
       return {id:'real-'+t.id,owner:ownerForUserId(t.user_id),bank:prettyBank(a.institution_name||a.name||'Banco'),name:desc,value:Math.round((Number(t.amount)||0)*100),kind:t.direction==='credit'?'in':'out',date:String(localPart('day')).padStart(2,'0')+'/'+String(localPart('month')).padStart(2,'0'),category,month:localPart('month')-1,year:localPart('year'),real:true,
         status:String(t.status||'').toUpperCase(),occurredAt:t.occurred_at};
     }).sort((a,b)=>String(b.occurredAt||'').localeCompare(String(a.occurredAt||''))||String(a.id).localeCompare(String(b.id)));
+    const hadWarmSnapshot=window.FinaBankCacheState==='cached'||window.FinaRealBankLoaded===true;
     window.FinaRealBankLoaded=true;
     window.FinaBankCacheState='live';
     window.FinaBankLastSnapshotAt=Date.now();
-    window.FinaRender?.(); // primeiro: dinheiro real e extratos, sem bloquear por faturas
+    // Sem cache, mostrar valores reais assim que prontos. Com cache, evitar tela intermediaria.
+    if(!hadWarmSnapshot)window.FinaRender?.();
     await loadFinaFinancings();
     await finaLoadOfficialCardBills();
     finaSaveCachedBankData(user);
