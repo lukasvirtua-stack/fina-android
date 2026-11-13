@@ -1214,8 +1214,12 @@ async function finaLoadSharedBills(){
  const fp=b=>[b.owner,norm(b.name),b.month,b.year,Math.round(Number(b.value)||0)].join('|');
  const seen=new Set(current.filter(b=>b.type==='manual').map(fp));
  for(const item of data){
-  if(!item||!['open','reserved','reported'].includes(item.state))continue;
-  const bill={...item,type:'shared',detail:'Conta do casal · cadastrada manualmente',value:Math.round(Number(item.value)||0)};
+  if(!item||!['open','reserved','reported','posted'].includes(item.state))continue;
+  const bill={...item,type:'shared',
+   detail:item.state==='posted'
+     ?String(item.detail||'Pagamento bancário conciliado · já refletido no saldo')
+     :'Conta do casal · cadastrada manualmente',
+   value:Math.round(Number(item.value)||0)};
   if(bill.value<=0||seen.has(fp(bill)))continue;
   seen.add(fp(bill));current.push(bill);
  }
@@ -1963,6 +1967,8 @@ async function finaRefreshVisibleData(){
   const tag=document.activeElement?.tagName;
   if(['INPUT','SELECT','TEXTAREA'].includes(tag)||S.add||S.homeAdd||S.invoiceAdd||S.edit)return;
   try{await finaLoadPersistentState(window.FinaCurrentUser);}catch{}
+  // Atualizar também contas cadastradas pelo outro integrante; inclui pagas.
+  try{await finaLoadSharedBills();}catch{}
   try{await finaLoadHistorySharingStatus();}catch{}
   try{await finaLoadRealBankData();}catch{}
   try{await window.FinaLoadCoupleTransfers?.();}catch{}
