@@ -102,8 +102,14 @@ test('Resultado do Casal soma as duas projeções individuais', () => {
   }
 });
 
-test('Cache mantém extrato dos dois integrantes autorizados', () => {
-  assert.match(html, /transactions:\(S\.transactions\|\|\[\]\)\.filter\(x=>x\.real===true&&\['lucas','naara'\]\.includes\(x\.owner\)&&ownerShown\(x\.owner\)\)/);
+test('Offline só armazena extrato da própria conta Google e evita vazamento entre integrantes',()=>{
+ const saved=segment('function finaSaveCachedBankData(user){','\n// Busca completa paginada:');
+ const restore=segment('async function finaRestoreEncryptedBankHistory(userId,ownerKey){','\nfunction finaRestoreCachedBankData(){');
+ assert.match(saved,/transactions:\(S.transactions\|\|\[\]\)\.filter\(x=>x.real===true&&x.owner===owner\)/);
+ assert.match(saved,/accounts:\(S.accounts\|\|\[\]\)\.filter\(x=>x.real===true&&x.owner===owner\)/);
+ assert.match(restore,/S.transactions=saved.transactions.filter\(tx\)/);
+ assert.doesNotMatch(saved,/localStorage\.setItem\(finaBankCacheKey/);
+ assert.match(saved,/FinaOfflineVault\?\.save\(user.id,owner,saved\)/);
 });
 
 test('Contas, cartões e compromissos mantêm ordenação fixa', () => {
@@ -150,20 +156,22 @@ test('Atualização com dados iguais não recria telas nem perde a rolagem',()=>
   assert.equal(screen.scrollTop,75);
 });
 
-test('Últimos dados locais são isolados pelo Google e não apagam cache antes da identidade',()=>{
-  assert.match(html,/const finaLocalUserStateKey=uid=>/);
-  assert.match(html,/localStorage\.getItem\(finaLocalUserStateKey\(user\.id\)\)/);
-  assert.match(html,/localStorage\.setItem\(finaLocalUserStateKey\(user\.id\),JSON\.stringify\(data\.state\)\)/);
-  assert.doesNotMatch(html,/localStorage\.getItem\('fina_state_v1'\)/);
-  assert.match(html,/if\(window\.FinaBankCacheState!=='live'\)window\.FinaRestoreCachedBankData/);
-  assert.match(html,/finaRenderTimer=setTimeout/);
+test('O cache de compromissos não guarda valores nem fotografias em localStorage',()=>{
+ assert.match(html,/const finaLocalUserStateKey=uid=>/);
+ assert.match(html,/FinaOfflineVault\?\.saveState\(user.id,window.FinaSelfOwnerKey/);
+ assert.match(html,/FinaOfflineVault\?\.loadState\(userId,ownerKey\)/);
+ assert.doesNotMatch(html,/localStorage\.getItem\(finaLocalUserStateKey\(user.id\)\)/);
+ assert.doesNotMatch(html,/localStorage\.setItem\(finaLocalUserStateKey\(user.id\),JSON.stringify/);
+ assert.doesNotMatch(html,/localStorage\.setItem\('fina_shared_profiles_v1'/);
+ assert.match(html,/finaRenderTimer=setTimeout/);
 });
 
 test('Ao abrir, não confundir saldo indisponível com zero ou previsão', () => {
  const source=segment('function home(){','\nfunction banks(){');
  assert.match(source,/const balancesAvailable=/);
+ assert.match(source,/S\.scope==='casal'\?hasRealBalance\(self\)&&hasRealBalance\(partner\)/);
  assert.match(source,/balancesAvailable\?display\(scopeBalance\(\)\):'—'/);
- assert.match(source,/!balancesAvailable\?'—':S\.showMoney/);
+ assert.match(source,/!hasRealBalance\(o\)\?'—':S\.showMoney/);
  assert.match(source,/cashAvailable\?monthResult\(\):null/);
  assert.match(source,/Carregando saldos reais dos bancos/);
  assert.match(html,/meta name="google" content="notranslate"/);
@@ -215,42 +223,33 @@ test('Busca rápida mostra saldos autorizados e não acessa dados de outra sess�
  assert.equal(reads,1,'Outra conta não pode consultar os saldos da sessão anterior');
 });
 
-test('Cache bancário restaura saldos reais entre os dois scripts isolados', () => {
+test('Cache criptografado restaura apenas Lucas, mesmo contendo histórico antigo de Naara',async()=>{
  const browserModules=[...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
    .filter(x=>x[2].trim()&&!/\bsrc=/.test(x[1]));
- assert.ok(browserModules.length>=3,'Os módulos inline devem estar presentes');
- const first=browserModules[1][2],second=browserModules[2][2];
- assert.match(first,/window\.FinaBankSort=finaBankSort;/);
- assert.match(first,/window\.FinaLocalUserStateKey=finaLocalUserStateKey;/);
- assert.match(second,/const finaBankSort=window\.FinaBankSort;/);
- assert.match(second,/const finaLocalUserStateKey=window\.FinaLocalUserStateKey;/);
- const c={window:{},S:{accounts:[],cards:[],transactions:[],bills:[],loans:[]},
-   localStorage:{getItem:()=>null},Date};
- vm.createContext(c);
- // O primeiro módulo expõe os dois helpers; não estão no escopo global do segundo.
- vm.runInContext('(()=>{'+segment('const finaOwnerRank=', '\nconst seed=')+
-  "\nconst finaLocalUserStateKey=uid=>'fina_user_state_v2_'+String(uid);"+
-  '\nwindow.FinaBankSort=finaBankSort;window.FinaLocalUserStateKey=finaLocalUserStateKey;})();',c,{timeout:1500});
- assert.equal(typeof c.window.FinaBankSort,'function');
- assert.equal(typeof c.window.FinaLocalUserStateKey,'function');
- const id='google-lucas';
+ assert.ok(browserModules.length>=3);
+ assert.match(browserModules[1][2],/window\.FinaBankSort=finaBankSort;/);
+ assert.match(browserModules[2][2],/const finaBankSort=window\.FinaBankSort;/);
+ const id='google-lucas', deleted=[];
  const saved={userId:id,ownerKey:'lucas',savedAt:Date.now(),
-   accounts:[{id:'real-itau',owner:'lucas',real:true,name:'Itaú',balance:68570},
-             {id:'real-nubank',owner:'naara',real:true,name:'Nubank',balance:714}],
-   cards:[],transactions:[]};
- c.window.FinaCurrentUser={id};
- c.window.FinaOwnerResolvedForUserId=id;
- c.window.FinaSelfOwnerKey='lucas';
- c.window.FinaRender=()=>{};
- c.localStorage.getItem=key=>key==='fina_bank_snapshot_v5_'+id?JSON.stringify(saved):null;
- const restoreSource=segment('const finaBankCacheKey=uid=>','\n// O saldo das contas chega antes do histórico');
- const result=vm.runInContext('(()=>{const finaBankSort=window.FinaBankSort;'+
-   'const finaLocalUserStateKey=window.FinaLocalUserStateKey;'+
-   restoreSource+'\nreturn finaRestoreCachedBankData();})()',c,{timeout:3000});
- assert.equal(result,true,'Cache do celular deve restaurar sem ReferenceError');
- assert.equal(c.S.accounts.reduce((sum,x)=>sum+x.balance,0),69284);
+  accounts:[{id:'real-itau',owner:'lucas',real:true,name:'Itaú',balance:68570},
+            {id:'real-nubank',owner:'naara',real:true,name:'Nubank',balance:714}],
+  cards:[],bankBills:[],loans:[],
+  transactions:[{id:'real-a',owner:'lucas',real:true,value:100},{id:'real-b',owner:'naara',real:true,value:500}]};
+ const c={window:{FinaCurrentUser:{id},FinaOwnerResolvedForUserId:id,FinaSelfOwnerKey:'lucas',
+    FinaRender:()=>{},FinaOfflineVault:{load:async()=>saved}},
+  S:{accounts:[],cards:[],transactions:[],bills:[],loans:[]},
+  localStorage:{removeItem:k=>deleted.push(k)},Date};
+ vm.createContext(c);
+ const f=vm.runInContext('(()=>{const finaBankSort=(a,b)=>String(a.name).localeCompare(String(b.name));'+
+   segment('const finaBankCacheKey=uid=>','\n// Busca completa paginada:')+
+   '\nreturn {restore:finaRestoreCachedBankData,encrypted:finaRestoreEncryptedBankHistory};})()',c,{timeout:3000});
+ assert.equal(f.restore(),false,'Restauração não deve confiar em armazenamento legível');
+ await f.encrypted(id,'lucas');
+ assert.deepEqual(c.S.accounts.map(a=>a.owner),['lucas']);
+ assert.deepEqual(c.S.transactions.map(a=>a.id),['real-a']);
  assert.equal(c.window.FinaBankCacheState,'cached');
- assert.equal(c.window.FinaLocalUserStateKey(id),'fina_user_state_v2_'+id);
+ assert.equal(c.window.FinaCashTotalsByOwner,null);
+ assert.ok(deleted.includes('fina_bank_snapshot_v5_'+id));
 });
 
 test('Leitura bancária usa ordenação disponível no módulo de banco',()=>{

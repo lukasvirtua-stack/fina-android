@@ -80,3 +80,32 @@ test('A UI consulta alertas próprios e não mostra TED esperado como crédito c
  assert.ok(html.includes("window.FinaCashDataError"));
  assert.ok(html.includes("const finaCashCountable"));
 });
+
+test('Compromissos e recebimentos futuros próprios são criptografados, sem vazar dados do outro integrante',async()=>{
+ const {vault,stores}=harness();
+ const state={
+   profile:{displayName:'Lucas'},
+   preferences:{theme:'dark'},
+   manualBills:[
+     {id:'l',owner:'lucas',name:'Conta própria',value:12990},
+     {id:'n',owner:'naara',name:'Conta privada de Naara',value:500000}
+   ],
+   future:[
+     {owner:'lucas',name:'Comissão',value:45000},
+     {owner:'naara',name:'Recebimento reservado',value:99999}
+   ]
+ };
+ assert.equal(await vault.saveState(user,'lucas',state),true);
+ const encrypted=stores.get('records').get('state:'+user);
+ assert.ok(encrypted,'O estado cifrado deve ser um registro distinto');
+ assert.ok(!JSON.stringify(encrypted).includes('Conta própria'));
+ assert.ok(!JSON.stringify(encrypted).includes('Conta privada de Naara'));
+ const restored=await vault.loadState(user,'lucas');
+ assert.deepEqual(restored.manualBills.map(x=>x.id),['l']);
+ assert.equal(restored.future.length,1);
+ assert.equal(restored.future[0].owner,'lucas');
+ assert.equal(await vault.loadState(user,'naara'),null,'Credenciais de outro papel não devem decifrar o estado');
+ await vault.clear(user);
+ assert.equal(stores.get('records').has('state:'+user),false);
+ assert.equal(stores.get('keys').has(user),false);
+});
