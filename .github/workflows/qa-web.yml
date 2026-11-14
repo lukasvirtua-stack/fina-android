@@ -21,3 +21,5 @@ jobs:
         run: node tests/check-web.mjs
       - name: Testar cobertura completa da sincronização bancária
         run: node --test tests/sync-coverage.test.mjs
+      - name: Testar atualização por gesto sem chamadas extras à Pluggy
+        run: node --test tests/pull-refresh.test.mjs
