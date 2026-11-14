@@ -34,7 +34,7 @@ test("o banco revela faturas parciais sem confundir uma sincronização válida 
 });
 
 test("cartão sem fatura não deve apresentar falsa quitação de R$ 0,00",()=>{
- const code=between("const cardRows=creditCards.map"," .join('')||'<p class=\"muted\">Nenhum cartão visível neste filtro.</p>'");
+ const code=between("const cardRows=creditCards.map","function bankCard(c)");
  assert.match(code,/invoice\?display\(billValue\(invoice\)\):'Fatura não informada'/);
  assert.doesNotMatch(code,/invoice\?display\(billValue\(invoice\)\):'R\$ 0,00'/);
 });
