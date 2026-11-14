@@ -185,8 +185,16 @@ Deno.serve(async(req)=>{
           transactionPages++;
           if(!tr.ok){fullHistoryOk=false;itemImportOk=false;itemImportErr="transactions_http_"+tr.status;accountComplete=false;break;}
           const tj=await tr.json();
-          const txs=Array.isArray(tj?.results)?tj.results:[];
-          const rows=txs.filter((x:any)=>x?.id&&x?.date).map((x:any)=>{
+          // Nunca descartar silenciosamente uma transação inválida recebida do provedor.
+          if(!Array.isArray(tj?.results)){
+            fullHistoryOk=false;itemImportOk=false;itemImportErr="transactions_page_invalid";accountComplete=false;next="";break;
+          }
+          const txs=tj.results;
+          if(txs.some((x:any)=>!x?.id||!x?.date||x.amount==null||
+            !Number.isFinite(Number(x.amount))||Number.isNaN(Date.parse(String(x.date))))){
+            fullHistoryOk=false;itemImportOk=false;itemImportErr="transactions_record_incomplete";accountComplete=false;next="";break;
+          }
+          const rows=txs.map((x:any)=>{
             const n=Number(x.amount)||0;
             return {
               user_id:item.user_id,bank_account_id:stored.id,external_transaction_id:String(x.id),
