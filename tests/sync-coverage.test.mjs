@@ -43,6 +43,14 @@ test('cada conta falha de forma visível, sem marcar sucesso silencioso',()=>{
  assert.match(sync,/allConnectedProductsChecked:importFailures===0 && accountsFailed===0/);
 });
 
+test('não omite lançamentos inválidos silenciosamente na sincronização',()=>{
+ assert.match(sync,/transactions_page_invalid/);
+ assert.match(sync,/transactions_record_incomplete/);
+ assert.match(sync,/!Number\.isFinite\(Number\(x.amount\)\)/);
+ assert.match(sync,/Number\.isNaN\(Date.parse\(String\(x.date\)\)\)/);
+ assert.doesNotMatch(sync,/const rows=txs\.filter/);
+});
+
 test('interface informa o atraso do banco e sua próxima previsão de atualização',()=>{
  assert.match(html,/Próxima atualização prevista pelo provedor/);
  assert.match(html,/Atualização do banco atrasada/);
