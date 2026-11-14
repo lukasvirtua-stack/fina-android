@@ -520,6 +520,8 @@ function home(){
  let people=`<div class="profiles">${personBlock(self)}<button class="heart ${S.scope==='casal'?'active':''}" data-act="scope" data-scope="casal">♥</button>${personBlock(partner)}</div>`;
  return `${people}${celebrationBanner()}<section class="primary-info" style="position:relative"><div class="title">${S.scope==='casal'?'Saldo real das contas do casal':'Saldo bancário de '+escape(name(S.scope))}</div><button style="position:absolute;top:12px;right:12px" class="btn soft mini" data-act="show">${S.showMoney?'◉':'◎'}</button><div class="big">${balancesAvailable?display(scopeBalance()):'—'}</div><div class="muted">${S.scope==='casal'?(partnerReady()?'Soma dos saldos bancários reais de ambos, atualizados pela sincronização':'Soma das suas contas; aguardando a conexão da outra pessoa'):'Saldo bancário original importado: já inclui entradas e saídas efetivadas'} · sem limite de crédito</div></section>
 ${!balancesAvailable?'<p class="hint">Carregando saldos reais dos bancos… Até a confirmação, nenhum zero será tratado como saldo.</p>':''}
+${(window.FinaSyncAlerts||[]).length?'<p class="hint" role="alert">⚠ '+window.FinaSyncAlerts.slice(0,2).map(x=>escape(x.message)).join(' · ')+'</p>':''}
+${navigator.onLine===false&&window.FinaOfflineHistoryCount?'<p class="hint">Sem internet · '+window.FinaOfflineHistoryCount+' lançamentos do último histórico cifrado no aparelho.</p>':''}
 ${window.FinaCashDataError?'<p class="hint" role="alert">'+escape(window.FinaCashDataError)+'</p>':''}
 ${window.FinaBankCacheState==='cached'?'<p class="hint">Últimos saldos bancários confirmados e salvos neste aparelho. Atualizando com o banco em segundo plano…</p>':''}
 <div class="personrow">${[self,partner].map(o=>`<button data-act="scope" data-scope="${o}" class="${S.scope===o?'active':''}"><span class="bubbleavatar">${escape((name(o)||'?').charAt(0).toUpperCase())}</span><span><b>${escape(name(o))}</b><small class="person-projection-label">Saldo ajustado</small><small class="person-projection-value">${!balancesAvailable?'—':S.showMoney?money(ownerAdjusted(o)):'•••••'}</small></span></button>`).join('')}</div>
@@ -1942,6 +1944,20 @@ async function finaLoadOfficialCardBills(){
  }catch{}
 }
 window.FinaLoadOfficialCardBills=finaLoadOfficialCardBills;
+window.FinaSyncAlerts=[];
+async function finaLoadSyncAlerts(){
+ const user=window.FinaCurrentUser;if(!user)return;
+ try{
+  const {data,error}=await sb.from('fina_sync_alerts').select('id,kind,message,first_detected_at')
+   .is('resolved_at',null).order('first_detected_at',{ascending:false}).limit(12);
+  if(window.FinaCurrentUser?.id!==user.id)return;
+  if(error||!Array.isArray(data))return;
+  if(JSON.stringify(window.FinaSyncAlerts)!==JSON.stringify(data)){
+    window.FinaSyncAlerts=data;window.FinaRender?.();
+  }
+ }catch{}
+}
+window.addEventListener('fina:auth-ready',()=>setTimeout(()=>void finaLoadSyncAlerts(),350));
 // Cache bancário por identidade do Google: dados mínimos necessários para
 // mostrar a última situação confirmada, SEM credenciais Pluggy.
 const finaBankCacheKey=uid=>'fina_bank_snapshot_v5_'+String(uid);
@@ -2255,6 +2271,7 @@ function finaStartDataRealtime(){
     .on('postgres_changes',{event:'*',schema:'public',table:'fina_financing_installments'},refresh)
     .on('postgres_changes',{event:'*',schema:'public',table:'fina_couple_transfers'},refresh)
     .on('postgres_changes',{event:'*',schema:'public',table:'fina_user_state'},refresh)
+    .on('postgres_changes',{event:'*',schema:'public',table:'fina_sync_alerts'},()=>void finaLoadSyncAlerts())
     .on('postgres_changes',{event:'*',schema:'public',table:'fina_couple_state_versions'},()=>void finaLoadSharedBills())
     .subscribe();
 }
@@ -2277,6 +2294,7 @@ async function finaRefreshVisibleData(){
   try{await finaLoadRealBankData();}catch{}
   try{await window.FinaLoadCoupleTransfers?.();}catch{}
   try{await loadFinaSharedProfiles();}catch{}
+  try{await finaLoadSyncAlerts();}catch{}
   })();
   try{return await finaVisibleRefreshPending;}
   finally{finaVisibleRefreshPending=null;}
@@ -2287,6 +2305,7 @@ finaAutoRefreshTimer=setInterval(()=>void finaRefreshVisibleData(),60000);
 async function applySession(session){
  const user=session?.user;
  if(!user){
+   window.FinaSyncAlerts=[];window.FinaOfflineHistoryCount=0;
    window.FinaCurrentUser=null;window.FinaCurrentSession=null;finaAppliedSessionKey='';
    S.profiles.lucas.displayName='Você';S.profiles.naara.displayName='Outra pessoa';
    document.body.classList.remove('fina-authenticated');gate.hidden=false;bar.textContent='';
@@ -2300,6 +2319,7 @@ async function applySession(session){
  }
  if(window.FinaCurrentUser?.id&&window.FinaCurrentUser.id!==user.id){
    S.accounts=[];S.cards=[];S.transactions=[];S.bills=[];S.future=[];S.loans=[];
+   window.FinaSyncAlerts=[];window.FinaOfflineHistoryCount=0;
    window.FinaRealBankLoaded=false;window.FinaBankCacheState='waiting';
  }
  finaAppliedSessionKey=key;
