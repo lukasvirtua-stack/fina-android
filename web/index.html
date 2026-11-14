@@ -239,23 +239,8 @@ const finaLocalUserStateKey=uid=>'fina_user_state_v2_'+String(uid);
 // Segundo script (acesso bancário) roda em outro escopo: expor explicitamente helpers compartilhados.
 window.FinaBankSort=finaBankSort;
 window.FinaLocalUserStateKey=finaLocalUserStateKey;
-try{
-  const shared=JSON.parse(localStorage.getItem('fina_shared_profiles_v1')||'null');
-  if(shared?.profiles){
-    for(const o of ['lucas','naara']){
-      const p=shared.profiles[o];
-      if(!p)continue;
-      if(p.displayName)S.profiles[o].displayName=String(p.displayName).slice(0,70);
-      if(typeof p.dob==='string')S.profiles[o].dob=p.dob.slice(0,10);
-      if(typeof p.photo==='string'&&p.photo.startsWith('data:image/')){
-        S.profiles[o].photo=p.photo;
-        S.profiles[o].photoOriginal=p.photo;
-      }
-      if(p.photoCrop)S.profiles[o].photoCrop=p.photoCrop;
-    }
-    if(typeof shared.weddingDate==='string')S.weddingDate=shared.weddingDate;
-  }
-}catch{}
+// Não exibir fotos ou datas da sessão anterior antes de validar o Google.
+try{localStorage.removeItem('fina_shared_profiles_v1')}catch{}
 let photoEditor=null;const tabs=[['home','⌂','Início'],['bills','▤','Faturas e Contas'],['chat','✧','FINA IA'],['settings','⚙','Config.']];const screenNames={...Object.fromEntries(tabs.map(t=>[t[0],t[2]])),banks:'Bancos e cartões',cards:'Cartões',bills:'Faturas + Contas',forecast:'Variáveis a receber',calendar:'Calendário',couple:'Casal',tests:'app',profile:'Perfil e datas',transfers:'Transferências'};
 const selfOwner=()=>window.FinaSelfOwnerKey||'lucas';
 const partnerOwner=()=>selfOwner()==='lucas'?'naara':'lucas';
@@ -1369,13 +1354,24 @@ document.addEventListener('click',event=>{
 
 
 let finaPersistTimer=null;
+window.FinaPersistentStateLoadedForUser=null;
+async function finaRestoreEncryptedLocalPreferences(userId,ownerKey){
+ try{
+  const state=await window.FinaOfflineVault?.loadState(userId,ownerKey);
+  if(!state||window.FinaCurrentUser?.id!==userId||window.FinaSelfOwnerKey!==ownerKey||
+     window.FinaPersistentStateLoadedForUser===userId)return;
+  window.FinaApplyPersistentState?.(state);
+ }catch{}
+}
 async function finaLoadPersistentState(user){
   if(!user)return;
   const {data,error}=await sb.from('fina_user_state').select('state').eq('user_id',user.id).maybeSingle();
   if(error)return;
-  if(data?.state){
-    try{localStorage.setItem(finaLocalUserStateKey(user.id),JSON.stringify(data.state));}catch{}
+  if(data?.state&&window.FinaCurrentUser?.id===user.id){
+    window.FinaPersistentStateLoadedForUser=user.id;
     window.FinaApplyPersistentState?.(data.state);
+    void window.FinaOfflineVault?.saveState(user.id,window.FinaSelfOwnerKey,data.state);
+    try{localStorage.removeItem(finaLocalUserStateKey(user.id))}catch{}
   }
 }
 async function finaLoadSharedBills(){
@@ -1504,9 +1500,11 @@ window.FinaChangeSharedManualBill=async(bill,operation,editFields={})=>{
 async function finaSavePersistentState(){
   const user=window.FinaCurrentUser; if(!user)return;
   const state=window.FinaExportPersistentState?.(); if(!state)return;
-  try{localStorage.setItem(finaLocalUserStateKey(user.id),JSON.stringify(state));}catch{}
   const {error}=await sb.from('fina_user_state').upsert({user_id:user.id,state,updated_at:new Date().toISOString()},{onConflict:'user_id'});
   if(error){console.warn('Erro ao salvar estado FINA',error.message);return;}
+  window.FinaPersistentStateLoadedForUser=user.id;
+  void window.FinaOfflineVault?.saveState(user.id,window.FinaSelfOwnerKey,state);
+  try{localStorage.removeItem(finaLocalUserStateKey(user.id))}catch{}
   if(Array.isArray(state.manualBills)&&state.manualBills.some(b=>b.type==='manual'&&['open','reserved','reported'].includes(b.state))){
    const result=await sb.rpc('fina_reconcile_manual_bills');
    if(!result.error&&Number(result.data)>0&&window.FinaCurrentUser?.id===user.id){
@@ -1558,15 +1556,7 @@ async function loadFinaSharedProfiles(){
  coupleState.titularName=name(self);
  coupleState.partnerName=name(partner);
  window.FinaHeaderGreeting='Olá, '+coupleState.titularName+(partnerReady()?' e '+coupleState.partnerName:'');
- try{
-   localStorage.setItem('fina_shared_profiles_v1',JSON.stringify({
-     profiles:{
-       lucas:{displayName:S.profiles.lucas.displayName,dob:S.profiles.lucas.dob,photo:S.profiles.lucas.photo,photoCrop:S.profiles.lucas.photoCrop||null},
-       naara:{displayName:S.profiles.naara.displayName,dob:S.profiles.naara.dob,photo:S.profiles.naara.photo,photoCrop:S.profiles.naara.photoCrop||null}
-     },
-     weddingDate:S.weddingDate||''
-   }));
- }catch{}
+ try{localStorage.removeItem('fina_shared_profiles_v1')}catch{}
  window.dispatchEvent(new Event('fina:header-changed'));
  window.FinaRender?.();
 }
@@ -1652,6 +1642,7 @@ async function loadCoupleStatus(user){
    if(validSaved){
      window.FinaOwnerResolvedForUserId=user.id;
      window.FinaRestoreCachedBankData?.();
+     void finaRestoreEncryptedLocalPreferences(user.id,self);
      // Em modo offline, nunca liberar extratos do outro integrante sem verificar consentimento.
      S.transactions=(S.transactions||[]).filter(t=>t.owner===self);
    }
@@ -1684,6 +1675,7 @@ async function loadCoupleStatus(user){
  }
  // O acesso individual também mostra os próprios bancos, sem grupo de casal.
  window.FinaOwnerResolvedForUserId=user.id;
+ void finaRestoreEncryptedLocalPreferences(user.id,window.FinaSelfOwnerKey);
  window.dispatchEvent(new Event('fina:header-changed'));window.FinaCouple?.paint?.();
  if(!row||Number(row.member_count)===0){
   setTimeout(()=>{void finaLoadEarlyBankBalances(user.id);void finaLoadRealBankData();},0);
@@ -2346,8 +2338,8 @@ async function applySession(session){
  window.FinaOwnerResolvedForUserId=null;
  window.FinaCashTotalsByOwner=null;
  window.FinaCurrentUser=user;window.FinaCurrentSession=session;
- try{const saved=JSON.parse(localStorage.getItem(finaLocalUserStateKey(user.id))||'null');if(saved)window.FinaApplyPersistentState?.(saved);}catch{}
- try{localStorage.removeItem('fina_state_v1');}catch{}
+ window.FinaPersistentStateLoadedForUser=null;
+ try{localStorage.removeItem(finaLocalUserStateKey(user.id));localStorage.removeItem('fina_state_v1')}catch{}
 
  // A interface abre com o estado local imediatamente; rede apenas atualiza em segundo plano.
  let selfName=cleanName(user.user_metadata?.full_name||user.user_metadata?.name||user.email?.split('@')[0]||'Você');
