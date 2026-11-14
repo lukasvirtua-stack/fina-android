@@ -3,11 +3,15 @@ name: Build FINA Android APK
 on:
   push:
     branches: [ main ]
+    paths-ignore:
+      - 'web/.well-known/assetlinks.json'
   pull_request:
     branches: [ main ]
     paths:
       - 'app/**'
       - 'tests/android-launch.test.mjs'
+      - 'scripts/update-assetlinks.mjs'
+      - 'web/.well-known/assetlinks.json'
       - '.github/workflows/build-apk.yml'
   workflow_dispatch:
 
@@ -17,6 +21,10 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      cert: ${{ steps.verify.outputs.cert }}
 
     steps:
       - name: Checkout
@@ -47,6 +55,7 @@ jobs:
         run: gradle assembleDebug --stacktrace
 
       - name: Conferir assinatura e instalabilidade do APK
+        id: verify
         run: |
           set -euo pipefail
           APK=app/build/outputs/apk/debug/app-debug.apk
@@ -58,6 +67,49 @@ jobs:
           grep -F "package: name='app.fina.casal.debug'" /tmp/fina-apk-badging.txt
           grep -F "launchable-activity: name='app.fina.casal.FinaLauncherActivity'" /tmp/fina-apk-badging.txt
           sha256sum "$APK"
+          CERT_SHA256="$("$BUILD_TOOLS/apksigner" verify --print-certs "$APK" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')"
+          echo "$CERT_SHA256" | grep -Eq '^[a-fA-F0-9]{64}
+        run: |
+          mkdir -p artifact
+          cp app/build/outputs/apk/debug/app-debug.apk artifact/FINA-debug.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FINA-Android-debug
+          path: artifact/FINA-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Habilitar KVM para emulador Android
+        run: |
+          if [ -e /dev/kvm ]; then
+            sudo chmod 666 /dev/kvm
+            ls -l /dev/kvm
+          else
+            echo "Aceleracao KVM indisponivel neste runner"
+          fi
+
+      - name: Testar abertura no emulador Android (sem fechar o aplicativo)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          disable-animations: true
+          emulator-boot-timeout: 360
+          script: |
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
+            adb logcat -c
+            adb shell am start -W -n app.fina.casal.debug/app.fina.casal.FinaLauncherActivity
+            sleep 7
+            adb shell pidof app.fina.casal.debug
+            adb logcat -d -s AndroidRuntime:E FinaLauncher:E
+            test -z "$(adb logcat -d -s AndroidRuntime:E | grep 'FATAL EXCEPTION' || true)"
+
+
+          printf 'cert=%s\n' "$CERT_SHA256" >> "$GITHUB_OUTPUT"
 
       - name: Prepare artifact
         run: |
@@ -99,3 +151,40 @@ jobs:
             adb logcat -d -s AndroidRuntime:E FinaLauncher:E
             test -z "$(adb logcat -d -s AndroidRuntime:E | grep 'FATAL EXCEPTION' || true)"
 
+
+  publish-assetlinks:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # Só este job de main pode atualizar o arquivo público. O job de build não escreve no repositório.
+    permissions:
+      contents: write
+    concurrency:
+      group: fina-assetlinks-production
+      cancel-in-progress: false
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Registrar SHA-256 público do APK (sem chave de assinatura)
+        env:
+          CERT_SHA256: ${{ needs.build.outputs.cert }}
+        run: |
+          set -euo pipefail
+          git pull --ff-only origin main
+          node scripts/update-assetlinks.mjs "$CERT_SHA256"
+          if git diff --quiet -- web/.well-known/assetlinks.json; then
+            echo "Certificado já registrado"
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add web/.well-known/assetlinks.json
+          git commit -m "chore: atualizar domínio Android TWA"
+          git push origin HEAD:main
