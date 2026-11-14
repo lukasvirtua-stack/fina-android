@@ -4,12 +4,16 @@ on:
     branches: [main]
     paths:
       - web/index.html
+      - web/service-worker.js
       - tests/finance-rules.test.mjs
+      - tests/pwa-cache.test.mjs
       - .github/workflows/fina-finance.yml
   pull_request:
     paths:
       - web/index.html
+      - web/service-worker.js
       - tests/finance-rules.test.mjs
+      - tests/pwa-cache.test.mjs
       - .github/workflows/fina-finance.yml
 jobs:
   financial-rules:
@@ -21,4 +25,4 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --test tests/finance-rules.test.mjs
+      - run: node --test tests/finance-rules.test.mjs tests/pwa-cache.test.mjs

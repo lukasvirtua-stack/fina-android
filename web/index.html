@@ -1659,8 +1659,11 @@ async function loadCoupleStatus(user){
  // O acesso individual também mostra os próprios bancos, sem grupo de casal.
  window.FinaOwnerResolvedForUserId=user.id;
  window.dispatchEvent(new Event('fina:header-changed'));window.FinaCouple?.paint?.();
- if(!row||Number(row.member_count)===0)
+ if(!row||Number(row.member_count)===0){
   setTimeout(()=>{void finaLoadEarlyBankBalances(user.id);void finaLoadRealBankData();},0);
+  // Sem grupo conectado, conservar preferencias e contas manuais do proprio usuario.
+  void finaLoadPersistentState(user).catch(()=>{});
+ }
 }
 function paintCouple(){const summary=document.getElementById('finaCoupleSummary');if(!summary)return;const connected=document.getElementById('finaCoupleConnected'),setup=document.getElementById('finaCoupleSetup'),names=document.getElementById('finaCoupleNames'),generated=document.getElementById('finaCoupleGenerated'),codeNode=document.getElementById('finaCoupleCode');if(coupleState.connected){summary.textContent='Este acesso já faz parte do casal.';if(connected)connected.hidden=false;if(setup)setup.hidden=true;if(names)names.textContent=coupleState.titularName+' e '+coupleState.partnerName;}else{summary.textContent=coupleState.memberCount===1?'Uma conta conectada. Aguardando a outra pessoa.':'Conecte as duas contas Google.';if(connected)connected.hidden=true;if(setup)setup.hidden=false;if(generated)generated.hidden=!coupleState.code;if(codeNode&&coupleState.code)codeNode.textContent=coupleState.code;}}
 async function createCoupleInvite(){const status=document.getElementById('finaCoupleRealStatus');if(status)status.textContent='Gerando código…';const {data,error}=await sb.rpc('fina_create_couple_invite');if(error){if(status)status.textContent='Não foi possível gerar o código: '+error.message;return;}const row=Array.isArray(data)?data[0]:data;coupleState.code=String(row?.code||'');coupleState.expiresAt=row?.expires_at||null;coupleState.memberCount=Math.max(coupleState.memberCount,1);coupleState.isOwner=true;paintCouple();if(status)status.textContent='Código criado. Ele expira em 30 minutos.';await loadCoupleStatus(window.FinaCurrentUser);}
@@ -2281,17 +2284,14 @@ async function applySession(session){
  }catch{}
 
  window.dispatchEvent(new CustomEvent('fina:auth-ready',{detail:{user}}));
+ // Evitar consultas duplicadas em serie antes de mostrar o ultimo snapshot bancario.
+ // loadCoupleStatus ja consulta o nome, restaura o snapshot e sincroniza compromissos.
  setTimeout(async()=>{
-   try{
-     await finaLoadPersistentState(user);
-     const {data:profile}=await sb.from('fina_profiles').select('display_name').eq('user_id',user.id).maybeSingle();
-     if(profile?.display_name){
-       const nm=cleanName(profile.display_name);window.FinaHeaderGreeting='Olá, '+nm;
-       window.dispatchEvent(new Event('fina:header-changed'));
-     }
-   }catch{}
-   try{await ensureProfile(user);}catch{}
-   try{await loadCoupleStatus(user);}catch{}
+   if(window.FinaCurrentUser?.id!==user.id)return;
+   try{await ensureProfile(user);}catch(e){console.warn('FINA: perfil ainda indisponivel',e?.message||e);}
+   if(window.FinaCurrentUser?.id!==user.id)return;
+   try{await loadCoupleStatus(user);}catch(e){console.warn('FINA: status do casal indisponivel',e?.message||e);}
+   if(window.FinaCurrentUser?.id!==user.id)return;
    try{await finaLoadHistorySharingStatus();}catch{}
  },0);
 }
