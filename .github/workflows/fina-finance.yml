@@ -7,6 +7,7 @@ on:
       - web/service-worker.js
       - web/offline-vault.js
       - tests/offline-vault.test.mjs
+      - tests/financial-invariants.test.mjs
       - tests/finance-rules.test.mjs
       - tests/pwa-cache.test.mjs
       - .github/workflows/fina-finance.yml
@@ -16,6 +17,7 @@ on:
       - web/service-worker.js
       - web/offline-vault.js
       - tests/offline-vault.test.mjs
+      - tests/financial-invariants.test.mjs
       - tests/finance-rules.test.mjs
       - tests/pwa-cache.test.mjs
       - .github/workflows/fina-finance.yml
@@ -29,4 +31,4 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --test tests/finance-rules.test.mjs tests/pwa-cache.test.mjs tests/offline-vault.test.mjs
+      - run: node --test tests/finance-rules.test.mjs tests/pwa-cache.test.mjs tests/offline-vault.test.mjs tests/financial-invariants.test.mjs
