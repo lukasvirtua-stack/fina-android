@@ -514,8 +514,9 @@ function finaCashLedger(){
 
 function home(){
  const self=selfOwner(),partner=partnerOwner();
+ const hasRealBalance=o=>(S.accounts||[]).some(a=>a.real===true&&a.owner===o);
  const balancesAvailable=!!window.FinaCurrentUser&&window.FinaOwnerResolvedForUserId===window.FinaCurrentUser.id&&
-  (S.accounts||[]).some(a=>a.real===true&&['lucas','naara'].includes(a.owner));
+  (S.scope==='casal'?hasRealBalance(self)&&hasRealBalance(partner):hasRealBalance(S.scope));
  const cashAvailable=balancesAvailable&&(window.FinaRealBankLoaded===true||window.FinaBankCacheState==='cached'||window.FinaBankCacheState==='live');
  const personBlock=o=>`<div><button class="portrait ${S.scope===o?'active':''}" style="height:${S.photoSize}px;width:${S.photoSize}px" data-act="scope" data-scope="${o}">${S.profiles[o].photo?`<img class="photo-avatar" src="${S.profiles[o].photo}" alt="Foto de ${escape(name(o))}">`:escape((name(o)||'?').charAt(0).toUpperCase())}</button><div class="profilelabel">${escape(name(o))}</div></div>`;
  let people=`<div class="profiles">${personBlock(self)}<button class="heart ${S.scope==='casal'?'active':''}" data-act="scope" data-scope="casal">♥</button>${personBlock(partner)}</div>`;
@@ -525,7 +526,7 @@ ${(window.FinaSyncAlerts||[]).length?'<p class="hint" role="alert">⚠ '+window.
 ${navigator.onLine===false&&window.FinaOfflineHistoryCount?'<p class="hint">Sem internet · '+window.FinaOfflineHistoryCount+' lançamentos do último histórico cifrado no aparelho.</p>':''}
 ${window.FinaCashDataError?'<p class="hint" role="alert">'+escape(window.FinaCashDataError)+'</p>':''}
 ${window.FinaBankCacheState==='cached'?'<p class="hint">Últimos saldos bancários confirmados e salvos neste aparelho. Atualizando com o banco em segundo plano…</p>':''}
-<div class="personrow">${[self,partner].map(o=>`<button data-act="scope" data-scope="${o}" class="${S.scope===o?'active':''}"><span class="bubbleavatar">${escape((name(o)||'?').charAt(0).toUpperCase())}</span><span><b>${escape(name(o))}</b><small class="person-projection-label">Saldo ajustado</small><small class="person-projection-value">${!balancesAvailable?'—':S.showMoney?money(ownerAdjusted(o)):'•••••'}</small></span></button>`).join('')}</div>
+<div class="personrow">${[self,partner].map(o=>`<button data-act="scope" data-scope="${o}" class="${S.scope===o?'active':''}"><span class="bubbleavatar">${escape((name(o)||'?').charAt(0).toUpperCase())}</span><span><b>${escape(name(o))}</b><small class="person-projection-label">Saldo ajustado</small><small class="person-projection-value">${!hasRealBalance(o)?'—':S.showMoney?money(ownerAdjusted(o)):'•••••'}</small></span></button>`).join('')}</div>
 <div class="fourstats">${[['↑','green','Entrou',cashAvailable?real('in'):null,'banks'],['↓','red','Saiu',cashAvailable?real('out'):null,'banks'],['▣','blue','Fatura + contas',open(),'bills'],['−','gold','Resultado',cashAvailable?monthResult():null,'forecast']].map(([icon,color,label,v,link])=>`<button data-act="${link.startsWith('cash-')?'cash-filter':'open'}" ${link.startsWith('cash-')?'data-value="'+link.slice(5)+'"':'data-target="'+link+'"'}><span class="round ${color}">${icon}</span><small>${label}</small><b>${v===null?'—':display(v)}</b></button>`).join('')}</div>
 
 <button class="home-forecast-line" type="button" data-act="open" data-target="forecast" aria-label="Abrir variáveis a receber"><span class="home-forecast-icon">◷</span><span class="home-forecast-text"><strong>Variáveis a receber</strong><small>Recebimentos futuros</small></span><strong class="home-forecast-amount">${display(future())}</strong><span class="home-forecast-chevron" aria-hidden="true">›</span></button>
@@ -1640,9 +1641,9 @@ async function loadCoupleStatus(user){
  if(error){
    // Sem rede: recuperar somente dados do proprio Google autenticado e ultimo dono conhecido.
    let saved=null;
-   try{saved=JSON.parse(localStorage.getItem('fina_bank_snapshot_v5_'+user.id)||'null')}catch{}
-   const validSaved=saved?.userId===user.id&&['lucas','naara'].includes(saved.ownerKey)
-     &&Number.isFinite(saved.savedAt)&&Date.now()-saved.savedAt<30*86400000;
+   try{saved=JSON.parse(localStorage.getItem(finaBankOwnerMetadataKey(user.id))||'null')}catch{}
+   const validSaved=['lucas','naara'].includes(saved?.ownerKey)&&
+     Number.isFinite(saved?.savedAt)&&Date.now()-saved.savedAt<30*86400000;
    const self=validSaved?saved.ownerKey:'lucas';
    window.FinaSelfOwnerKey=self;window.FinaPartnerReady=false;
    coupleState={...coupleState,connected:false,isOwner:false,titularName:selfName,partnerName:'',memberCount:0};
@@ -1996,6 +1997,7 @@ window.addEventListener('fina:auth-ready',()=>setTimeout(()=>{void finaLoadSyncA
 // Cache bancário por identidade do Google: dados mínimos necessários para
 // mostrar a última situação confirmada, SEM credenciais Pluggy.
 const finaBankCacheKey=uid=>'fina_bank_snapshot_v5_'+String(uid);
+const finaBankOwnerMetadataKey=uid=>'fina_bank_owner_v1_'+String(uid);
 let finaOfflineRestorePromise=null;
 async function finaRestoreEncryptedBankHistory(userId,ownerKey){
  if(finaOfflineRestorePromise)return finaOfflineRestorePromise;
@@ -2005,20 +2007,21 @@ async function finaRestoreEncryptedBankHistory(userId,ownerKey){
     window.FinaOwnerResolvedForUserId!==userId||window.FinaSelfOwnerKey!==ownerKey||
     window.FinaRealBankLoaded===true||
     (window.FinaBankBalancesReady===true&&window.FinaBankLastSnapshotAt>saved.savedAt))return false;
-  const bank=a=>a?.real===true&&['lucas','naara'].includes(a.owner)&&Number.isFinite(a.balance);
-  const tx=t=>t?.real===true&&['lucas','naara'].includes(t.owner)&&Number.isFinite(t.value);
+  // Nunca armazenar/abrir histórico do parceiro offline: a autorização pode ter sido revogada.
+  const bank=a=>a?.real===true&&a.owner===ownerKey&&Number.isFinite(a.balance);
+  const tx=t=>t?.real===true&&t.owner===ownerKey&&Number.isFinite(t.value);
   if(!Array.isArray(saved.accounts)||!saved.accounts.some(bank)||
      !Array.isArray(saved.transactions)||saved.transactions.length>10000)return false;
   S.accounts=saved.accounts.filter(bank).sort(finaBankSort);
-  S.cards=(saved.cards||[]).filter(c=>c?.real===true).sort(finaBankSort);
-  const allowPartnerHistory=window.FinaHistoryBothApproved===true;
-  S.transactions=saved.transactions.filter(t=>tx(t)&&(t.owner===ownerKey||allowPartnerHistory));
+  S.cards=(saved.cards||[]).filter(c=>c?.real===true&&c.owner===ownerKey).sort(finaBankSort);
+  S.transactions=saved.transactions.filter(tx);
   if(Array.isArray(saved.bankBills)){
-   S.bills=(S.bills||[]).filter(b=>!['bank','financing','forecast-card'].includes(b.type)).concat(saved.bankBills.slice(0,500));
+   S.bills=(S.bills||[]).filter(b=>!['bank','financing','forecast-card'].includes(b.type)).concat(
+     saved.bankBills.filter(b=>b?.owner===ownerKey).slice(0,500));
   }
-  if(Array.isArray(saved.loans))S.loans=saved.loans.slice(0,30);
-  if(saved.cashTotals?.userId===userId&&Date.now()-saved.savedAt<86400000)
-   window.FinaCashTotalsByOwner=saved.cashTotals;
+  if(Array.isArray(saved.loans))S.loans=saved.loans.filter(x=>x?.owner===ownerKey).slice(0,30);
+  // Não reutilizar resumo do Casal salvo antes de eventual revogação.
+  window.FinaCashTotalsByOwner=null;
   window.FinaBankCacheState='cached';window.FinaBankLastSnapshotAt=saved.savedAt;
   window.FinaOfflineHistoryCount=S.transactions.length;
   window.FinaRender?.();
@@ -2029,35 +2032,14 @@ async function finaRestoreEncryptedBankHistory(userId,ownerKey){
 function finaRestoreCachedBankData(){
  const user=window.FinaCurrentUser;
  if(!user||window.FinaOwnerResolvedForUserId!==user.id)return false;
- // Mais histórico sem esperar rede; primeiro render segue com o snapshot rápido.
+ try{
+  // Limpeza do snapshot legado sem proteção: não manter saldos e extratos em localStorage.
+  localStorage.removeItem(finaBankCacheKey(user.id));
+  localStorage.removeItem('fina_bank_snapshot_v4_'+user.id);
+  localStorage.removeItem('fina_bank_snapshot_v3_'+user.id);
+ }catch{}
  void finaRestoreEncryptedBankHistory(user.id,window.FinaSelfOwnerKey);
- let saved=null;
- try{saved=JSON.parse(localStorage.getItem(finaBankCacheKey(user.id))||'null');}catch{}
- if(!saved||saved.userId!==user.id||saved.ownerKey!==window.FinaSelfOwnerKey||
-    !Number.isFinite(saved.savedAt)||Date.now()-saved.savedAt>30*86400000)return false;
- if(!Array.isArray(saved.accounts)||!Array.isArray(saved.cards)||!Array.isArray(saved.transactions))return false;
- if(saved.accounts.length>80||saved.cards.length>80||saved.transactions.length>500)return false;
- const realAccount=a=>a&&a.real===true&&['lucas','naara'].includes(a.owner)&&Number.isFinite(a.balance);
- const realTransaction=t=>t&&t.real===true&&['lucas','naara'].includes(t.owner)&&Number.isFinite(t.value);
- if(!saved.accounts.some(realAccount))return false;
- S.accounts=saved.accounts.filter(realAccount).sort(finaBankSort);
- S.cards=saved.cards.filter(c=>c&&c.real===true&&['lucas','naara'].includes(c.owner)).sort(finaBankSort);
- S.transactions=saved.transactions.filter(realTransaction);
- const summary=saved.cashTotals;
- if(summary?.userId===user.id&&summary?.ownerKey===window.FinaSelfOwnerKey&&
-    summary.savedAt===saved.savedAt&&Date.now()-saved.savedAt<86400000){
-   window.FinaCashTotalsByOwner=summary;
- }
- if(Array.isArray(saved.bankBills)&&saved.bankBills.length<=500){
-  S.bills=(S.bills||[]).filter(b=>!['bank','financing','forecast-card'].includes(b.type)).concat(
-   saved.bankBills.filter(b=>b&&['bank','financing','forecast-card'].includes(b.type))
-  );
- }
- if(Array.isArray(saved.loans)&&saved.loans.length<=30)S.loans=saved.loans;
- window.FinaBankCacheState='cached';
- window.FinaBankLastSnapshotAt=saved.savedAt;
- window.FinaRender?.();
- return true;
+ return false;
 }
 window.FinaRestoreCachedBankData=finaRestoreCachedBankData;
 // O saldo das contas chega antes do histórico e não depende da conciliação.
@@ -2092,22 +2074,23 @@ async function finaLoadEarlyBankBalances(userId){
 }
 function finaSaveCachedBankData(user){
  if(!user||window.FinaOwnerResolvedForUserId!==user.id)return;
- const savedAt=Date.now();
- const cash=window.FinaCashTotalsByOwner;
+ const owner=window.FinaSelfOwnerKey,savedAt=Date.now();
+ if(!['lucas','naara'].includes(owner))return;
  const saved={
-  schemaVersion:5,userId:user.id,ownerKey:window.FinaSelfOwnerKey,savedAt,
-  cashTotals:cash?.userId===user.id&&cash?.ownerKey===window.FinaSelfOwnerKey?
-    {...cash,savedAt}:null,
-  accounts:(S.accounts||[]).filter(x=>x.real===true),
-  cards:(S.cards||[]).filter(x=>x.real===true),
-  transactions:(S.transactions||[]).filter(x=>x.real===true&&['lucas','naara'].includes(x.owner)&&ownerShown(x.owner)).slice(0,500),
-  bankBills:(S.bills||[]).filter(x=>['bank','financing','forecast-card'].includes(x.type)).slice(0,500),
-  loans:(S.loans||[]).slice(0,30)
+  schemaVersion:6,userId:user.id,ownerKey:owner,savedAt,
+  accounts:(S.accounts||[]).filter(x=>x.real===true&&x.owner===owner),
+  cards:(S.cards||[]).filter(x=>x.real===true&&x.owner===owner),
+  transactions:(S.transactions||[]).filter(x=>x.real===true&&x.owner===owner).slice(0,10000),
+  bankBills:(S.bills||[]).filter(x=>x.owner===owner&&['bank','financing','forecast-card'].includes(x.type)).slice(0,500),
+  loans:(S.loans||[]).filter(x=>x.owner===owner).slice(0,30)
  };
- try{localStorage.setItem(finaBankCacheKey(user.id),JSON.stringify(saved));}catch{}
- const full={...saved,transactions:(S.transactions||[]).filter(x=>x.real===true&&
-   ['lucas','naara'].includes(x.owner)&&ownerShown(x.owner)).slice(0,10000)};
- void window.FinaOfflineVault?.save(user.id,window.FinaSelfOwnerKey,full);
+ if(!saved.accounts.length)return;
+ try{
+  // Persistir só qual papel corresponde ao Google, sem saldos nem extratos legíveis.
+  localStorage.setItem(finaBankOwnerMetadataKey(user.id),JSON.stringify({ownerKey:owner,savedAt}));
+  localStorage.removeItem(finaBankCacheKey(user.id));
+ }catch{}
+ void window.FinaOfflineVault?.save(user.id,owner,saved);
 }
 
 // Busca completa paginada: .limit(500) perdia lancamentos sem avisar.
@@ -2397,7 +2380,7 @@ sb.auth.onAuthStateChange((_event,session)=>{
  if(_event==='SIGNED_OUT'&&window.FinaCurrentUser?.id){
   const previous=window.FinaCurrentUser.id;
   void window.FinaOfflineVault?.clear(previous);
-  try{localStorage.removeItem('fina_bank_snapshot_v5_'+previous);localStorage.removeItem(finaLocalUserStateKey(previous))}catch{}
+  try{localStorage.removeItem(finaBankCacheKey(previous));localStorage.removeItem(finaBankOwnerMetadataKey(previous));localStorage.removeItem(finaLocalUserStateKey(previous))}catch{}
  }
  if(session?.user){document.body.classList.add('fina-authenticated');gate.hidden=true;login.disabled=false;}
  setTimeout(()=>{void applySession(session)},0);
