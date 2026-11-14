@@ -60,7 +60,7 @@ jobs:
           grep -F "package: name='app.fina.casal.debug'" /tmp/fina-apk-badging.txt
           grep -F "launchable-activity: name='app.fina.casal.FinaLauncherActivity'" /tmp/fina-apk-badging.txt
           sha256sum "$APK"
-          CERT_SHA256="$("$BUILD_TOOLS/apksigner" verify --print-certs "$APK" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')"
+          CERT_SHA256="$("$BUILD_TOOLS/apksigner" verify --print-certs "$APK" | sed -n -E 's/^.*certificate SHA-256 digest: ([0-9a-fA-F]{64})$/\1/p')"
           echo "$CERT_SHA256" | grep -Eq '^[a-fA-F0-9]{64}$'
           printf 'cert=%s\n' "$CERT_SHA256" >> "$GITHUB_OUTPUT"
       - name: Preparar instalador
