@@ -46,27 +46,6 @@ jobs:
       - name: Build debug APK
         run: gradle assembleDebug --stacktrace
 
-      - name: Testar abertura no emulador Android (sem fechar o aplicativo)
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 35
-          arch: x86_64
-          target: google_apis
-          profile: pixel_6
-          disable-animations: true
-          emulator-boot-timeout: 600
-          script: |
-            adb install -r app/build/outputs/apk/debug/app-debug.apk
-            adb logcat -c
-            adb shell am start -W -n app.fina.casal.debug/app.fina.casal.FinaLauncherActivity
-            sleep 7
-            adb shell pidof app.fina.casal.debug
-            adb logcat -d -s AndroidRuntime:E FinaLauncher:E
-            if adb logcat -d -s AndroidRuntime:E | grep -q 'FATAL EXCEPTION'; then
-              echo "ERRO: launcher Android caiu durante a abertura"
-              exit 1
-            fi
-
       - name: Prepare artifact
         run: |
           mkdir -p artifact
@@ -79,3 +58,25 @@ jobs:
           path: artifact/FINA-debug.apk
           if-no-files-found: error
           retention-days: 14
+
+      - name: Testar abertura no emulador Android (sem fechar o aplicativo)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          disable-animations: true
+          emulator-boot-timeout: 360
+          script: |
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
+            adb logcat -c
+            adb shell am start -W -n app.fina.casal.debug/app.fina.casal.FinaLauncherActivity
+            sleep 7
+            adb shell pidof app.fina.casal.debug
+            adb logcat -d -s AndroidRuntime:E FinaLauncher:E
+            if adb logcat -d -s AndroidRuntime:E | grep -q 'FATAL EXCEPTION'; then
+              echo "ERRO: launcher Android caiu durante a abertura"
+              exit 1
+            fi
+
