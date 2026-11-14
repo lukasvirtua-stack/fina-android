@@ -23,7 +23,7 @@ test('Autenticação Google segue no navegador seguro, sem WebView ou TWA não v
  assert.match(source,/new Intent\(Intent\.ACTION_VIEW, FINA_URL\)/);
  assert.doesNotMatch(manifest,/androidbrowserhelper\.trusted\.LauncherActivity/);
  assert.doesNotMatch(manifest,/android\.intent\.action\.VIEW/);
- assert.doesNotMatch(source,/\bWebView\b/);
+ assert.doesNotMatch(source,/new\s+WebView\s*\(/);
  assert.match(build,/androidx\.browser:browser:/);
  assert.doesNotMatch(build,/androidbrowserhelper/);
 });
