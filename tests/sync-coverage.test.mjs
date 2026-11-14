@@ -50,3 +50,59 @@ test('interface informa o atraso do banco e sua próxima previsão de atualizaç
  assert.match(html,/provider_next_auto_sync_at/);
  assert.match(html,/uma consulta da FINA não garante que novas transações já foram liberadas/);
 });
+
+test('faturas de TODOS os cartões são paginadas sem êxito silencioso',()=>{
+ assert.match(sync,/for\(let page=1;page<=50;page\+\+\)/);
+ assert.match(sync,/bills_page_invalid/);
+ assert.match(sync,/bills_record_incomplete/);
+ assert.match(sync,/bills_page_empty_before_end/);
+ assert.match(sync,/bills_pagination_incomplete/);
+ assert.match(sync,/if\(page>=totalPages\)return \{saved\};/);
+ assert.match(sync,/if\(billResult.error\)\{itemImportOk=false;itemImportErr=billResult.error;accountComplete=false;\}/);
+});
+
+async function simulateBillImport(pages){
+ const start=sync.indexOf('async function finaImportOfficialBills(');
+ const end=sync.indexOf('// O banco pode postar',start);
+ assert.ok(start>=0&&end>start);
+ const js=sync.slice(start,end).replaceAll(':any','').replaceAll(':string','').replaceAll(':number','');
+ const requested=[],upserted=[];
+ const ctx={
+  encodeURIComponent,Number,Math,String,Array,Date,
+  finaDatePart:v=>/^\d{4}-\d{2}-\d{2}/.test(String(v||''))?String(v).slice(0,10):null,
+  fetch:async url=>{
+   const page=Number(new URL(url).searchParams.get('page'));
+   requested.push(page);
+   const data=pages[page-1];
+   return data?{ok:true,json:async()=>data}:{ok:false,status:503};
+  }
+ };
+ const fn=vm.runInNewContext(js+'\nfinaImportOfficialBills;',ctx);
+ const admin={from:table=>{
+  assert.equal(table,'fina_card_bills');
+  return {upsert:async rows=>{upserted.push(...rows);return {error:null}}};
+ }};
+ const result=await fn(admin,'usuario','conta',{id:'cartao-1',type:'CREDIT'},'token');
+ return {result,requested,upserted};
+}
+
+test('faturas são importadas de duas páginas em todos os cartões sem perder a última',async()=>{
+ const bill=(id,date)=>({id,dueDate:date,billClosingDate:date,totalAmount:127.23,payments:[]});
+ const {result,requested,upserted}=await simulateBillImport([
+  {results:[bill('f1','2026-11-10')],totalPages:2},
+  {results:[bill('f2','2026-12-10')],totalPages:2}
+ ]);
+ assert.equal(result.saved,2);
+ assert.equal(result.error,undefined);
+ assert.deepEqual(requested,[1,2]);
+ assert.deepEqual(upserted.map(x=>x.external_bill_id),['f1','f2']);
+});
+
+test('falha em página posterior nunca retorna importação de faturas como sucesso',async()=>{
+ const {result,requested}=await simulateBillImport([
+  {results:[{id:'f1',dueDate:'2026-11-10',totalAmount:5}],totalPages:2}
+ ]);
+ assert.deepEqual(requested,[1,2]);
+ assert.equal(result.saved,1);
+ assert.equal(result.error,'bills_unavailable_503');
+});

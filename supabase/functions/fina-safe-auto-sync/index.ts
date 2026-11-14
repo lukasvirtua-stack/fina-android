@@ -19,13 +19,18 @@ async function finaImportOfficialBills(admin:any,userId:string,storedAccountId:s
  const typ=String(providerAccount?.type||"").toUpperCase(),sub=String(providerAccount?.subtype||"").toUpperCase();
  if(typ!=="CREDIT"&&sub!=="CREDIT_CARD")return {saved:0};
  let saved=0;
- for(let page=1;page<=10;page++){
+ // Uma fatura perdida por paginação não pode ser registrada como sincronização completa.
+ for(let page=1;page<=50;page++){
   const url="https://api.pluggy.ai/bills?accountId="+encodeURIComponent(String(providerAccount.id))+"&page="+page+"&pageSize=100";
   const response=await fetch(url,{headers:{"X-API-KEY":apiKey}});
   if(!response.ok)return {saved,error:"bills_unavailable_"+response.status};
   const data=await response.json();
-  const bills=Array.isArray(data?.results)?data.results:[];
-  const rows=bills.filter((b:any)=>b&&b.id&&finaDatePart(b.dueDate)&&Number.isFinite(Number(b.totalAmount))&&Number(b.totalAmount)>=0).map((b:any)=>{
+  if(!Array.isArray(data?.results))return {saved,error:"bills_page_invalid"};
+  const bills=data.results;
+  if(bills.some((b:any)=>!b?.id||!finaDatePart(b.dueDate)||
+    !Number.isFinite(Number(b.totalAmount))||Number(b.totalAmount)<0))
+    return {saved,error:"bills_record_incomplete"};
+  const rows=bills.map((b:any)=>{
     const total=Math.round(Number(b.totalAmount)*100)/100;
     const payments=Array.isArray(b.payments)?b.payments:[];
     const paid=Math.round(payments.reduce((n:number,p:any)=>n+Math.max(0,Number(p?.amount)||0),0)*100)/100;
@@ -41,9 +46,11 @@ async function finaImportOfficialBills(admin:any,userId:string,storedAccountId:s
    saved+=rows.length;
   }
   const totalPages=Math.max(1,Number(data?.totalPages)||1);
-  if(page>=totalPages||!bills.length)break;
+  if(!Number.isSafeInteger(totalPages))return {saved,error:"bills_page_count_invalid"};
+  if(page>=totalPages)return {saved};
+  if(!bills.length)return {saved,error:"bills_page_empty_before_end"};
  }
- return {saved};
+ return {saved,error:"bills_pagination_incomplete"};
 }
 
 
