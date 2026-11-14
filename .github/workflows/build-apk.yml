@@ -10,6 +10,8 @@ on:
     paths:
       - 'app/**'
       - 'tests/android-launch.test.mjs'
+      - 'tests/android-pix.test.mjs'
+      - 'tests/java/**'
       - 'scripts/update-assetlinks.mjs'
       - 'web/.well-known/assetlinks.json'
       - '.github/workflows/build-apk.yml'
@@ -35,12 +37,19 @@ jobs:
       - name: Validar FINA Web e Android
         run: |
           node tests/check-web.mjs
-          node --test tests/android-launch.test.mjs
+          node --test tests/android-launch.test.mjs tests/android-pix.test.mjs
       - name: Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+      - name: Testar detecção Pix por Java puro (sem dados reais)
+        run: |
+          mkdir -p /tmp/fina-pix-parser
+          javac -encoding UTF-8 -d /tmp/fina-pix-parser \
+            app/src/main/java/app/fina/casal/FinaPixAlertParser.java \
+            tests/java/FinaPixParserTest.java
+          java -cp /tmp/fina-pix-parser app.fina.casal.FinaPixParserTest
       - name: Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
