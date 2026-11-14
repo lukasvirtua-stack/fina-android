@@ -65,7 +65,7 @@ test('faturas de TODOS os cartões são paginadas sem êxito silencioso',()=>{
  assert.match(sync,/bills_record_incomplete/);
  assert.match(sync,/bills_page_empty_before_end/);
  assert.match(sync,/bills_pagination_incomplete/);
- assert.match(sync,/if\(page>=totalPages\)return \{saved\};/);
+ assert.match(sync,/if\(page>=totalPages\)return invalidBills>0\?/);
  assert.match(sync,/if\(billResult.error\)\{itemImportOk=false;itemImportErr=billResult.error;accountComplete=false;\}/);
 });
 
@@ -113,4 +113,18 @@ test('falha em página posterior nunca retorna importação de faturas como suce
  assert.deepEqual(requested,[1,2]);
  assert.equal(result.saved,1);
  assert.equal(result.error,'bills_unavailable_503');
+});
+
+
+test('faturas válidas continuam sendo importadas quando o provedor envia registros incompletos',async()=>{
+ const bill=(id,dueDate,totalAmount)=>({id,dueDate,totalAmount,payments:[]});
+ const {result,requested,upserted}=await simulateBillImport([
+  {results:[bill('ok-1','2026-11-10',125.10),bill('sem-data',null,45),bill('sem-valor','2026-12-10',null)],totalPages:2},
+  {results:[bill('ok-2','2027-01-10',20),bill('negativo','2027-01-11',-10)],totalPages:2}
+ ]);
+ assert.equal(result.saved,2);
+ assert.equal(result.error,'bills_record_incomplete');
+ assert.deepEqual(requested,[1,2]);
+ assert.deepEqual(upserted.map(x=>x.external_bill_id),['ok-1','ok-2']);
+ assert.deepEqual(upserted.map(x=>x.total_amount),[125.1,20]);
 });
