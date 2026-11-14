@@ -46,6 +46,19 @@ jobs:
       - name: Build debug APK
         run: gradle assembleDebug --stacktrace
 
+      - name: Conferir assinatura e instalabilidade do APK
+        run: |
+          set -euo pipefail
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          BUILD_TOOLS="$(find "${ANDROID_HOME}/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
+          test -s "$APK"
+          unzip -t "$APK" | tail -1
+          "$BUILD_TOOLS/apksigner" verify --verbose --min-sdk-version 24 --print-certs "$APK"
+          "$BUILD_TOOLS/aapt" dump badging "$APK" | tee /tmp/fina-apk-badging.txt
+          grep -F "package: name='app.fina.casal.debug'" /tmp/fina-apk-badging.txt
+          grep -F "launchable-activity: name='app.fina.casal.FinaLauncherActivity'" /tmp/fina-apk-badging.txt
+          sha256sum "$APK"
+
       - name: Prepare artifact
         run: |
           mkdir -p artifact
@@ -58,6 +71,15 @@ jobs:
           path: artifact/FINA-debug.apk
           if-no-files-found: error
           retention-days: 14
+
+      - name: Habilitar KVM para emulador Android
+        run: |
+          if [ -e /dev/kvm ]; then
+            sudo chmod 666 /dev/kvm
+            ls -l /dev/kvm
+          else
+            echo "Aceleracao KVM indisponivel neste runner"
+          fi
 
       - name: Testar abertura no emulador Android (sem fechar o aplicativo)
         uses: reactivecircus/android-emulator-runner@v2
