@@ -50,3 +50,13 @@ test('interface informa o atraso do banco e sua próxima previsão de atualizaç
  assert.match(html,/provider_next_auto_sync_at/);
  assert.match(html,/uma consulta da FINA não garante que novas transações já foram liberadas/);
 });
+
+test('faturas de TODOS os cartões são paginadas sem êxito silencioso',()=>{
+ assert.match(sync,/for\(let page=1;page<=50;page\+\+\)/);
+ assert.match(sync,/bills_page_invalid/);
+ assert.match(sync,/bills_record_incomplete/);
+ assert.match(sync,/bills_page_empty_before_end/);
+ assert.match(sync,/bills_pagination_incomplete/);
+ assert.match(sync,/if\(page>=totalPages\)return \{saved\};/);
+ assert.match(sync,/if\(billResult.error\)\{itemImportOk=false;itemImportErr=billResult.error;accountComplete=false;\}/);
+});
