@@ -1,7 +1,7 @@
-const VERSION='fina-sw-v31-encrypted-history-20261113';
+const VERSION='fina-sw-v32-release-20261114';
 // Armazena SOMENTE arquivos estaticos publicos do aplicativo.
 // Nunca interceptar nem armazenar OAuth, Supabase, Pluggy, extratos ou tokens.
-const SHELL_CACHE='fina-shell-v31-encrypted-history-20261113';
+const SHELL_CACHE='fina-shell-v32-release-20261114';
 const APP_FILES=['/','/index.html','/manifest.webmanifest','/icon-192.png','/icon-512.png','/supabase.min.js','/offline-vault.js'];
 const SHELL_PATHS=new Set(APP_FILES);
 self.addEventListener('install',event=>event.waitUntil((async()=>{
