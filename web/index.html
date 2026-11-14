@@ -2332,6 +2332,74 @@ async function finaRefreshVisibleData(){
 window.addEventListener('focus',()=>setTimeout(()=>void finaRefreshVisibleData(),250));
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(()=>void finaRefreshVisibleData(),250)});
 finaAutoRefreshTimer=setInterval(()=>void finaRefreshVisibleData(),60000);
+
+// Atualizacao por gesto sem custo adicional de consulta ao banco:
+// relê somente os dados que a rotina programada ja importou no Supabase.
+// Nao chama PATCH /items, nem autentica/atua em nome de outro integrante.
+const finaPullScreen=document.getElementById('screen');
+let finaPullStart=null,finaPullBusy=false,finaPullLastAt=0,finaPullToastTimer=null;
+const finaPullGestureMatches=(from,to)=>{
+ const dx=to.x-from.x,dy=to.y-from.y;
+ return Math.abs(dy)>=78&&Math.abs(dy)>Math.abs(dx)*1.6&&
+   ((from.atTop&&dy>0)||(from.atBottom&&dy<0));
+};
+function finaPullToast(message){
+ const app=document.getElementById('app');
+ if(!app)return;
+ let toast=app.querySelector('#finaPullToast');
+ if(!toast){
+  toast=document.createElement('div');
+  toast.id='finaPullToast';toast.setAttribute('role','status');toast.setAttribute('aria-live','polite');
+  toast.style.cssText='position:absolute;z-index:90;left:12px;right:12px;top:70px;padding:10px 14px;border:1px solid #dbc9a9;border-radius:12px;background:#fffaf0;color:#58452a;font-size:12px;text-align:center;box-shadow:0 4px 14px #0002;pointer-events:none';
+  app.appendChild(toast);
+ }
+ toast.textContent=message;toast.hidden=false;
+ clearTimeout(finaPullToastTimer);
+ finaPullToastTimer=setTimeout(()=>{toast.hidden=true},3600);
+}
+function finaPullAllowedTarget(target){
+ return target instanceof Element&&!target.closest(
+  'button,a,input,textarea,select,[contenteditable],#messages,.photo-editor-stage,[role="dialog"]'
+ );
+}
+finaPullScreen?.addEventListener('touchstart',e=>{
+ finaPullStart=null;
+ if(e.touches.length!==1||!window.FinaCurrentUser||document.hidden||
+    !finaPullAllowedTarget(e.target))return;
+ const sc=finaPullScreen,atTop=sc.scrollTop<=12,
+   atBottom=sc.scrollHeight-sc.clientHeight-sc.scrollTop<=16;
+ if(!atTop&&!atBottom)return;
+ const t=e.touches[0];
+ finaPullStart={x:t.clientX,y:t.clientY,atTop,atBottom,userId:window.FinaCurrentUser.id};
+},{passive:true});
+finaPullScreen?.addEventListener('touchend',e=>{
+ const start=finaPullStart;finaPullStart=null;
+ if(!start||!e.changedTouches.length||window.FinaCurrentUser?.id!==start.userId)return;
+ const t=e.changedTouches[0];
+ if(!finaPullGestureMatches(start,{x:t.clientX,y:t.clientY}))return;
+ const tag=document.activeElement?.tagName;
+ if(['INPUT','TEXTAREA','SELECT'].includes(tag)||S.add||S.homeAdd||S.invoiceAdd||S.edit)return;
+ if(finaPullBusy)return;
+ if(Date.now()-finaPullLastAt<30000){
+  finaPullToast('Consulta recente. A sincronização automática continua ativa.');
+  return;
+ }
+ finaPullLastAt=Date.now();finaPullBusy=true;
+ finaPullToast('Conferindo os dados bancários disponíveis para vocês…');
+ void (async()=>{
+  try{
+   await finaRefreshVisibleData();
+   if(window.FinaCurrentUser?.id===start.userId){
+    // A outra pessoa vê somente os dados compartilhados com consentimento.
+    finaPullToast('Consulta concluída. Novos lançamentos dependem da atualização do banco.');
+   }
+  }catch{
+   if(window.FinaCurrentUser?.id===start.userId)
+    finaPullToast('Não foi possível consultar agora. A sincronização automática continua.');
+  }finally{finaPullBusy=false;}
+ })();
+},{passive:true});
+finaPullScreen?.addEventListener('touchcancel',()=>{finaPullStart=null},{passive:true});
 async function applySession(session){
  const user=session?.user;
  if(!user){
