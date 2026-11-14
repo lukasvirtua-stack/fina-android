@@ -18,7 +18,7 @@ const safeDate=(v:unknown)=>typeof v==="string"&&v.length>5&&!Number.isNaN(Date.
 async function finaImportOfficialBills(admin:any,userId:string,storedAccountId:string,providerAccount:any,apiKey:string){
  const typ=String(providerAccount?.type||"").toUpperCase(),sub=String(providerAccount?.subtype||"").toUpperCase();
  if(typ!=="CREDIT"&&sub!=="CREDIT_CARD")return {saved:0};
- let saved=0;
+ let saved=0,invalidBills=0;
  // Uma fatura perdida por paginação não pode ser registrada como sincronização completa.
  for(let page=1;page<=50;page++){
   const url="https://api.pluggy.ai/bills?accountId="+encodeURIComponent(String(providerAccount.id))+"&page="+page+"&pageSize=100";
@@ -27,10 +27,16 @@ async function finaImportOfficialBills(admin:any,userId:string,storedAccountId:s
   const data=await response.json();
   if(!Array.isArray(data?.results))return {saved,error:"bills_page_invalid"};
   const bills=data.results;
-  if(bills.some((b:any)=>!b?.id||!finaDatePart(b.dueDate)||
-    !Number.isFinite(Number(b.totalAmount))||Number(b.totalAmount)<0))
-    return {saved,error:"bills_record_incomplete"};
-  const rows=bills.map((b:any)=>{
+  // Salvar faturas válidas mesmo quando o provedor enviar outra incompleta.
+  // Não converter totalAmount nulo ou vazio implicitamente para zero.
+  const validBills=bills.filter((b:any)=>{
+    const amount=b?.totalAmount;
+    const valid=!!b?.id&&!!finaDatePart(b?.dueDate)&&amount!==null&&amount!==undefined&&amount!==""&&
+      Number.isFinite(Number(amount))&&Number(amount)>=0;
+    if(!valid)invalidBills++;
+    return valid;
+  });
+  const rows=validBills.map((b:any)=>{
     const total=Math.round(Number(b.totalAmount)*100)/100;
     const payments=Array.isArray(b.payments)?b.payments:[];
     const paid=Math.round(payments.reduce((n:number,p:any)=>n+Math.max(0,Number(p?.amount)||0),0)*100)/100;
@@ -47,7 +53,7 @@ async function finaImportOfficialBills(admin:any,userId:string,storedAccountId:s
   }
   const totalPages=Math.max(1,Number(data?.totalPages)||1);
   if(!Number.isSafeInteger(totalPages))return {saved,error:"bills_page_count_invalid"};
-  if(page>=totalPages)return {saved};
+  if(page>=totalPages)return invalidBills>0?{saved,error:"bills_record_incomplete"}:{saved};
   if(!bills.length)return {saved,error:"bills_page_empty_before_end"};
  }
  return {saved,error:"bills_pagination_incomplete"};
