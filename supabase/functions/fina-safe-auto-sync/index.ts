@@ -13,6 +13,70 @@ async function _pluggyCreds(admin:any,userId:string,sec:string){
 }
 
 
+
+// Provisão automática dos webhooks de todos os titulares que já autorizaram
+// suas conexões na FINA. Apenas registra notificações; NÃO força atualização
+// dos bancos e NÃO altera o calendário de 24 horas do Meu Pluggy.
+// Executa no cron autenticado, jamais em chamada de webhook pública.
+const finaHex=async(str:string)=>Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",_enc.encode(str))))
+  .map(v=>v.toString(16).padStart(2,"0")).join("");
+async function finaAutoProvisionWebhook(admin:any,items:any[],sec:string,url:string){
+ const seen=new Set<string>();
+ for(const item of items){
+  try{
+   const {clientId,clientSecret}=await _pluggyCreds(admin,item.user_id,sec);
+   if(!clientId||!clientSecret||seen.has(clientId))continue;
+   seen.add(clientId);
+   const {data:existing,error:lookupError}=await admin.from("fina_pluggy_webhook_subscriptions")
+    .select("status,updated_at").eq("client_id",clientId).maybeSingle();
+   if(lookupError)continue;
+   if(existing?.status==="active")continue;
+   // Evitar duplicatas, novas tentativas em cascata e re-registros desnecessários.
+   const last=existing?.updated_at?Date.parse(existing.updated_at):NaN;
+   const cooldown=existing?.status==="failed"?21600000:1800000;
+   if(Number.isFinite(last)&&Date.now()-last<cooldown)continue;
+   const bytes=crypto.getRandomValues(new Uint8Array(32));
+   const secret=btoa(String.fromCharCode(...bytes)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=/g,"");
+   const hash=await finaHex(secret);
+   const {error:storeError}=await admin.from("fina_pluggy_webhook_subscriptions").upsert({
+    client_id:clientId,created_by_user_id:item.user_id,token_sha256:hash,
+    status:"registering",error_code:null,updated_at:new Date().toISOString()
+   },{onConflict:"client_id"});
+   if(storeError)return "storage_failed";
+   const fail=async(reason:string)=>{
+    await admin.from("fina_pluggy_webhook_subscriptions").update({
+     status:"failed",error_code:reason,updated_at:new Date().toISOString()
+    }).eq("client_id",clientId).eq("token_sha256",hash);
+    return reason;
+   };
+   try{
+    const auth=await fetch("https://api.pluggy.ai/auth",{
+     method:"POST",headers:{"content-type":"application/json"},
+     body:JSON.stringify({clientId,clientSecret}),signal:AbortSignal.timeout(10000)});
+    if(!auth.ok)return await fail("pluggy_auth_http_"+auth.status);
+    const apiKey=String((await auth.json())?.apiKey||"");
+    if(!apiKey)return await fail("pluggy_api_key_missing");
+    const created=await fetch("https://api.pluggy.ai/webhooks",{
+     method:"POST",headers:{"X-API-KEY":apiKey,"content-type":"application/json"},
+     body:JSON.stringify({url:url+"/functions/v1/fina-pluggy-webhook",event:"all",
+      headers:{"X-FINA-PLUGGY-SECRET":secret}}),signal:AbortSignal.timeout(10000)});
+    if(!created.ok)return await fail("webhook_http_"+created.status);
+    const provider=await created.json().catch(()=>({}));
+    const {error:confirmed}=await admin.from("fina_pluggy_webhook_subscriptions").update({
+     provider_webhook_id:String(provider?.id||provider?.webhook?.id||"")||null,
+     status:"active",error_code:null,updated_at:new Date().toISOString()
+    }).eq("client_id",clientId).eq("token_sha256",hash);
+    if(confirmed)return "confirmation_failed";
+    return "active";
+   }catch{return await fail("provider_request_failed");}
+  }catch{
+   // A autenticação do usuário ou do provedor não pode quebrar o cron dos bancos.
+   continue;
+  }
+ }
+ return "already_registered";
+}
+
 const finaDatePart=(v:any)=>{const x=String(v||"");return /^\d{4}-\d{2}-\d{2}/.test(x)?x.slice(0,10):null;};
 const safeDate=(v:unknown)=>typeof v==="string"&&v.length>5&&!Number.isNaN(Date.parse(v))?new Date(v).toISOString():null;
 async function finaImportOfficialBills(admin:any,userId:string,storedAccountId:string,providerAccount:any,apiKey:string){
@@ -77,10 +141,12 @@ Deno.serve(async(req)=>{
   // Autorização separada: cron assinado OU aviso já registrado e autenticado.
   // O webhook só pode importar seu próprio Item registrado; nunca outro banco.
   let hook:{clientId:string,eventId:string,itemId:string,userId:string}|null=null;
+  let cronAuthenticated=false;
   if(req.headers.has("x-fina-sync-cron")){
     const presentedToken=req.headers.get("x-fina-sync-cron")||"";
     const {data:authenticated,error:tokenError}=await admin.rpc("fina_verify_auto_sync_cron",{presented_token:presentedToken});
     if(tokenError||authenticated!==true)return json({error:"forbidden"},403);
+    cronAuthenticated=true;
   }else{
     const secret=req.headers.get("x-fina-pluggy-webhook-secret")||"";
     if(secret.length<32||secret.length>256)return json({error:"forbidden"},403);
@@ -125,6 +191,12 @@ Deno.serve(async(req)=>{
   if(hook)itemQuery=itemQuery.eq("user_id",hook.userId).eq("external_item_id",hook.itemId);
   const {data:items,error:itemErr}=await itemQuery;
   if(itemErr) return json({error:"items_query_failed",detail:itemErr.message},500);
+  // Registrar o webhook que faltava do outro titular, de forma independente do
+  // navegador da pessoa e sem exigir um novo consentimento bancário.
+  let webhookProvision="not_attempted";
+  if(cronAuthenticated&&items?.length){
+    webhookProvision=await finaAutoProvisionWebhook(admin,items,sec,supabaseUrl);
+  }
 
   let accountsSaved=0,txSaved=0,itemsSynced=0,billsSaved=0,itemsImported=0,importFailures=0;
   let accountsScanned=0,accountsComplete=0,accountsFailed=0,accountListPages=0,transactionPages=0;
@@ -329,7 +401,7 @@ Deno.serve(async(req)=>{
   return json({ok:importFailures===0 && accountsFailed===0,
     // "consultado" é diferente de "atualizado pelo banco": somente a Pluggy pode disponibilizar extratos novos.
     allConnectedProductsChecked:importFailures===0 && accountsFailed===0 && accountsScanned===accountsComplete,
-    items:itemsSynced,itemsImported,importFailures,
+    webhookProvision,items:itemsSynced,itemsImported,importFailures,
     accounts:accountsSaved,accountsScanned,accountsComplete,accountsFailed,accountListPages,transactionPages,
     transactions:txSaved,bills:billsSaved,pairedTransfers,reconciled,financings,
     historyStartedThisRun,historyCompletedThisRun,historyPendingThisRun,historyFrom,dateFrom,dateTo,
