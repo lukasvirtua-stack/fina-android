@@ -75,6 +75,11 @@ public final class FinaLauncherActivity extends Activity {
         open.setOnClickListener(v -> openFina());
         root.addView(open, new LinearLayout.LayoutParams(-1, dp(56)));
 
+        Button pix = new Button(this);
+        pix.setText("AVISOS DE PIX (OPCIONAL)");
+        pix.setOnClickListener(v -> startActivity(new Intent(this, FinaPixSettingsActivity.class)));
+        root.addView(pix, new LinearLayout.LayoutParams(-1, dp(52)));
+
         TextView hint = new TextView(this);
         hint.setText("Se a FINA não abrir automaticamente, toque no botão acima. A conexão bancária continua protegida pelo seu login Google.");
         hint.setGravity(Gravity.CENTER);
