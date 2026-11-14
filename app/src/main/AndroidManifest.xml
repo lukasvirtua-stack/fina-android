@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:allowBackup="false"
@@ -10,6 +11,28 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.FINA"
         android:usesCleartextTraffic="false">
+
+        <!-- Sem consentimento local explícito, o listener ignora as notificações. -->
+        <service
+            android:name=".FinaPixNotificationListener"
+            android:label="FINA · Avisos provisórios de Pix"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+        <activity
+            android:name=".FinaPixSettingsActivity"
+            android:exported="true"
+            android:label="FINA · Avisos de Pix">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="fina" android:host="pix-alerts" />
+            </intent-filter>
+        </activity>
 
         <!-- Declara o domínio da TWA. O Chrome só oculta a barra se assetlinks.json
              identificar exatamente o certificado SHA-256 do APK instalado. -->
