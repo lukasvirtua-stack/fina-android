@@ -11,7 +11,11 @@
         android:theme="@style/Theme.FINA"
         android:usesCleartextTraffic="false">
 
-        <!-- Sem TWA não verificada nem VIEW-filter circular: login Google via Chrome. -->
+        <!-- Declara o domínio da TWA. O Chrome só oculta a barra se assetlinks.json
+             identificar exatamente o certificado SHA-256 do APK instalado. -->
+        <meta-data
+            android:name="asset_statements"
+            android:resource="@string/asset_statements" />
         <activity
             android:name=".FinaLauncherActivity"
             android:exported="true"
@@ -19,6 +23,12 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="fina-html-v14.vercel.app" />
             </intent-filter>
         </activity>
     </application>
