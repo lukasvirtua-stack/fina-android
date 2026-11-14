@@ -69,7 +69,7 @@ async function simulateBillImport(pages){
  const requested=[],upserted=[];
  const ctx={
   encodeURIComponent,Number,Math,String,Array,Date,
-  finaDatePart:v=>/^\\d{4}-\\d{2}-\\d{2}/.test(String(v||''))?String(v).slice(0,10):null,
+  finaDatePart:v=>/^\d{4}-\d{2}-\d{2}/.test(String(v||''))?String(v).slice(0,10):null,
   fetch:async url=>{
    const page=Number(new URL(url).searchParams.get('page'));
    requested.push(page);
@@ -77,7 +77,7 @@ async function simulateBillImport(pages){
    return data?{ok:true,json:async()=>data}:{ok:false,status:503};
   }
  };
- const fn=vm.runInNewContext(js+'\\nfinaImportOfficialBills;',ctx);
+ const fn=vm.runInNewContext(js+'\nfinaImportOfficialBills;',ctx);
  const admin={from:table=>{
   assert.equal(table,'fina_card_bills');
   return {upsert:async rows=>{upserted.push(...rows);return {error:null}}};
