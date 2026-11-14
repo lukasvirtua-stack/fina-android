@@ -1630,10 +1630,23 @@ async function loadCoupleStatus(user){
  }catch{}
  const {data,error}=await sb.rpc('fina_couple_status_v2');
  if(error){
-   window.FinaSelfOwnerKey='lucas';window.FinaPartnerReady=false;
+   // Sem rede: recuperar somente dados do proprio Google autenticado e ultimo dono conhecido.
+   let saved=null;
+   try{saved=JSON.parse(localStorage.getItem('fina_bank_snapshot_v5_'+user.id)||'null')}catch{}
+   const validSaved=saved?.userId===user.id&&['lucas','naara'].includes(saved.ownerKey)
+     &&Number.isFinite(saved.savedAt)&&Date.now()-saved.savedAt<30*86400000;
+   const self=validSaved?saved.ownerKey:'lucas';
+   window.FinaSelfOwnerKey=self;window.FinaPartnerReady=false;
    coupleState={...coupleState,connected:false,isOwner:false,titularName:selfName,partnerName:'',memberCount:0};
-   S.profiles.lucas.displayName=selfName||'Você';S.profiles.naara.displayName='Outra pessoa';S.activeEditor='lucas';
+   S.profiles[self].displayName=selfName||'Você';S.activeEditor=self;
    window.FinaHeaderGreeting='Olá, '+selfName;
+   if(validSaved){
+     window.FinaOwnerResolvedForUserId=user.id;
+     window.FinaRestoreCachedBankData?.();
+     // Em modo offline, nunca liberar extratos do outro integrante sem verificar consentimento.
+     S.transactions=(S.transactions||[]).filter(t=>t.owner===self);
+   }
+   window.FinaRender?.();
    window.dispatchEvent(new Event('fina:header-changed'));window.FinaCouple?.paint?.();return;
  }
  const row=Array.isArray(data)?data[0]:data;
@@ -1968,7 +1981,8 @@ async function finaRestoreEncryptedBankHistory(userId,ownerKey){
   const saved=await window.FinaOfflineVault?.load(userId,ownerKey);
   if(!saved||window.FinaCurrentUser?.id!==userId||
     window.FinaOwnerResolvedForUserId!==userId||window.FinaSelfOwnerKey!==ownerKey||
-    window.FinaRealBankLoaded===true)return false;
+    window.FinaRealBankLoaded===true||
+    (window.FinaBankBalancesReady===true&&window.FinaBankLastSnapshotAt>saved.savedAt))return false;
   const bank=a=>a?.real===true&&['lucas','naara'].includes(a.owner)&&Number.isFinite(a.balance);
   const tx=t=>t?.real===true&&['lucas','naara'].includes(t.owner)&&Number.isFinite(t.value);
   if(!Array.isArray(saved.accounts)||!saved.accounts.some(bank)||
