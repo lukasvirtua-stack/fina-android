@@ -31,7 +31,7 @@ test('importação por webhook só processa o Item do usuário autenticado',()=>
  assert.match(importFn,/\.eq\("status","pending"\)\.select\("event_id"\)/);
  assert.match(importFn,/\.eq\("user_id",hook\.userId\)\.eq\("external_item_id",hook\.itemId\)/);
  assert.match(importFn,/status:complete\?"complete":"failed"/);
- assert.match(importFn,/if\(!hook\)\{/);
+ assert.match(importFn,/if\(!hook&&itemImportOk\)\{/);
 });
 
 test('registro exige JWT real, gera segredo aleatório e mantém credenciais no servidor',()=>{

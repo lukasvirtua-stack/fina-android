@@ -117,7 +117,7 @@ async function finaImportOfficialBills(admin:any,userId:string,storedAccountId:s
   }
   const totalPages=Math.max(1,Number(data?.totalPages)||1);
   if(!Number.isSafeInteger(totalPages))return {saved,error:"bills_page_count_invalid"};
-  if(page>=totalPages)return invalidBills>0?{saved,error:"bills_record_incomplete"}:{saved};
+  if(page>=totalPages)return invalidBills>0?{saved,warning:"bills_record_incomplete",invalidCount:invalidBills}:{saved,invalidCount:0};
   if(!bills.length)return {saved,error:"bills_page_empty_before_end"};
  }
  return {saved,error:"bills_pagination_incomplete"};
@@ -239,6 +239,8 @@ Deno.serve(async(req)=>{
       // Uma consulta HTTP não comprova que o banco forneceu TEDs novos.
       itemsSynced++;
       let itemImportOk=true,itemImportErr="",itemImportedTx=0;
+       // A fatura incompleta é alerta do provedor, não falha do extrato bancário.
+       let itemBillsWarning:string|null=null,itemBillsInvalidCount=0;
 
       const ar=await fetch("https://api.pluggy.ai/accounts?itemId="+encodeURIComponent(item.external_item_id),{headers:{"X-API-KEY":apiKey}});
       if(!ar.ok){
@@ -284,7 +286,8 @@ Deno.serve(async(req)=>{
         try{
           const billResult=await finaImportOfficialBills(admin,item.user_id,stored.id,a,apiKey);
           billsSaved+=billResult.saved||0;
-          if(billResult.error){itemImportOk=false;itemImportErr=billResult.error;accountComplete=false;}
+           if(billResult.warning){itemBillsWarning=billResult.warning;itemBillsInvalidCount+=billResult.invalidCount||0;}
+           if(billResult.error){itemImportOk=false;itemImportErr=billResult.error;accountComplete=false;}
         }catch{itemImportOk=false;itemImportErr="bill_exception";accountComplete=false;}
 
         // An audit replays ALL transactions Pluggy currently exposes for this product.
@@ -357,16 +360,25 @@ Deno.serve(async(req)=>{
         }
         if(accountComplete)accountsComplete++;else accountsFailed++;
       }
-      const result={last_import_error:itemImportOk?null:(itemImportErr||"import_incomplete"),last_import_count:itemImportedTx};
+      const result={last_import_error:itemImportOk?null:(itemImportErr||"import_incomplete"),
+        last_import_count:itemImportedTx,last_bills_warning:itemBillsWarning,
+        last_bills_invalid_count:itemBillsInvalidCount};
       if(itemImportOk)(result as any).last_import_success_at=new Date().toISOString();
       await admin.from("fina_bank_items").update(result).eq("id",item.id);
       if(itemImportOk)itemsImported++;else importFailures++;
-      // O cron de cinco minutos funciona como recuperação para webhooks perdidos.
-      if(!hook){
-        await admin.from("fina_pluggy_webhook_events")
-          .update({status:itemImportOk?"complete":"failed",processed_at:new Date().toISOString(),
-            error_code:itemImportOk?null:"cron_import_incomplete"})
-          .eq("item_id",String(item.external_item_id)).eq("status","pending");
+      // Recupera eventos perdidos apenas após uma importação bancária completa.
+      // Erros do provedor não viram movimentações fictícias ou atualizações forçadas.
+      if(!hook&&itemImportOk){
+        const completed={status:"complete",processed_at:new Date().toISOString(),error_code:null};
+        const scope=()=>admin.from("fina_pluggy_webhook_events").update(completed)
+          .eq("item_id",String(item.external_item_id)).eq("user_id",item.user_id);
+        const {error:pendingError}=await scope().eq("status","pending");
+        const {error:recoveredError}=await scope().eq("status","failed")
+          .in("error_code",["bank_import_incomplete","cron_import_incomplete"]);
+        const {error:staleError}=await scope().eq("status","processing")
+          .lt("created_at",new Date(Date.now()-600000).toISOString());
+        if(pendingError||recoveredError||staleError)
+          console.warn("FINA: retry webhook status unavailable");
       }
     }catch(e){
       importFailures++;
