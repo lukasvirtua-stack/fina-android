@@ -1193,7 +1193,7 @@ let touchStart=null;screen.addEventListener('touchstart' ,e=>{if(S.tab==='calend
 window.addEventListener('fina:header-changed',()=>render());
 render();
 })();
-</script><script src="/supabase.min.js"></script><script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js" async></script>
+</script><script src="/supabase.min.js"></script><script src="/offline-vault.js"></script><script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js" async></script>
 <script>
 (()=>{
 'use strict';
@@ -1237,6 +1237,8 @@ async function finaLoadHistorySharingStatus(){
  if(wasBoth!==null&&wasBoth!==both){
   try{localStorage.removeItem('fina_bank_snapshot_v3_'+user.id);localStorage.removeItem('fina_bank_snapshot_v4_'+user.id)}catch{}
   if(wasBoth&&!both){
+   void window.FinaOfflineVault?.clear(user.id);
+   try{localStorage.removeItem('fina_bank_snapshot_v5_'+user.id)}catch{}
    const myOwner=window.FinaSelfOwnerKey;
    S.transactions=(S.transactions||[]).filter(x=>x.real!==true||x.owner===myOwner);
    window.FinaRender?.();
@@ -1943,9 +1945,40 @@ window.FinaLoadOfficialCardBills=finaLoadOfficialCardBills;
 // Cache bancário por identidade do Google: dados mínimos necessários para
 // mostrar a última situação confirmada, SEM credenciais Pluggy.
 const finaBankCacheKey=uid=>'fina_bank_snapshot_v5_'+String(uid);
+let finaOfflineRestorePromise=null;
+async function finaRestoreEncryptedBankHistory(userId,ownerKey){
+ if(finaOfflineRestorePromise)return finaOfflineRestorePromise;
+ finaOfflineRestorePromise=(async()=>{
+  const saved=await window.FinaOfflineVault?.load(userId,ownerKey);
+  if(!saved||window.FinaCurrentUser?.id!==userId||
+    window.FinaOwnerResolvedForUserId!==userId||window.FinaSelfOwnerKey!==ownerKey||
+    window.FinaRealBankLoaded===true)return false;
+  const bank=a=>a?.real===true&&['lucas','naara'].includes(a.owner)&&Number.isFinite(a.balance);
+  const tx=t=>t?.real===true&&['lucas','naara'].includes(t.owner)&&Number.isFinite(t.value);
+  if(!Array.isArray(saved.accounts)||!saved.accounts.some(bank)||
+     !Array.isArray(saved.transactions)||saved.transactions.length>10000)return false;
+  S.accounts=saved.accounts.filter(bank).sort(finaBankSort);
+  S.cards=(saved.cards||[]).filter(c=>c?.real===true).sort(finaBankSort);
+  const allowPartnerHistory=window.FinaHistoryBothApproved===true;
+  S.transactions=saved.transactions.filter(t=>tx(t)&&(t.owner===ownerKey||allowPartnerHistory));
+  if(Array.isArray(saved.bankBills)){
+   S.bills=(S.bills||[]).filter(b=>!['bank','financing','forecast-card'].includes(b.type)).concat(saved.bankBills.slice(0,500));
+  }
+  if(Array.isArray(saved.loans))S.loans=saved.loans.slice(0,30);
+  if(saved.cashTotals?.userId===userId&&Date.now()-saved.savedAt<86400000)
+   window.FinaCashTotalsByOwner=saved.cashTotals;
+  window.FinaBankCacheState='cached';window.FinaBankLastSnapshotAt=saved.savedAt;
+  window.FinaOfflineHistoryCount=S.transactions.length;
+  window.FinaRender?.();
+  return true;
+ })().catch(()=>false).finally(()=>{finaOfflineRestorePromise=null});
+ return finaOfflineRestorePromise;
+}
 function finaRestoreCachedBankData(){
  const user=window.FinaCurrentUser;
  if(!user||window.FinaOwnerResolvedForUserId!==user.id)return false;
+ // Mais histórico sem esperar rede; primeiro render segue com o snapshot rápido.
+ void finaRestoreEncryptedBankHistory(user.id,window.FinaSelfOwnerKey);
  let saved=null;
  try{saved=JSON.parse(localStorage.getItem(finaBankCacheKey(user.id))||'null');}catch{}
  if(!saved||saved.userId!==user.id||saved.ownerKey!==window.FinaSelfOwnerKey||
@@ -2020,6 +2053,9 @@ function finaSaveCachedBankData(user){
   loans:(S.loans||[]).slice(0,30)
  };
  try{localStorage.setItem(finaBankCacheKey(user.id),JSON.stringify(saved));}catch{}
+ const full={...saved,transactions:(S.transactions||[]).filter(x=>x.real===true&&
+   ['lucas','naara'].includes(x.owner)&&ownerShown(x.owner)).slice(0,10000)};
+ void window.FinaOfflineVault?.save(user.id,window.FinaSelfOwnerKey,full);
 }
 
 // Busca completa paginada: .limit(500) perdia lancamentos sem avisar.
@@ -2300,7 +2336,15 @@ login.addEventListener('click',async()=>{
  const {error}=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:'https://fina-html-v14.vercel.app/'}});
  if(error){status.textContent='Não foi possível abrir o Google: '+error.message;login.disabled=false;}
 });
-sb.auth.onAuthStateChange((_event,session)=>{if(session?.user){document.body.classList.add('fina-authenticated');gate.hidden=true;login.disabled=false;}setTimeout(()=>{void applySession(session)},0)});
+sb.auth.onAuthStateChange((_event,session)=>{
+ if(_event==='SIGNED_OUT'&&window.FinaCurrentUser?.id){
+  const previous=window.FinaCurrentUser.id;
+  void window.FinaOfflineVault?.clear(previous);
+  try{localStorage.removeItem('fina_bank_snapshot_v5_'+previous);localStorage.removeItem(finaLocalUserStateKey(previous))}catch{}
+ }
+ if(session?.user){document.body.classList.add('fina-authenticated');gate.hidden=true;login.disabled=false;}
+ setTimeout(()=>{void applySession(session)},0);
+});
 void sb.auth.getSession().then(({data,error})=>{
   if(error){status.textContent='Erro ao conferir sessão.';login.disabled=false;return}
   if(data?.session?.user){document.body.classList.add('fina-authenticated');gate.hidden=true;login.disabled=false;}
