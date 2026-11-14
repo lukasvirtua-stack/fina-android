@@ -156,13 +156,14 @@ test('Atualização com dados iguais não recria telas nem perde a rolagem',()=>
   assert.equal(screen.scrollTop,75);
 });
 
-test('Últimos dados locais são isolados pelo Google e não apagam cache antes da identidade',()=>{
-  assert.match(html,/const finaLocalUserStateKey=uid=>/);
-  assert.match(html,/localStorage\.getItem\(finaLocalUserStateKey\(user\.id\)\)/);
-  assert.match(html,/localStorage\.setItem\(finaLocalUserStateKey\(user\.id\),JSON\.stringify\(data\.state\)\)/);
-  assert.doesNotMatch(html,/localStorage\.getItem\('fina_state_v1'\)/);
-  assert.match(html,/if\(window\.FinaBankCacheState!=='live'\)window\.FinaRestoreCachedBankData/);
-  assert.match(html,/finaRenderTimer=setTimeout/);
+test('O cache de compromissos não guarda valores nem fotografias em localStorage',()=>{
+ assert.match(html,/const finaLocalUserStateKey=uid=>/);
+ assert.match(html,/FinaOfflineVault\?\.saveState\(user.id,window.FinaSelfOwnerKey/);
+ assert.match(html,/FinaOfflineVault\?\.loadState\(userId,ownerKey\)/);
+ assert.doesNotMatch(html,/localStorage\.getItem\(finaLocalUserStateKey\(user.id\)\)/);
+ assert.doesNotMatch(html,/localStorage\.setItem\(finaLocalUserStateKey\(user.id\),JSON.stringify/);
+ assert.doesNotMatch(html,/localStorage\.setItem\('fina_shared_profiles_v1'/);
+ assert.match(html,/finaRenderTimer=setTimeout/);
 });
 
 test('Ao abrir, não confundir saldo indisponível com zero ou previsão', () => {
