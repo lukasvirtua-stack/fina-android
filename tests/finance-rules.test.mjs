@@ -222,11 +222,11 @@ test('Busca rápida mostra saldos autorizados e não acessa dados de outra sess�
 });
 
 test('Cache criptografado restaura apenas Lucas, mesmo contendo histórico antigo de Naara',async()=>{
- const browserModules=[...html.matchAll(/<script\\b([^>]*)>([\\s\\S]*?)<\\/script>/gi)]
-   .filter(x=>x[2].trim()&&!/\\bsrc=/.test(x[1]));
+ const browserModules=[...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
+   .filter(x=>x[2].trim()&&!/\bsrc=/.test(x[1]));
  assert.ok(browserModules.length>=3);
- assert.match(browserModules[1][2],/window\\.FinaBankSort=finaBankSort;/);
- assert.match(browserModules[2][2],/const finaBankSort=window\\.FinaBankSort;/);
+ assert.match(browserModules[1][2],/window\.FinaBankSort=finaBankSort;/);
+ assert.match(browserModules[2][2],/const finaBankSort=window\.FinaBankSort;/);
  const id='google-lucas', deleted=[];
  const saved={userId:id,ownerKey:'lucas',savedAt:Date.now(),
   accounts:[{id:'real-itau',owner:'lucas',real:true,name:'Itaú',balance:68570},
@@ -239,8 +239,8 @@ test('Cache criptografado restaura apenas Lucas, mesmo contendo histórico antig
   localStorage:{removeItem:k=>deleted.push(k)},Date};
  vm.createContext(c);
  const f=vm.runInContext('(()=>{const finaBankSort=(a,b)=>String(a.name).localeCompare(String(b.name));'+
-   segment('const finaBankCacheKey=uid=>','\\n// Busca completa paginada:')+
-   '\\nreturn {restore:finaRestoreCachedBankData,encrypted:finaRestoreEncryptedBankHistory};})()',c,{timeout:3000});
+   segment('const finaBankCacheKey=uid=>','\n// Busca completa paginada:')+
+   '\nreturn {restore:finaRestoreCachedBankData,encrypted:finaRestoreEncryptedBankHistory};})()',c,{timeout:3000});
  assert.equal(f.restore(),false,'Restauração não deve confiar em armazenamento legível');
  await f.encrypted(id,'lucas');
  assert.deepEqual(c.S.accounts.map(a=>a.owner),['lucas']);
