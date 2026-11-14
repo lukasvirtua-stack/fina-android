@@ -60,6 +60,47 @@ async function finaImportOfficialBills(admin:any,userId:string,storedAccountId:s
 }
 
 
+
+// Recupera dados inseridos recentemente pela Pluggy, ainda que a data bancária seja anterior.
+// 'createdAtFrom' não pode ser combinado com 'dateFrom'/'dateTo': consulta independente.
+async function finaCatchUpByCreatedAt(admin:any,userId:string,storedAccountId:string,
+  providerAccountId:string,apiKey:string,lastCheckedAt:string|null){
+  const previous=lastCheckedAt?Date.parse(lastCheckedAt):NaN;
+  const from=Number.isFinite(previous)
+    ?new Date(Math.max(Date.now()-72*3600000,previous-3600000)).toISOString()
+    :new Date(Date.now()-7*86400000).toISOString();
+  let next="?accountId="+encodeURIComponent(providerAccountId)+"&createdAtFrom="+encodeURIComponent(from);
+  let checked=0,saved=0;
+  for(let guard=0;guard<30&&next;guard++){
+    const res=await fetch("https://api.pluggy.ai/v2/transactions"+next,{headers:{"X-API-KEY":apiKey}});
+    if(!res.ok)return {checked,saved,error:"created_at_http_"+res.status};
+    const data=await res.json().catch(()=>null);
+    if(!Array.isArray(data?.results))return {checked,saved,error:"created_at_invalid_page"};
+    const txs=data.results;
+    if(txs.some((x:any)=>!x?.id||!x?.date||x.amount==null||
+      !Number.isFinite(Number(x.amount))||Number.isNaN(Date.parse(String(x.date)))))
+      return {checked,saved,error:"created_at_invalid_record"};
+    checked+=txs.length;
+    const rows=txs.map((x:any)=>{
+      const amount=Number(x.amount);
+      return {user_id:userId,bank_account_id:storedAccountId,external_transaction_id:String(x.id),
+        description:x.description||x.descriptionRaw||x.merchant?.name||"Movimentação",
+        amount:Math.abs(amount),direction:amount>=0?"credit":"debit",
+        occurred_at:new Date(x.date).toISOString(),category:x.category||null,
+        status:x.status||null,raw:x,updated_at:new Date().toISOString()};
+    });
+    if(rows.length){
+      const {error}=await admin.from("fina_bank_transactions")
+        .upsert(rows,{onConflict:"user_id,external_transaction_id"});
+      if(error)return {checked,saved,error:"created_at_save_failed"};
+      saved+=rows.length;
+    }
+    next=typeof data.next==="string"&&data.next?data.next:"";
+  }
+  if(next)return {checked,saved,error:"created_at_pagination_incomplete"};
+  return {checked,saved};
+}
+
 // O banco pode postar lançamentos de dias anteriores mesmo depois da virada do mês.
 const finaRollingStart=(today:Date)=>{
  const monthStart=new Date(today.getFullYear(),today.getMonth(),1);
@@ -205,7 +246,7 @@ Deno.serve(async(req)=>{
           available_credit_limit:Number.isFinite(Number(a.creditData?.availableCreditLimit))?Number(a.creditData.availableCreditLimit):null,
           updated_at:new Date().toISOString()
         };
-        const {data:stored,error:ae}=await admin.from("fina_bank_accounts").upsert(accountRow,{onConflict:"user_id,external_account_id"}).select("id,history_backfilled_at,history_audit_verified_at,history_audit_last_attempt_at").single();
+        const {data:stored,error:ae}=await admin.from("fina_bank_accounts").upsert(accountRow,{onConflict:"user_id,external_account_id"}).select("id,history_backfilled_at,history_audit_verified_at,history_audit_last_attempt_at,created_at_catchup_checked_at").single();
         if(ae||!stored){itemImportOk=false;itemImportErr="bank_account_save_failed";accountsFailed++;continue;}
         accountsSaved++;
 
@@ -282,6 +323,29 @@ Deno.serve(async(req)=>{
             .update(auditUpdate).eq("id",stored.id);
           if(!markError&&fullHistoryOk)historyCompletedThisRun++;
           else if(markError){accountComplete=false;itemImportOk=false;itemImportErr="history_checkpoint_failed";}
+        }
+        // Consulta por criação na Pluggy, para recuperar recebimentos que não apareceram
+        // na consulta filtrada pela data bancária. Não cria saldo ou transação fictícia.
+        try{
+          const recent=await finaCatchUpByCreatedAt(admin,item.user_id,stored.id,String(a.id),
+            apiKey,stored.created_at_catchup_checked_at||null);
+          const checkpoint:any={
+            created_at_catchup_count:recent.checked,
+            created_at_catchup_error:recent.error||null
+          };
+          if(!recent.error){
+            checkpoint.created_at_catchup_checked_at=new Date().toISOString();
+            txSaved+=recent.saved||0;itemImportedTx+=recent.saved||0;
+          }else{
+            itemImportOk=false;itemImportErr=recent.error;accountComplete=false;
+          }
+          const {error:saveCheckError}=await admin.from("fina_bank_accounts")
+            .update(checkpoint).eq("id",stored.id);
+          if(saveCheckError){itemImportOk=false;itemImportErr="created_at_checkpoint_failed";accountComplete=false;}
+        }catch{
+          itemImportOk=false;itemImportErr="created_at_exception";accountComplete=false;
+          await admin.from("fina_bank_accounts")
+            .update({created_at_catchup_error:"created_at_exception"}).eq("id",stored.id);
         }
         if(accountComplete)accountsComplete++;else accountsFailed++;
       }

@@ -14,6 +14,8 @@ on:
       - supabase/migrations/20261114130000_fina_pluggy_webhook.sql
       - tests/pluggy-webhook.test.mjs
       - tests/history-rescan.test.mjs
+      - tests/created-at-catchup.test.mjs
+      - supabase/migrations/20261114120000_fina_createdat_catchup.sql
       - supabase/migrations/20261114133000_fina_history_rescan.sql
       - tests/sync-coverage.test.mjs
       - tests/finance-rules.test.mjs
@@ -32,6 +34,8 @@ on:
       - supabase/migrations/20261114130000_fina_pluggy_webhook.sql
       - tests/pluggy-webhook.test.mjs
       - tests/history-rescan.test.mjs
+      - tests/created-at-catchup.test.mjs
+      - supabase/migrations/20261114120000_fina_createdat_catchup.sql
       - supabase/migrations/20261114133000_fina_history_rescan.sql
       - tests/sync-coverage.test.mjs
       - tests/finance-rules.test.mjs
@@ -47,4 +51,4 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --test tests/finance-rules.test.mjs tests/pwa-cache.test.mjs tests/offline-vault.test.mjs tests/financial-invariants.test.mjs tests/sync-coverage.test.mjs tests/pluggy-webhook.test.mjs tests/history-rescan.test.mjs
+      - run: node --test tests/finance-rules.test.mjs tests/pwa-cache.test.mjs tests/offline-vault.test.mjs tests/financial-invariants.test.mjs tests/sync-coverage.test.mjs tests/pluggy-webhook.test.mjs tests/history-rescan.test.mjs tests/created-at-catchup.test.mjs
