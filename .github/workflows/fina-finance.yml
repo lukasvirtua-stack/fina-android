@@ -16,6 +16,8 @@ on:
       - tests/history-rescan.test.mjs
       - tests/partner-webhook-provision.test.mjs
       - tests/bills-webhook-recovery.test.mjs
+      - tests/finance-audit.test.mjs
+      - scripts/fina-financial-integrity-audit.sql
       - supabase/migrations/20261114172000_fina_bills_webhook_recovery.sql
       - supabase/migrations/20261114133000_fina_history_rescan.sql
       - tests/sync-coverage.test.mjs
@@ -37,6 +39,8 @@ on:
       - tests/history-rescan.test.mjs
       - tests/partner-webhook-provision.test.mjs
       - tests/bills-webhook-recovery.test.mjs
+      - tests/finance-audit.test.mjs
+      - scripts/fina-financial-integrity-audit.sql
       - supabase/migrations/20261114172000_fina_bills_webhook_recovery.sql
       - supabase/migrations/20261114133000_fina_history_rescan.sql
       - tests/sync-coverage.test.mjs
@@ -53,4 +57,4 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --test tests/finance-rules.test.mjs tests/pwa-cache.test.mjs tests/offline-vault.test.mjs tests/financial-invariants.test.mjs tests/sync-coverage.test.mjs tests/pluggy-webhook.test.mjs tests/history-rescan.test.mjs tests/partner-webhook-provision.test.mjs tests/bills-webhook-recovery.test.mjs
+      - run: node --test tests/finance-rules.test.mjs tests/pwa-cache.test.mjs tests/offline-vault.test.mjs tests/financial-invariants.test.mjs tests/sync-coverage.test.mjs tests/pluggy-webhook.test.mjs tests/history-rescan.test.mjs tests/partner-webhook-provision.test.mjs tests/bills-webhook-recovery.test.mjs tests/finance-audit.test.mjs
