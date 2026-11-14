@@ -74,9 +74,38 @@ Deno.serve(async(req)=>{
   const supabaseUrl=Deno.env.get("SUPABASE_URL")!;
   const sec=JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS")||"{}").default || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const admin=createClient(supabaseUrl,sec,{auth:{persistSession:false}});
-  const presentedToken=req.headers.get("x-fina-sync-cron")||"";
-  const {data:authenticated,error:tokenError}=await admin.rpc("fina_verify_auto_sync_cron",{presented_token:presentedToken});
-  if(tokenError||authenticated!==true)return json({error:"forbidden"},403);
+  // Autorização separada: cron assinado OU aviso já registrado e autenticado.
+  // O webhook só pode importar seu próprio Item registrado; nunca outro banco.
+  let hook:{clientId:string,eventId:string,itemId:string,userId:string}|null=null;
+  if(req.headers.has("x-fina-sync-cron")){
+    const presentedToken=req.headers.get("x-fina-sync-cron")||"";
+    const {data:authenticated,error:tokenError}=await admin.rpc("fina_verify_auto_sync_cron",{presented_token:presentedToken});
+    if(tokenError||authenticated!==true)return json({error:"forbidden"},403);
+  }else{
+    const secret=req.headers.get("x-fina-pluggy-webhook-secret")||"";
+    if(secret.length<32||secret.length>256)return json({error:"forbidden"},403);
+    let body:any;
+    try{body=await req.json();}catch{return json({error:"invalid_json"},400);}
+    const clientId=String(body?.clientId||""),eventId=String(body?.eventId||""),itemId=String(body?.itemId||"");
+    if(!clientId||!eventId||!itemId||clientId.length>128||eventId.length>128||itemId.length>128)
+      return json({error:"forbidden"},403);
+    const tokenHash=Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",_enc.encode(secret))))
+      .map(x=>x.toString(16).padStart(2,"0")).join("");
+    const {data:subscription,error:subscriptionErr}=await admin.from("fina_pluggy_webhook_subscriptions")
+      .select("client_id").eq("client_id",clientId).eq("token_sha256",tokenHash).eq("status","active").maybeSingle();
+    if(subscriptionErr||!subscription)return json({error:"forbidden"},403);
+    const {data:event,error:eventErr}=await admin.from("fina_pluggy_webhook_events")
+      .select("user_id").eq("client_id",clientId).eq("event_id",eventId)
+      .eq("item_id",itemId).eq("status","pending").maybeSingle();
+    if(eventErr)return json({error:"event_lookup_failed"},503);
+    if(!event)return json({ok:true,duplicate:true});
+    const {data:claimed,error:claimErr}=await admin.from("fina_pluggy_webhook_events")
+      .update({status:"processing"}).eq("client_id",clientId).eq("event_id",eventId)
+      .eq("status","pending").select("event_id").maybeSingle();
+    if(claimErr)return json({error:"event_claim_failed"},503);
+    if(!claimed)return json({ok:true,duplicate:true});
+    hook={clientId,eventId,itemId,userId:String(event.user_id)};
+  }
 
 
   const apiKeys=new Map<string,string>();
@@ -92,7 +121,9 @@ Deno.serve(async(req)=>{
     return k;
   };
 
-  const {data:items,error:itemErr}=await admin.from("fina_bank_items").select("*").eq("provider","pluggy");
+  let itemQuery=admin.from("fina_bank_items").select("*").eq("provider","pluggy");
+  if(hook)itemQuery=itemQuery.eq("user_id",hook.userId).eq("external_item_id",hook.itemId);
+  const {data:items,error:itemErr}=await itemQuery;
   if(itemErr) return json({error:"items_query_failed",detail:itemErr.message},500);
 
   let accountsSaved=0,txSaved=0,itemsSynced=0,billsSaved=0,itemsImported=0,importFailures=0;
@@ -230,6 +261,13 @@ Deno.serve(async(req)=>{
       if(itemImportOk)(result as any).last_import_success_at=new Date().toISOString();
       await admin.from("fina_bank_items").update(result).eq("id",item.id);
       if(itemImportOk)itemsImported++;else importFailures++;
+      // O cron de cinco minutos funciona como recuperação para webhooks perdidos.
+      if(!hook){
+        await admin.from("fina_pluggy_webhook_events")
+          .update({status:itemImportOk?"complete":"failed",processed_at:new Date().toISOString(),
+            error_code:itemImportOk?null:"cron_import_incomplete"})
+          .eq("item_id",String(item.external_item_id)).eq("status","pending");
+      }
     }catch(e){
       importFailures++;
       console.warn("FINA: falha isolada ao importar banco (sem interromper outros bancos)",String((e as Error)?.message||e).slice(0,110));
@@ -253,6 +291,13 @@ Deno.serve(async(req)=>{
   let financings=0;
   try{const {data}=await admin.rpc("fina_refresh_financings");financings=Number(data)||0;}catch{}
   try{await admin.rpc("fina_check_bank_sync_health");}catch{}
+  if(hook){
+    const complete=itemsImported===1&&importFailures===0&&accountsFailed===0;
+    await admin.from("fina_pluggy_webhook_events").update({
+      status:complete?"complete":"failed",processed_at:new Date().toISOString(),
+      error_code:complete?null:"bank_import_incomplete"
+    }).eq("client_id",hook.clientId).eq("event_id",hook.eventId).eq("status","processing");
+  }
   return json({ok:importFailures===0 && accountsFailed===0,
     // "consultado" é diferente de "atualizado pelo banco": somente a Pluggy pode disponibilizar extratos novos.
     allConnectedProductsChecked:importFailures===0 && accountsFailed===0 && accountsScanned===accountsComplete,
