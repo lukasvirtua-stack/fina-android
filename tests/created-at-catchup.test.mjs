@@ -21,7 +21,7 @@ function extractCatchup(){
  const start=sync.indexOf("async function finaCatchUpByCreatedAt(");
  const end=sync.indexOf("// O banco pode postar",start);
  assert.ok(start>0&&end>start);
- let text=sync.slice(start,end).replaceAll(":any","").replaceAll(":string","").replaceAll(":number","").replaceAll(":null","").replaceAll("lastCheckedAt:string|null","lastCheckedAt");
+ let text=sync.slice(start,end).replace(/:any\b|:string\b|:number\b/g,"").replace(/\|null/g,"");
  text=text.replace("const checkpoint:any=","const checkpoint=");
  text=text.replace("storedAccountId:string","storedAccountId").replace("providerAccountId:string","providerAccountId").replace("apiKey:string","apiKey");
  return text+"\nfinaCatchUpByCreatedAt;";
