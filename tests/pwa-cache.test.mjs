@@ -97,3 +97,13 @@ test('App abre offline a partir de arquivos públicos previamente salvos',async(
  assert.equal((await asset.promise).body,'ONLINE:/supabase.min.js');
  await Promise.all(asset.background);
 });
+
+test('release v32 invalida cache de shell anterior sem tocar dados bancários',()=>{
+ assert.match(source,/fina-sw-v32-release-20261114/);
+ assert.match(source,/fina-shell-v32-release-20261114/);
+ assert.doesNotMatch(source,/const SHELL_CACHE='fina-shell-v31-encrypted-history-20261113'/);
+ assert.match(source,/keys\.filter\(k=>k\.startsWith\('fina-shell-'\)&&k!==SHELL_CACHE\)/);
+ assert.match(source,/const SHELL_PATHS=new Set\(APP_FILES\)/);
+ assert.match(source,/if\(url\.origin!==self\.location\.origin\)return/);
+ assert.match(source,/if\(!SHELL_PATHS\.has\(url\.pathname\)\)return/);
+});
