@@ -530,6 +530,8 @@ function banks(){
      (!Number.isFinite(bankUpdated)||bankUpdated<nextExpected);
    const bankOld=Number.isFinite(bankUpdated)&&Date.now()-bankUpdated>26*60*60*1000;
    const providerProblem=it.provider_execution_status&&it.provider_execution_status!=='SUCCESS';
+   const missingBills=it.last_bills_warning==='bills_record_incomplete'?
+     Math.max(0,Math.min(10000,Math.floor(Number(it.last_bills_invalid_count)||0))):0;
    const indicator=it.last_import_error?'Falha na importação; nova tentativa automática':
      providerProblem?'O banco informou sincronização incompleta':
      bankLate?'Atualização do banco atrasada; a FINA continua verificando':
@@ -542,6 +544,8 @@ function banks(){
      (it.provider_next_auto_sync_at?' · Próxima atualização prevista pelo provedor: '+
        escape(fmtBankTime(it.provider_next_auto_sync_at)):'')+
      ' · <span'+(bankLate||providerProblem||it.last_import_error?' role="alert"':'')+'>'+escape(indicator)+'</span>'+
+     (missingBills?' · <span role="status" class="pill wait">Faturas parciais: '+
+       missingBills+' registro(s) sem campos obrigatórios. Valores ausentes não são zero.</span>':'')+
      '</div>';
  }).join('');
  const accounts=S.accounts.filter(a=>ownerShown(a.owner));
@@ -558,7 +562,7 @@ function banks(){
    const bankAccounts=accounts.filter(a=>a.owner===c.owner&&String(a.name||'').toLowerCase()===String(c.bank||'').toLowerCase());
    const bankBalance=bankAccounts.length?sum(bankAccounts,a=>a.balance):null;
    const invoice=S.bills.find(b=>b.card===c.id&&sameMonth(b));
-   return `${bankCard(c)}<div class="bankcard-financial"><div><span>Saldo da conta ${escape(c.bank)}</span><strong>${bankBalance===null?'Não informado':display(bankBalance)}</strong></div><div><span>Fatura do cartão</span><strong>${invoice?display(billValue(invoice)):'R$ 0,00'}</strong></div></div><div class="bankcard-footer"><span class="muted">Limite de crédito ${money(c.limit)} · Final ${c.digits}</span><button class="btn soft mini" data-act="open-card" data-id="${c.id}">Ver fatura e estornos</button></div>`;
+   return `${bankCard(c)}<div class="bankcard-financial"><div><span>Saldo da conta ${escape(c.bank)}</span><strong>${bankBalance===null?'Não informado':display(bankBalance)}</strong></div><div><span>Fatura do cartão</span><strong>${invoice?display(billValue(invoice)):'Fatura não informada'}</strong></div></div><div class="bankcard-footer"><span class="muted">Limite de crédito ${money(c.limit)} · Final ${c.digits}</span><button class="btn soft mini" data-act="open-card" data-id="${c.id}">Ver fatura e estornos</button></div>`;
  }).join('')||'<p class="muted">Nenhum cartão visível neste filtro.</p>';
  return `${heading('Bancos e cartões','Movimentações, saldos em conta e cartões em um só lugar.')}${healthRows?'<p class="hint">As cinco conexões são consultadas automaticamente, incluindo todas as contas e cartões disponíveis. A atualização real do banco depende da Pluggy; uma consulta da FINA não garante que novas transações já foram liberadas. '+healthRows+'</p>':''}${switcher()}${finaCashLedger()}${card('Movimentações do banco',movements)}${card('Cartões por banco',cardRows)}${card('Contratos de financiamento do banco',loanBoard())}${card('Transferências reconhecidas do banco',transferHistoryRows())}`;
 }
@@ -633,7 +637,11 @@ function finaScheduledBankPreview(){
  return card('Pagamentos futuros informados pelo banco',
   rows+'<p class="muted">Agendamentos disponíveis pelo Open Finance. Não incluem todos os boletos DDA e só entram em Saiu quando o banco confirmar o débito.</p>');
 }
-function bills(){if(!accessible())return heading('Faturas + Contas','Sem autorização.');return `${heading('Faturas + Contas','Reserve ou informe pagamentos; a baixa bancária acontece automaticamente após o extrato confirmar.')} ${switcher()}${monthPicker()}<div class="statgrid"><div class="stat"><small>Em aberto</small><strong>${display(open())}</strong></div><div class="stat"><small>Reservado</small><strong>${display(reserved())}</strong></div><div class="stat"><small>Informado</small><strong>${display(reported())}</strong></div><div class="stat"><small>Pendente total</small><strong>${display(owed())}</strong></div></div>
+function bills(){if(!accessible())return heading('Faturas + Contas','Sem autorização.');
+ const incompleteBills=(window.FinaBankSyncHealth||[]).some(it=>
+   it.last_bills_warning==='bills_record_incomplete'&&Number(it.last_bills_invalid_count)>0);
+ return `${heading('Faturas + Contas','Reserve ou informe pagamentos; a baixa bancária acontece automaticamente após o extrato confirmar.')}
+ ${incompleteBills?'<p class="hint" role="status">A Pluggy disponibilizou dados parciais de algumas faturas. Valores ausentes não significam fatura zerada. A FINA preserva as faturas válidas; consulte o banco para confirmar as demais.</p>':''} ${switcher()}${monthPicker()}<div class="statgrid"><div class="stat"><small>Em aberto</small><strong>${display(open())}</strong></div><div class="stat"><small>Reservado</small><strong>${display(reserved())}</strong></div><div class="stat"><small>Informado</small><strong>${display(reported())}</strong></div><div class="stat"><small>Pendente total</small><strong>${display(owed())}</strong></div></div>
 ${card('↶ Estornos das faturas',ownRefunds().map(refundRow).join('')||'<p>Sem estornos.</p>')}
 <section class="card"><div class="row"><div class="cardtitle">Faturas de cartão</div>${btn('+ Informar fatura','add-invoice')}</div>${S.invoiceAdd?invoiceForm():''}${S.formNotice?`<p class="hint" role="status">${escape(S.formNotice)}</p>`:''}${ownBills().filter(b=>b.card).map(billList).join('')||'<p>Nenhuma fatura.</p>'}</section>
 <section class="card"><div class="row"><div class="cardtitle">Contas e financiamentos</div>${btn('+ Adicionar','add-bill')}</div>${ownBills().filter(b=>!b.card).map(billList).join('')||'<p>Nenhuma conta.</p>'}${S.add?newBillForm():''}${finaLearnedRulesPanel()}</section>
@@ -2021,12 +2029,12 @@ async function finaLoadBankSyncHealth(){
  const user=window.FinaCurrentUser;if(!user)return;
  try{
   const {data,error}=await sb.from('fina_bank_items')
-    .select('label,status,provider_execution_status,provider_last_updated_at,provider_next_auto_sync_at,last_import_success_at,last_import_error,last_import_count')
+    .select('label,status,provider_execution_status,provider_last_updated_at,provider_next_auto_sync_at,last_import_success_at,last_import_error,last_import_count,last_bills_warning,last_bills_invalid_count')
     .order('label').limit(20);
   if(window.FinaCurrentUser?.id!==user.id||error||!Array.isArray(data))return;
   if(JSON.stringify(window.FinaBankSyncHealth)!==JSON.stringify(data)){
    window.FinaBankSyncHealth=data;
-   if(S.tab==='banks')window.FinaRender?.();
+   if(S.tab==='banks'||S.tab==='bills')window.FinaRender?.();
   }
  }catch{}
 }
@@ -2457,7 +2465,7 @@ finaPullScreen?.addEventListener('touchcancel',()=>{finaPullStart=null},{passive
 async function applySession(session){
  const user=session?.user;
  if(!user){
-   window.FinaSyncAlerts=[];window.FinaOfflineHistoryCount=0;
+   window.FinaSyncAlerts=[];window.FinaBankSyncHealth=[];window.FinaOfflineHistoryCount=0;
    window.FinaCurrentUser=null;window.FinaCurrentSession=null;finaAppliedSessionKey='';
    S.profiles.lucas.displayName='Você';S.profiles.naara.displayName='Outra pessoa';
    document.body.classList.remove('fina-authenticated');gate.hidden=false;bar.textContent='';
@@ -2471,7 +2479,7 @@ async function applySession(session){
  }
  if(window.FinaCurrentUser?.id&&window.FinaCurrentUser.id!==user.id){
    S.accounts=[];S.cards=[];S.transactions=[];S.bills=[];S.future=[];S.loans=[];
-   window.FinaSyncAlerts=[];window.FinaOfflineHistoryCount=0;
+   window.FinaSyncAlerts=[];window.FinaBankSyncHealth=[];window.FinaOfflineHistoryCount=0;
    window.FinaRealBankLoaded=false;window.FinaBankCacheState='waiting';
  }
  finaAppliedSessionKey=key;
