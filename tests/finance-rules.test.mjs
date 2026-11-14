@@ -168,8 +168,9 @@ test('Últimos dados locais são isolados pelo Google e não apagam cache antes 
 test('Ao abrir, não confundir saldo indisponível com zero ou previsão', () => {
  const source=segment('function home(){','\nfunction banks(){');
  assert.match(source,/const balancesAvailable=/);
+ assert.match(source,/S\.scope==='casal'\?hasRealBalance\(self\)&&hasRealBalance\(partner\)/);
  assert.match(source,/balancesAvailable\?display\(scopeBalance\(\)\):'—'/);
- assert.match(source,/!balancesAvailable\?'—':S\.showMoney/);
+ assert.match(source,/!hasRealBalance\(o\)\?'—':S\.showMoney/);
  assert.match(source,/cashAvailable\?monthResult\(\):null/);
  assert.match(source,/Carregando saldos reais dos bancos/);
  assert.match(html,/meta name="google" content="notranslate"/);
