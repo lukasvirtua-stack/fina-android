@@ -1502,6 +1502,7 @@ async function finaSavePersistentState(){
   const state=window.FinaExportPersistentState?.(); if(!state)return;
   const {error}=await sb.from('fina_user_state').upsert({user_id:user.id,state,updated_at:new Date().toISOString()},{onConflict:'user_id'});
   if(error){console.warn('Erro ao salvar estado FINA',error.message);return;}
+  if(window.FinaCurrentUser?.id!==user.id)return;
   window.FinaPersistentStateLoadedForUser=user.id;
   void window.FinaOfflineVault?.saveState(user.id,window.FinaSelfOwnerKey,state);
   try{localStorage.removeItem(finaLocalUserStateKey(user.id))}catch{}
