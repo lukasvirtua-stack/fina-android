@@ -97,8 +97,5 @@ jobs:
             sleep 7
             adb shell pidof app.fina.casal.debug
             adb logcat -d -s AndroidRuntime:E FinaLauncher:E
-            if adb logcat -d -s AndroidRuntime:E | grep -q 'FATAL EXCEPTION'; then
-              echo "ERRO: launcher Android caiu durante a abertura"
-              exit 1
-            fi
+            test -z "$(adb logcat -d -s AndroidRuntime:E | grep 'FATAL EXCEPTION' || true)"
 
