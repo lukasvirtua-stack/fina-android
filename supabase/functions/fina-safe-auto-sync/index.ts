@@ -142,7 +142,11 @@ Deno.serve(async(req)=>{
   const historyFrom=historyStart.getFullYear()+"-"+
     String(historyStart.getMonth()+1).padStart(2,"0")+"-"+
     String(historyStart.getDate()).padStart(2,"0");
-  let historyStartedThisRun=false,historyCompletedThisRun=0,historyPendingThisRun=0;
+  // Recheck the complete provider window periodically, even after initial 12-month import.
+  // Limit scans per run so the free function stays within execution/time limits.
+  let historyStartedThisRun=0,historyCompletedThisRun=0,historyPendingThisRun=0;
+  const historyAuditCutoff=new Date(Date.now()-30*86400000).toISOString();
+  const historyRetryCutoff=new Date(Date.now()-30*60000).toISOString();
 
   for(const item of items||[]){
     try{
@@ -201,7 +205,7 @@ Deno.serve(async(req)=>{
           available_credit_limit:Number.isFinite(Number(a.creditData?.availableCreditLimit))?Number(a.creditData.availableCreditLimit):null,
           updated_at:new Date().toISOString()
         };
-        const {data:stored,error:ae}=await admin.from("fina_bank_accounts").upsert(accountRow,{onConflict:"user_id,external_account_id"}).select("id,history_backfilled_at").single();
+        const {data:stored,error:ae}=await admin.from("fina_bank_accounts").upsert(accountRow,{onConflict:"user_id,external_account_id"}).select("id,history_backfilled_at,history_audit_verified_at,history_audit_last_attempt_at").single();
         if(ae||!stored){itemImportOk=false;itemImportErr="bank_account_save_failed";accountsFailed++;continue;}
         accountsSaved++;
 
@@ -211,10 +215,25 @@ Deno.serve(async(req)=>{
           if(billResult.error){itemImportOk=false;itemImportErr=billResult.error;accountComplete=false;}
         }catch{itemImportOk=false;itemImportErr="bill_exception";accountComplete=false;}
 
-        const historical=!historyStartedThisRun&&!stored.history_backfilled_at;
-        if(historical){historyStartedThisRun=true;historyPendingThisRun++;}
+        // An audit replays ALL transactions Pluggy currently exposes for this product.
+        // Previously, a successful first import permanently disabled historical checks,
+        // so delayed/backdated records older than the 14-day rolling window were missed.
+        const historical=historyStartedThisRun<3&&
+          (!stored.history_backfilled_at||!stored.history_audit_verified_at||
+           stored.history_audit_verified_at<historyAuditCutoff)&&
+          (!stored.history_audit_last_attempt_at||
+           stored.history_audit_last_attempt_at<historyRetryCutoff);
+        if(historical){
+          historyStartedThisRun++;historyPendingThisRun++;
+          const {error:checkpointErr}=await admin.from("fina_bank_accounts")
+            .update({history_audit_last_attempt_at:new Date().toISOString()}).eq("id",stored.id);
+          if(checkpointErr){
+            itemImportOk=false;itemImportErr="history_audit_attempt_failed";
+            accountsFailed++;continue;
+          }
+        }
         const firstDate=historical?historyFrom:dateFrom;
-        let fullHistoryOk=true;
+        let fullHistoryOk=true,accountTransactionRows=0;
         const txDateTo=!historical&&String(a.type||"").toUpperCase()==="BANK"?bankFutureDateTo:dateTo;
         let next="?accountId="+encodeURIComponent(a.id)+"&dateFrom="+firstDate+"&dateTo="+txDateTo;
         for(let guard=0;guard<30&&next;guard++){
@@ -231,6 +250,7 @@ Deno.serve(async(req)=>{
             !Number.isFinite(Number(x.amount))||Number.isNaN(Date.parse(String(x.date))))){
             fullHistoryOk=false;itemImportOk=false;itemImportErr="transactions_record_incomplete";accountComplete=false;next="";break;
           }
+          accountTransactionRows+=txs.length;
           const rows=txs.map((x:any)=>{
             const n=Number(x.amount)||0;
             return {
@@ -249,11 +269,19 @@ Deno.serve(async(req)=>{
           next=typeof tj?.next==="string"&&tj.next?tj.next:"";
         }
         if(next){fullHistoryOk=false;itemImportOk=false;itemImportErr="transactions_pagination_incomplete";accountComplete=false;}
-        if(historical&&fullHistoryOk){
+        if(historical){
+          const auditUpdate=fullHistoryOk?{
+            history_backfilled_at:stored.history_backfilled_at||new Date().toISOString(),
+            history_audit_verified_at:new Date().toISOString(),
+            history_audit_last_error:null,history_audit_last_count:accountTransactionRows
+          }:{
+            history_audit_last_error:itemImportErr||"history_import_incomplete",
+            history_audit_last_count:accountTransactionRows
+          };
           const {error:markError}=await admin.from("fina_bank_accounts")
-            .update({history_backfilled_at:new Date().toISOString()}).eq("id",stored.id);
-          if(!markError)historyCompletedThisRun++;
-          else{accountComplete=false;itemImportOk=false;itemImportErr="history_checkpoint_failed";}
+            .update(auditUpdate).eq("id",stored.id);
+          if(!markError&&fullHistoryOk)historyCompletedThisRun++;
+          else if(markError){accountComplete=false;itemImportOk=false;itemImportErr="history_checkpoint_failed";}
         }
         if(accountComplete)accountsComplete++;else accountsFailed++;
       }
@@ -304,6 +332,6 @@ Deno.serve(async(req)=>{
     items:itemsSynced,itemsImported,importFailures,
     accounts:accountsSaved,accountsScanned,accountsComplete,accountsFailed,accountListPages,transactionPages,
     transactions:txSaved,bills:billsSaved,pairedTransfers,reconciled,financings,
-    historyCompletedThisRun,historyPendingThisRun,historyFrom,dateFrom,dateTo,
+    historyStartedThisRun,historyCompletedThisRun,historyPendingThisRun,historyFrom,dateFrom,dateTo,
     sourceFreshness:"controlled_by_bank_and_pluggy",syncedAt:new Date().toISOString()});
 });
