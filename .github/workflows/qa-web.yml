@@ -19,3 +19,5 @@ jobs:
           node-version: '22'
       - name: Conferir JavaScript e regras essenciais da FINA
         run: node tests/check-web.mjs
+      - name: Testar cobertura completa da sincronização bancária
+        run: node --test tests/sync-coverage.test.mjs
