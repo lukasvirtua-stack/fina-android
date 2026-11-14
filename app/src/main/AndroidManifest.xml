@@ -11,27 +11,14 @@
         android:theme="@style/Theme.FINA"
         android:usesCleartextTraffic="false">
 
+        <!-- Sem TWA não verificada nem VIEW-filter circular: login Google via Chrome. -->
         <activity
-            android:name="com.google.androidbrowserhelper.trusted.LauncherActivity"
+            android:name=".FinaLauncherActivity"
             android:exported="true"
             android:screenOrientation="portrait">
-
-            <meta-data
-                android:name="android.support.customtabs.trusted.DEFAULT_URL"
-                android:value="https://fina-html-v14.vercel.app/" />
-
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-
-            <intent-filter android:autoVerify="true">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data
-                    android:scheme="https"
-                    android:host="fina-html-v14.vercel.app" />
             </intent-filter>
         </activity>
     </application>
