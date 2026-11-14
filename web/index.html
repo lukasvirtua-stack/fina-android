@@ -523,12 +523,27 @@ ${S.refunds.some(r=>r.state==='pending')?`<div class="hint">↶ Existe estorno p
 function banks(){
  const fmtBankTime=v=>v&&!Number.isNaN(Date.parse(v))?new Date(v).toLocaleString('pt-BR',{
    timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'não informada';
- const healthRows=(window.FinaBankSyncHealth||[]).map(it=>'<div class="line-detail" style="padding:3px 0">'+
-   '<strong>'+escape(it.label||'Banco')+'</strong> · Última atualização real: '+
-   escape(fmtBankTime(it.provider_last_updated_at))+
-   ' · FINA importou: '+escape(fmtBankTime(it.last_import_success_at))+
-   (it.last_import_error?' · <span role="alert">Importação pendente</span>':'')+
-   '</div>').join('');
+ const healthRows=(window.FinaBankSyncHealth||[]).map(it=>{
+   const bankUpdated=Date.parse(it.provider_last_updated_at||'');
+   const nextExpected=Date.parse(it.provider_next_auto_sync_at||'');
+   const bankLate=Number.isFinite(nextExpected)&&Date.now()>nextExpected+2*60*60*1000&&
+     (!Number.isFinite(bankUpdated)||bankUpdated<nextExpected);
+   const bankOld=Number.isFinite(bankUpdated)&&Date.now()-bankUpdated>26*60*60*1000;
+   const providerProblem=it.provider_execution_status&&it.provider_execution_status!=='SUCCESS';
+   const indicator=it.last_import_error?'Falha na importação; nova tentativa automática':
+     providerProblem?'O banco informou sincronização incompleta':
+     bankLate?'Atualização do banco atrasada; a FINA continua verificando':
+     bankOld?'Aguardando dados mais recentes do banco':
+     'Consulta automática ativa';
+   return '<div class="line-detail" style="padding:3px 0">'+
+     '<strong>'+escape(it.label||'Banco')+'</strong> · Atualização real do banco: '+
+     escape(fmtBankTime(it.provider_last_updated_at))+
+     ' · Última importação FINA: '+escape(fmtBankTime(it.last_import_success_at))+
+     (it.provider_next_auto_sync_at?' · Próxima atualização prevista pelo provedor: '+
+       escape(fmtBankTime(it.provider_next_auto_sync_at)):'')+
+     ' · <span'+(bankLate||providerProblem||it.last_import_error?' role="alert"':'')+'>'+escape(indicator)+'</span>'+
+     '</div>';
+ }).join('');
  const accounts=S.accounts.filter(a=>ownerShown(a.owner));
  const creditCards=S.cards.filter(c=>ownerShown(c.owner));
  const totalAccounts=sum(accounts,a=>a.balance);
@@ -545,7 +560,7 @@ function banks(){
    const invoice=S.bills.find(b=>b.card===c.id&&sameMonth(b));
    return `${bankCard(c)}<div class="bankcard-financial"><div><span>Saldo da conta ${escape(c.bank)}</span><strong>${bankBalance===null?'Não informado':display(bankBalance)}</strong></div><div><span>Fatura do cartão</span><strong>${invoice?display(billValue(invoice)):'R$ 0,00'}</strong></div></div><div class="bankcard-footer"><span class="muted">Limite de crédito ${money(c.limit)} · Final ${c.digits}</span><button class="btn soft mini" data-act="open-card" data-id="${c.id}">Ver fatura e estornos</button></div>`;
  }).join('')||'<p class="muted">Nenhum cartão visível neste filtro.</p>';
- return `${heading('Bancos e cartões','Movimentações, saldos em conta e cartões em um só lugar.')}${healthRows?'<p class="hint">A atualização real da instituição pode ser diferente da última consulta da FINA. '+healthRows+'</p>':''}${switcher()}${finaCashLedger()}${card('Movimentações do banco',movements)}${card('Cartões por banco',cardRows)}${card('Contratos de financiamento do banco',loanBoard())}${card('Transferências reconhecidas do banco',transferHistoryRows())}`;
+ return `${heading('Bancos e cartões','Movimentações, saldos em conta e cartões em um só lugar.')}${healthRows?'<p class="hint">As cinco conexões são consultadas automaticamente, incluindo todas as contas e cartões disponíveis. A atualização real do banco depende da Pluggy; uma consulta da FINA não garante que novas transações já foram liberadas. '+healthRows+'</p>':''}${switcher()}${finaCashLedger()}${card('Movimentações do banco',movements)}${card('Cartões por banco',cardRows)}${card('Contratos de financiamento do banco',loanBoard())}${card('Transferências reconhecidas do banco',transferHistoryRows())}`;
 }
 function bankCard(c){const logo=c.bank==='Nubank'?'nu':c.bank==='Santander'?'<svg viewBox="0 0 32 32" aria-label="símbolo ilustrativo Santander"><path fill="white" d="M16 1c3 6-2 10-2 14 0 3 2 5 4 5-5 1-10-1-10-6-4 6-5 11-2 15 5 7 18 6 22-1 4-7-1-14-5-17 1 5-1 8-4 10 1-8-5-11-3-20Z"/></svg>':c.bank==='Itaú'?'I':'B';return `<div class="bankcard ${c.bank.toLowerCase()}"><div class="bankbrand"><span class="emblem">${logo}</span> ${escape(c.bank)}</div><div class="chip"></div><div class="cardnumbers">••••　••••　••••　${c.digits}</div><div class="cardholder">${name(c.owner).toUpperCase()} · ${escape(c.name)}</div><div class="cardnetwork">${c.network==='VISA'?'VISA':'<span class="mastercircles"><i></i><i></i></span>'}</div></div>`}
 function refundRow(r){const label=r.state==='pending'?'Aguardando confirmação':r.state==='card'?'Creditado na fatura':'Devolvido na conta';return `<div class="refund"><div class="row start"><div><span class="line-title">↶ ${escape(r.name)}</span><span class="pill ${r.state==='pending'?'wait':'ok'}">${label}</span></div><strong class="positive">${money(r.value)}</strong></div>${r.state==='pending'?`<div class="refund-options">${btn('Simular crédito na fatura','refund-card',`data-id="${r.id}"`)}${btn('Simular devolução na conta','refund-cash',`data-id="${r.id}"`)}</div>`:`<div class="refund-options">${btn('Desfazer simulação','refund-undo',`data-id="${r.id}"`)}</div>`}</div>`}
@@ -1965,7 +1980,7 @@ async function finaLoadBankSyncHealth(){
  const user=window.FinaCurrentUser;if(!user)return;
  try{
   const {data,error}=await sb.from('fina_bank_items')
-    .select('label,status,provider_execution_status,provider_last_updated_at,provider_next_auto_sync_at,last_import_success_at,last_import_error')
+    .select('label,status,provider_execution_status,provider_last_updated_at,provider_next_auto_sync_at,last_import_success_at,last_import_error,last_import_count')
     .order('label').limit(20);
   if(window.FinaCurrentUser?.id!==user.id||error||!Array.isArray(data))return;
   if(JSON.stringify(window.FinaBankSyncHealth)!==JSON.stringify(data)){
