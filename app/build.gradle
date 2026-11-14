@@ -25,6 +25,15 @@ android {
     }
 }
 
+
+// AndroidX Browser e dependências antigas exigem uma única versão Kotlin;
+// misturar kotlin-stdlib 1.8.22 com kotlin-stdlib-jdk8 1.6.21 impede gerar APK.
+configurations.configureEach {
+    resolutionStrategy.force 'org.jetbrains.kotlin:kotlin-stdlib:1.8.22',
+            'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22',
+            'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22'
+}
+
 dependencies {
     implementation 'androidx.browser:browser:1.9.0'
 }
