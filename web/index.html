@@ -1784,6 +1784,27 @@ async function finaFunctionResult(name,body){
  let extra=null;try{if(error.context&&typeof error.context.json==='function')extra=await error.context.json();}catch{}
  return {data:data||extra,error};
 }
+
+ // Registro automático e discreto de webhooks; não bloqueia abertura nem a sincronização de 5 min.
+ // A FINA não envia senhas bancárias pelo navegador. O servidor obtém as credenciais já protegidas.
+async function finaSetupPluggyEvents(){
+ const user=window.FinaCurrentUser;
+ if(!user||!navigator.onLine)return;
+ const key='fina-webhook-setup-at:'+user.id;
+ const now=Date.now();
+ try{
+  const last=Number(localStorage.getItem(key)||0);
+  if(last&&now-last<21600000)return; // no máximo uma tentativa a cada 6 h por navegador
+  localStorage.setItem(key,String(now));
+  const {data,error}=await finaFunctionResult('fina-pluggy-webhook-setup',{});
+  if(!error&&data?.status==='active')localStorage.setItem(key,String(now+64800000)); // próximo dia
+ }catch{}
+}
+window.addEventListener('fina:auth-ready',()=>setTimeout(()=>void finaSetupPluggyEvents(),5000));
+document.addEventListener('visibilitychange',()=>{
+ if(!document.hidden&&window.FinaCurrentUser)setTimeout(()=>void finaSetupPluggyEvents(),2000);
+});
+
 async function finaSyncById(raw,label){
  const itemId=String(raw||'').trim();
  if(!itemId){finaBankStatus('Cole o Item ID da Pluggy.');return;}
