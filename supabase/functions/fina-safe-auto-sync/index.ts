@@ -47,6 +47,14 @@ async function finaImportOfficialBills(admin:any,userId:string,storedAccountId:s
 }
 
 
+// O banco pode postar lançamentos de dias anteriores mesmo depois da virada do mês.
+const finaRollingStart=(today:Date)=>{
+ const monthStart=new Date(today.getFullYear(),today.getMonth(),1);
+ const backfill=new Date(today.getFullYear(),today.getMonth(),today.getDate()-14);
+ const start=backfill<monthStart?backfill:monthStart;
+ return start.getFullYear()+"-"+String(start.getMonth()+1).padStart(2,"0")+"-"+String(start.getDate()).padStart(2,"0");
+};
+
 Deno.serve(async(req)=>{
   if(req.method!=="POST") return json({error:"method_not_allowed"},405);
 
@@ -75,9 +83,10 @@ Deno.serve(async(req)=>{
   if(itemErr) return json({error:"items_query_failed",detail:itemErr.message},500);
 
   let accountsSaved=0,txSaved=0,itemsSynced=0,billsSaved=0,itemsImported=0,importFailures=0;
+  let accountsScanned=0,accountsComplete=0,accountsFailed=0,accountListPages=0,transactionPages=0;
   const nowBr=new Date(new Date().toLocaleString("en-US",{timeZone:"America/Sao_Paulo"}));
   const y=nowBr.getFullYear(),m=String(nowBr.getMonth()+1).padStart(2,"0"),d=String(nowBr.getDate()).padStart(2,"0");
-  const dateFrom=y+"-"+m+"-01";
+  const dateFrom=finaRollingStart(nowBr);
   const dateTo=y+"-"+m+"-"+d;
   // Somente agendas bancarias suportadas pela instituicao; nunca afetam Entrou/Saiu antes de POSTED.
   // Nao estender a janela de 12 meses das contas ainda em backfill retroativo.
@@ -119,9 +128,23 @@ Deno.serve(async(req)=>{
       }
       const aj=await ar.json();
       const accounts=Array.isArray(aj?.results)?aj.results:Array.isArray(aj)?aj:[];
+      // A primeira página não basta se a instituição disponibilizar muitas contas/cartões.
+      accountListPages++;
+      const morePages=Math.max(1,Number(aj?.totalPages)||1);
+      for(let page=2;page<=morePages && page<=50;page++){
+        const more=await fetch("https://api.pluggy.ai/accounts?itemId="+encodeURIComponent(item.external_item_id)+"&page="+page,{headers:{"X-API-KEY":apiKey}});
+        if(!more.ok){itemImportOk=false;itemImportErr="accounts_page_http_"+more.status;break;}
+        const payload=await more.json();
+        if(!Array.isArray(payload?.results)){itemImportOk=false;itemImportErr="accounts_page_invalid";break;}
+        accounts.push(...payload.results);
+        accountListPages++;
+      }
+      if(morePages>50){itemImportOk=false;itemImportErr="accounts_pagination_incomplete";}
       if(accounts.length===0){itemImportOk=false;itemImportErr="pluggy_accounts_empty";}
 
       for(const a of accounts){
+        accountsScanned++;
+        let accountComplete=true;
         const accountRow={
           user_id:item.user_id,bank_item_id:item.id,external_account_id:String(a.id),
           institution_name:a.institution?.name||a.connector?.name||item.label||null,
@@ -135,14 +158,14 @@ Deno.serve(async(req)=>{
           updated_at:new Date().toISOString()
         };
         const {data:stored,error:ae}=await admin.from("fina_bank_accounts").upsert(accountRow,{onConflict:"user_id,external_account_id"}).select("id,history_backfilled_at").single();
-        if(ae||!stored){itemImportOk=false;itemImportErr="bank_account_save_failed";continue;}
+        if(ae||!stored){itemImportOk=false;itemImportErr="bank_account_save_failed";accountsFailed++;continue;}
         accountsSaved++;
 
         try{
           const billResult=await finaImportOfficialBills(admin,item.user_id,stored.id,a,apiKey);
           billsSaved+=billResult.saved||0;
-          if(billResult.error){itemImportOk=false;itemImportErr=billResult.error;}
-        }catch{itemImportOk=false;itemImportErr="bill_exception";}
+          if(billResult.error){itemImportOk=false;itemImportErr=billResult.error;accountComplete=false;}
+        }catch{itemImportOk=false;itemImportErr="bill_exception";accountComplete=false;}
 
         const historical=!historyStartedThisRun&&!stored.history_backfilled_at;
         if(historical){historyStartedThisRun=true;historyPendingThisRun++;}
@@ -152,7 +175,8 @@ Deno.serve(async(req)=>{
         let next="?accountId="+encodeURIComponent(a.id)+"&dateFrom="+firstDate+"&dateTo="+txDateTo;
         for(let guard=0;guard<30&&next;guard++){
           const tr=await fetch("https://api.pluggy.ai/v2/transactions"+next,{headers:{"X-API-KEY":apiKey}});
-          if(!tr.ok){fullHistoryOk=false;itemImportOk=false;itemImportErr="transactions_http_"+tr.status;break;}
+          transactionPages++;
+          if(!tr.ok){fullHistoryOk=false;itemImportOk=false;itemImportErr="transactions_http_"+tr.status;accountComplete=false;break;}
           const tj=await tr.json();
           const txs=Array.isArray(tj?.results)?tj.results:[];
           const rows=txs.filter((x:any)=>x?.id&&x?.date).map((x:any)=>{
@@ -168,16 +192,18 @@ Deno.serve(async(req)=>{
           if(rows.length){
             const {error:te}=await admin.from("fina_bank_transactions").upsert(rows,{onConflict:"user_id,external_transaction_id"});
             if(!te){txSaved+=rows.length;itemImportedTx+=rows.length;}
-            else{fullHistoryOk=false;itemImportOk=false;itemImportErr="transactions_save_failed";}
+            else{fullHistoryOk=false;itemImportOk=false;itemImportErr="transactions_save_failed";accountComplete=false;}
           }
           next=typeof tj?.next==="string"&&tj.next?tj.next:"";
         }
-        if(next){fullHistoryOk=false;itemImportOk=false;itemImportErr="transactions_pagination_incomplete";}
+        if(next){fullHistoryOk=false;itemImportOk=false;itemImportErr="transactions_pagination_incomplete";accountComplete=false;}
         if(historical&&fullHistoryOk){
           const {error:markError}=await admin.from("fina_bank_accounts")
             .update({history_backfilled_at:new Date().toISOString()}).eq("id",stored.id);
           if(!markError)historyCompletedThisRun++;
+          else{accountComplete=false;itemImportOk=false;itemImportErr="history_checkpoint_failed";}
         }
+        if(accountComplete)accountsComplete++;else accountsFailed++;
       }
       const result={last_import_error:itemImportOk?null:(itemImportErr||"import_incomplete"),last_import_count:itemImportedTx};
       if(itemImportOk)(result as any).last_import_success_at=new Date().toISOString();
@@ -206,5 +232,12 @@ Deno.serve(async(req)=>{
   let financings=0;
   try{const {data}=await admin.rpc("fina_refresh_financings");financings=Number(data)||0;}catch{}
   try{await admin.rpc("fina_check_bank_sync_health");}catch{}
-  return json({ok:true,items:itemsSynced,itemsImported,importFailures,accounts:accountsSaved,transactions:txSaved,bills:billsSaved,pairedTransfers,reconciled,financings,historyCompletedThisRun,historyPendingThisRun,historyFrom,dateFrom,dateTo,syncedAt:new Date().toISOString()});
+  return json({ok:importFailures===0 && accountsFailed===0,
+    // "consultado" é diferente de "atualizado pelo banco": somente a Pluggy pode disponibilizar extratos novos.
+    allConnectedProductsChecked:importFailures===0 && accountsFailed===0 && accountsScanned===accountsComplete,
+    items:itemsSynced,itemsImported,importFailures,
+    accounts:accountsSaved,accountsScanned,accountsComplete,accountsFailed,accountListPages,transactionPages,
+    transactions:txSaved,bills:billsSaved,pairedTransfers,reconciled,financings,
+    historyCompletedThisRun,historyPendingThisRun,historyFrom,dateFrom,dateTo,
+    sourceFreshness:"controlled_by_bank_and_pluggy",syncedAt:new Date().toISOString()});
 });
