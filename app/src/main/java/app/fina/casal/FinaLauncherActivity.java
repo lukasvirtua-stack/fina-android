@@ -15,6 +15,9 @@ import android.util.Log;
 
 import androidx.browser.customtabs.CustomTabColorSchemeParams;
 import androidx.browser.customtabs.CustomTabsIntent;
+import androidx.browser.customtabs.CustomTabsCallback;
+import androidx.browser.trusted.TrustedWebActivityIntentBuilder;
+import com.google.androidbrowserhelper.trusted.TwaLauncher;
 
 /**
  * Launcher resiliente: não exige uma Trusted Web Activity previamente verificada.
@@ -28,6 +31,7 @@ public final class FinaLauncherActivity extends Activity {
     private static final int GOLD = Color.rgb(194, 154, 88);
     private TextView status;
     private boolean launchedOnce = false;
+    private TwaLauncher twaLauncher;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -87,7 +91,31 @@ public final class FinaLauncherActivity extends Activity {
     }
 
     private void openFina() {
-        status.setText("Abrindo FINA no navegador seguro…");
+        status.setText("Abrindo FINA em tela limpa, via Chrome…");
+        try {
+            // TWA só remove a barra quando Chrome confirma o Digital Asset Links do domínio.
+            // Não ignorar nem contornar a verificação de assinatura do aplicativo.
+            if (twaLauncher == null) twaLauncher = new TwaLauncher(this, "com.android.chrome");
+            TrustedWebActivityIntentBuilder builder = new TrustedWebActivityIntentBuilder(FINA_URL)
+                .setToolbarColor(BACKGROUND).setNavigationBarColor(BACKGROUND);
+            twaLauncher.launch(builder, new CustomTabsCallback(), null, () -> {
+                launchedOnce = true;
+                status.setText("FINA aberta. Se não abrir em tela cheia, atualize o Chrome e verifique a conexão.");
+            }, (context, fallbackBuilder, provider, finished) -> {
+                // Sem suporte TWA: manter a tela de recuperação e abrir Chrome de forma segura.
+                Log.w(TAG, "TWA indisponível; tentando Custom Tab");
+                launchFallbackBrowser();
+                if (finished != null) finished.run();
+            });
+            return;
+        } catch (RuntimeException | LinkageError twaError) {
+            Log.w(TAG, "Falha ao iniciar TWA; tentando navegador seguro", twaError);
+        }
+        launchFallbackBrowser();
+    }
+
+    private void launchFallbackBrowser() {
+        status.setText("Modo tela cheia indisponível. Abrindo FINA com segurança…");
         try {
             launchCustomTab(true);
             launchedOnce = true;
@@ -114,6 +142,15 @@ public final class FinaLauncherActivity extends Activity {
             Log.e(TAG, "Nenhum navegador disponível para a FINA", error);
             status.setText("Não foi possível abrir a FINA. Verifique se Chrome está instalado e habilitado, depois toque em ABRIR FINA.");
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (twaLauncher != null) {
+            twaLauncher.destroy();
+            twaLauncher = null;
+        }
+        super.onDestroy();
     }
 
     private void launchCustomTab(boolean useChrome) {

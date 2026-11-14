@@ -2,12 +2,16 @@ name: Build FINA Android APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
+    paths-ignore:
+      - 'web/.well-known/assetlinks.json'
   pull_request:
-    branches: [ main ]
+    branches: [main]
     paths:
       - 'app/**'
       - 'tests/android-launch.test.mjs'
+      - 'scripts/update-assetlinks.mjs'
+      - 'web/.well-known/assetlinks.json'
       - '.github/workflows/build-apk.yml'
   workflow_dispatch:
 
@@ -17,40 +21,38 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: read
+    outputs:
+      cert: ${{ steps.verify.outputs.cert }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Validar JavaScript e regras essenciais antes de gerar APK
+      - name: Node 22
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-
-      - name: Executar QA da FINA
+      - name: Validar FINA Web e Android
         run: |
           node tests/check-web.mjs
           node --test tests/android-launch.test.mjs
-
       - name: Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-
       - name: Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
-
-      - name: Build debug APK
+      - name: Build APK de teste
         run: gradle assembleDebug --stacktrace
-
-      - name: Conferir assinatura e instalabilidade do APK
+      - name: Verificar assinatura, pacote, launcher e SHA-256
+        id: verify
         run: |
           set -euo pipefail
           APK=app/build/outputs/apk/debug/app-debug.apk
-          BUILD_TOOLS="$(find "${ANDROID_HOME}/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
+          BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
           test -s "$APK"
           unzip -t "$APK" | tail -1
           "$BUILD_TOOLS/apksigner" verify --verbose --min-sdk-version 24 --print-certs "$APK"
@@ -58,30 +60,29 @@ jobs:
           grep -F "package: name='app.fina.casal.debug'" /tmp/fina-apk-badging.txt
           grep -F "launchable-activity: name='app.fina.casal.FinaLauncherActivity'" /tmp/fina-apk-badging.txt
           sha256sum "$APK"
-
-      - name: Prepare artifact
+          CERT_SHA256="$("$BUILD_TOOLS/apksigner" verify --print-certs "$APK" | sed -n -E 's/^.*certificate SHA-256 digest: ([0-9a-fA-F]{64})$/\1/p')"
+          echo "$CERT_SHA256" | grep -Eq '^[a-fA-F0-9]{64}$'
+          printf 'cert=%s\n' "$CERT_SHA256" >> "$GITHUB_OUTPUT"
+      - name: Preparar instalador
         run: |
           mkdir -p artifact
           cp app/build/outputs/apk/debug/app-debug.apk artifact/FINA-debug.apk
-
-      - name: Upload APK
+      - name: Disponibilizar APK
         uses: actions/upload-artifact@v4
         with:
           name: FINA-Android-debug
           path: artifact/FINA-debug.apk
           if-no-files-found: error
           retention-days: 14
-
       - name: Habilitar KVM para emulador Android
         run: |
           if [ -e /dev/kvm ]; then
             sudo chmod 666 /dev/kvm
             ls -l /dev/kvm
           else
-            echo "Aceleracao KVM indisponivel neste runner"
+            echo "KVM indisponivel neste runner"
           fi
-
-      - name: Testar abertura no emulador Android (sem fechar o aplicativo)
+      - name: Testar instalacao e abertura no emulador Android
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -99,3 +100,38 @@ jobs:
             adb logcat -d -s AndroidRuntime:E FinaLauncher:E
             test -z "$(adb logcat -d -s AndroidRuntime:E | grep 'FATAL EXCEPTION' || true)"
 
+  publish-assetlinks:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: fina-assetlinks-production
+      cancel-in-progress: false
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Registrar SHA-256 publico do APK assinado no dominio
+        env:
+          CERT_SHA256: ${{ needs.build.outputs.cert }}
+        run: |
+          set -euo pipefail
+          git pull --ff-only origin main
+          node scripts/update-assetlinks.mjs "$CERT_SHA256"
+          if git diff --quiet -- web/.well-known/assetlinks.json; then
+            echo "Certificado ja registrado"
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add web/.well-known/assetlinks.json
+          git commit -m "chore: atualizar dominio Android TWA"
+          git push origin HEAD:main
