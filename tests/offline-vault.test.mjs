@@ -109,3 +109,22 @@ test('Compromissos e recebimentos futuros próprios são criptografados, sem vaz
  assert.equal(stores.get('records').has('state:'+user),false);
  assert.equal(stores.get('keys').has(user),false);
 });
+
+test('Gravações simultâneas mantêm último extrato confirmado e logout elimina pendências',async()=>{
+ const {vault,stores}=harness();
+ const pending=[
+  vault.save(user,'lucas',{transactions:[{id:'a',value:100}]}),
+  vault.save(user,'lucas',{transactions:[{id:'b',value:200}]}),
+  vault.saveState(user,'lucas',{manualBills:[{id:'conta',owner:'lucas',value:300}]})
+ ];
+ assert.deepEqual(await Promise.all(pending),[true,true,true]);
+ const snapshot=await vault.load(user,'lucas');
+ assert.equal(snapshot.transactions[0].id,'b','A última gravação vence');
+ assert.equal((await vault.loadState(user,'lucas')).manualBills[0].id,'conta');
+ const whileWriting=vault.save(user,'lucas',{transactions:[{id:'last',value:500}]});
+ await vault.clear(user);
+ await whileWriting;
+ assert.equal(await vault.load(user,'lucas'),null,'Logout impede reexposição de extratos');
+ assert.equal(await vault.loadState(user,'lucas'),null);
+ assert.equal(stores.get('keys').has(user),false);
+});

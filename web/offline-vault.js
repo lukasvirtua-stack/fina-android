@@ -32,15 +32,22 @@ async function cryptoKey(id){
 }
 const validId=id=>typeof id==='string'&&id.length>7&&id.length<150;
 const validOwner=o=>o==='lucas'||o==='naara';
+// Gravações concorrentes usam a mesma chave e respeitam a ordem do snapshot.
+const pendingWrites=new Map();
 async function save(id,owner,data,type='bank'){
  if(!validId(id)||!validOwner(owner)||!canUse()||!data)return false;
- try{
-  const key=await cryptoKey(id),iv=crypto.getRandomValues(new Uint8Array(12));
-  const body=JSON.stringify({schema:1,id,owner,type,savedAt:Date.now(),data});
-  const cipher=await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:encoder.encode(id+'|'+owner+(type==='state'?'|state':''))},key,encoder.encode(body));
-  await write('records',type==='state'?'state:'+id:id,{owner,iv:Array.from(iv),cipher:Array.from(new Uint8Array(cipher)),savedAt:Date.now()});
-  return true;
- }catch(e){console.warn('FINA: cache offline indisponivel:',e?.name||'error');return false}
+ const previous=pendingWrites.get(id)||Promise.resolve();
+ const task=previous.catch(()=>{}).then(async()=>{
+  try{
+   const key=await cryptoKey(id),iv=crypto.getRandomValues(new Uint8Array(12));
+   const body=JSON.stringify({schema:1,id,owner,type,savedAt:Date.now(),data});
+   const cipher=await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:encoder.encode(id+'|'+owner+(type==='state'?'|state':''))},key,encoder.encode(body));
+   await write('records',type==='state'?'state:'+id:id,{owner,iv:Array.from(iv),cipher:Array.from(new Uint8Array(cipher)),savedAt:Date.now()});
+   return true;
+  }catch(e){console.warn('FINA: cache offline indisponivel:',e?.name||'error');return false}
+ });
+ pendingWrites.set(id,task);
+ try{return await task}finally{if(pendingWrites.get(id)===task)pendingWrites.delete(id)}
 }
 async function load(id,owner,type='bank'){
  if(!validId(id)||!validOwner(owner)||!canUse())return null;
@@ -59,7 +66,12 @@ async function load(id,owner,type='bank'){
 }
 async function clear(id){
  if(!validId(id)||!canUse())return;
- try{await Promise.all([remove('records',id),remove('records','state:'+id),remove('keys',id)])}catch{}
+ try{
+  // Uma gravação ainda pendente não pode repor histórico depois do logout.
+  const pending=pendingWrites.get(id);
+  if(pending)await pending.catch(()=>{});
+  await Promise.all([remove('records',id),remove('records','state:'+id),remove('keys',id)]);
+ }catch{}
 }
 // Contas manuais e recebimentos de outra pessoa nunca são salvos offline.
 function sanitizeState(state,owner){

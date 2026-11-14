@@ -1502,6 +1502,7 @@ async function finaSavePersistentState(){
   const state=window.FinaExportPersistentState?.(); if(!state)return;
   const {error}=await sb.from('fina_user_state').upsert({user_id:user.id,state,updated_at:new Date().toISOString()},{onConflict:'user_id'});
   if(error){console.warn('Erro ao salvar estado FINA',error.message);return;}
+  if(window.FinaCurrentUser?.id!==user.id)return;
   window.FinaPersistentStateLoadedForUser=user.id;
   void window.FinaOfflineVault?.saveState(user.id,window.FinaSelfOwnerKey,state);
   try{localStorage.removeItem(finaLocalUserStateKey(user.id))}catch{}
@@ -1990,10 +1991,11 @@ window.addEventListener('fina:auth-ready',()=>setTimeout(()=>{void finaLoadSyncA
 // mostrar a última situação confirmada, SEM credenciais Pluggy.
 const finaBankCacheKey=uid=>'fina_bank_snapshot_v5_'+String(uid);
 const finaBankOwnerMetadataKey=uid=>'fina_bank_owner_v1_'+String(uid);
-let finaOfflineRestorePromise=null;
+const finaOfflineRestorePromises=new Map();
 async function finaRestoreEncryptedBankHistory(userId,ownerKey){
- if(finaOfflineRestorePromise)return finaOfflineRestorePromise;
- finaOfflineRestorePromise=(async()=>{
+ const restoreKey=String(userId)+'|'+String(ownerKey);
+ if(finaOfflineRestorePromises.has(restoreKey))return finaOfflineRestorePromises.get(restoreKey);
+ const task=(async()=>{
   const saved=await window.FinaOfflineVault?.load(userId,ownerKey);
   if(!saved||window.FinaCurrentUser?.id!==userId||
     window.FinaOwnerResolvedForUserId!==userId||window.FinaSelfOwnerKey!==ownerKey||
@@ -2018,8 +2020,9 @@ async function finaRestoreEncryptedBankHistory(userId,ownerKey){
   window.FinaOfflineHistoryCount=S.transactions.length;
   window.FinaRender?.();
   return true;
- })().catch(()=>false).finally(()=>{finaOfflineRestorePromise=null});
- return finaOfflineRestorePromise;
+ })().catch(()=>false).finally(()=>{finaOfflineRestorePromises.delete(restoreKey)});
+ finaOfflineRestorePromises.set(restoreKey,task);
+ return task;
 }
 function finaRestoreCachedBankData(){
  const user=window.FinaCurrentUser;
@@ -2065,7 +2068,7 @@ async function finaLoadEarlyBankBalances(userId){
  finally{if(finaEarlyBalancesUser===userId)finaEarlyBalancesUser=null;}
 }
 function finaSaveCachedBankData(user){
- if(!user||window.FinaOwnerResolvedForUserId!==user.id)return;
+ if(!user||window.FinaCurrentUser?.id!==user.id||window.FinaOwnerResolvedForUserId!==user.id)return;
  const owner=window.FinaSelfOwnerKey,savedAt=Date.now();
  if(!['lucas','naara'].includes(owner))return;
  const saved={
