@@ -30,7 +30,7 @@ test('Projeções, reservas e contas pagas não duplicam o saldo bancário',()=>
  assert.equal(result.reservadoLucas,10000);
  assert.equal(result.abertoNaara,43000);
  bills.find(b=>b.id==='l-r').state='posted';
- assert.equal(run(code,'ownerProjected("lucas")',ctx),130000);
+ assert.equal(run(code,'ownerProjected("lucas")',{...ctx}),130000);
 });
 test('Pix próprios e Pix de casal não entram no coração, mas débito real do cartão entra',()=>{
  const code=segment('const finaCashIsInternal=', '\nconst finaCurrentCashTransactions=')
@@ -58,7 +58,7 @@ test('Pix próprios e Pix de casal não entram no coração, mas débito real do
 test('Movimento pendente e compra de cartão não contam no Entrou/Saiu bancário',()=>{
  assert.match(html,/t\.real===true&&ownerShown\(t\.owner\)/);
  assert.match(html,/String\(t\.status\|\|'POSTED'\)\.toUpperCase\(\)!=='PENDING'/);
- assert.match(html,/\.type==='BANK'/);
+ assert.match(html,/const bankAccounts=\(accounts\|\|\[\]\)\.filter\(isBankAccount\)/);
 });
 test('Sem TED confirmada, nenhum valor é criado pelo app',()=>{
  const rules=segment('const finaCashCountable=','\nconst monthResult=');
