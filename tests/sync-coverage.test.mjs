@@ -123,7 +123,9 @@ test('faturas válidas continuam sendo importadas quando o provedor envia regist
   {results:[bill('ok-2','2027-01-10',20),bill('negativo','2027-01-11',-10)],totalPages:2}
  ]);
  assert.equal(result.saved,2);
- assert.equal(result.error,'bills_record_incomplete');
+ assert.equal(result.error,undefined);
+ assert.equal(result.warning,'bills_record_incomplete');
+ assert.equal(result.invalidCount,3);
  assert.deepEqual(requested,[1,2]);
  assert.deepEqual(upserted.map(x=>x.external_bill_id),['ok-1','ok-2']);
  assert.deepEqual(upserted.map(x=>x.total_amount),[125.1,20]);
