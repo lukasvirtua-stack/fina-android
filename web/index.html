@@ -640,8 +640,27 @@ ${card('↶ Estornos das faturas',ownRefunds().map(refundRow).join('')||'<p>Sem 
 ${finaScheduledBankPreview()}
 ${card('Fechamento e próximo mês',`<div class="row"><div><strong>Confirmado pelo banco</strong><span class="line-detail">${money(sum(ownBills().filter(b=>b.state==='posted'),b=>billValue(b)))}</span></div><div><strong>Pendente e previsto</strong><span class="line-detail">${money(owed())}</span></div></div><p class="muted">${monthOffset()<0?'Mês encerrado ou histórico de pagamentos demonstrativos.':monthOffset()===0?'Mês vigente: valores reais entram pelo banco, reservas mantêm cor até a confirmação.':'Previsões podem repetir o último valor, mas a fatura bancária oficial tem prioridade.'}</p>`)}
  `}
-function forecast(){return `${heading('Variáveis a receber','Planeje recebimentos futuros sem alterá-los no extrato.')}${switcher()}${card('Entradas previstas',S.future.filter(x=>ownerShown(x.owner)&&x.month===S.monthForBills).map(x=>row(x.name,`${name(x.owner)} · Dia ${x.day}`,money(x.value),`<div class="action-menu">${btn('Excluir','delete-forecast',`data-id="${x.id}"`)}</div>`)).join('')||'<p>Não há previsões.</p>')}${card('Nova variável a receber',`<form data-form="forecast" class="formgrid"><label class="wide">Descrição<input name="name" required placeholder="Comissão, salário..."></label><label>Valor (R$)<input name="value" type="text" inputmode="decimal" autocomplete="off" placeholder="1500 ou 1.500,00" required></label><label>Dia<input name="day" type="number" min="1" max="31" value="25" required></label><label class="wide">Responsável<select name="owner"><option value="${selfOwner()}">${escape(name(selfOwner()))}</option>${S.consent?'<option value="'+partnerOwner()+'">'+escape(name(partnerOwner()))+'</option>':''}</select></label><button class="btn wide" type="submit">Adicionar variável</button></form>`)}${card('Resultado projetado',`<div style="font-size:24px;font-weight:720">${display(monthResult())}</div><p class="muted">Saldo ajustado ${display(scopeBalance())} + variáveis a receber ${display(future())} − contas ainda abertas ${display(open())}. Entrou/Saiu já são parte do saldo importado e não são somados novamente.</p>`)}`}
-function calendar(){const dt=new Date(S.year,S.month,1),name=dt.toLocaleDateString('pt-BR',{month:'long',year:'numeric'}),days=new Date(S.year,S.month+1,0).getDate();let cells='<div class="calendar">'+['D','S','T','Q','Q','S','S'].map(x=>`<div style="text-align:center;font-size:10px">${x}</div>`).join('');for(let i=0;i<dt.getDay();i++)cells+='<div></div>';for(let i=1;i<=days;i++){let bs=ownBills().filter(b=>b.day===i&&pending(b)).length;cells+=`<div class="date">${i}${bs?`<em>${bs} conta${bs>1?'s':''}</em>`:''}</div>`}cells+='</div>';return `${heading('Calendário','Acompanhe os dias, vencimentos e variáveis a receber por mês.')}${switcher()}${card('Navegação mensal',`<div class="row"><button class="btn soft mini" data-act="prev-month">‹ Anterior</button><strong style="text-transform:capitalize">${name}</strong><button class="btn soft mini" data-act="next-month">Próximo ›</button></div><div style="margin-top:12px">${cells}</div>`)}${card('Compromissos de '+escape(monthLabel()),ownBills().map(b=>row(b.name,`Dia ${b.day} · ${status[b.state]}`,money(billValue(b)))).join('')||'<p class="muted">Sem registros confirmados neste mês.</p>')}`}
+function forecast(){return `${heading('Variáveis a receber','Planeje recebimentos futuros sem alterá-los no extrato.')}${switcher()}${card('Entradas previstas',S.future.filter(x=>ownerShown(x.owner)&&x.month===S.monthForBills&&x.year===S.billYear).map(x=>row(x.name,`${name(x.owner)} · Dia ${x.day}`,money(x.value),`<div class="action-menu">${btn('Excluir','delete-forecast',`data-id="${x.id}"`)}</div>`)).join('')||'<p>Não há previsões.</p>')}${card('Nova variável a receber',`<form data-form="forecast" class="formgrid"><label class="wide">Descrição<input name="name" required placeholder="Comissão, salário..."></label><label>Valor (R$)<input name="value" type="text" inputmode="decimal" autocomplete="off" placeholder="1500 ou 1.500,00" required></label><label>Dia<input name="day" type="number" min="1" max="31" value="25" required></label><label class="wide">Responsável<select name="owner"><option value="${selfOwner()}">${escape(name(selfOwner()))}</option>${S.consent?'<option value="'+partnerOwner()+'">'+escape(name(partnerOwner()))+'</option>':''}</select></label><button class="btn wide" type="submit">Adicionar variável</button></form>`)}${card('Resultado projetado',`<div style="font-size:24px;font-weight:720">${display(monthResult())}</div><p class="muted">Saldo ajustado ${display(scopeBalance())} + variáveis a receber ${display(future())} − contas ainda abertas ${display(open())}. Entrou/Saiu já são parte do saldo importado e não são somados novamente.</p>`)}`}
+function calendar(){
+  const dt=new Date(S.year,S.month,1),name=dt.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+  const days=new Date(S.year,S.month+1,0).getDate();
+  const currentBills=ownBills();
+  const countsByDay=new Map();
+  for(const bill of currentBills){
+    if(!pending(bill))continue;
+    const day=Number(bill.day);
+    if(!Number.isInteger(day)||day<1||day>days)continue;
+    countsByDay.set(day,(countsByDay.get(day)||0)+1);
+  }
+  let cells='<div class="calendar">'+['D','S','T','Q','Q','S','S'].map(x=>`<div style="text-align:center;font-size:10px">${x}</div>`).join('');
+  for(let i=0;i<dt.getDay();i++)cells+='<div></div>';
+  for(let i=1;i<=days;i++){
+    const count=countsByDay.get(i)||0;
+    cells+=`<div class="date">${i}${count?`<em>${count} conta${count>1?'s':''}</em>`:''}</div>`;
+  }
+  cells+='</div>';
+  return `${heading('Calendário','Acompanhe os dias, vencimentos e variáveis a receber por mês.')}${switcher()}${card('Navegação mensal',`<div class="row"><button class="btn soft mini" data-act="prev-month">‹ Anterior</button><strong style="text-transform:capitalize">${name}</strong><button class="btn soft mini" data-act="next-month">Próximo ›</button></div><div style="margin-top:12px">${cells}</div>`)}${card('Compromissos de '+escape(monthLabel()),currentBills.map(b=>row(b.name,`Dia ${b.day} · ${status[b.state]}`,money(billValue(b)))).join('')||'<p class="muted">Sem registros confirmados neste mês.</p>')}`;
+}
 function finaBankChatAlerts(){
  const owner=selfOwner();
  const alerts=finaCurrentCashTransactions().filter(t=>t.owner===owner&&t.value>0&&!finaCashIsInternal(t)).slice(0,10);
@@ -2187,12 +2206,27 @@ async function finaLoadRealBankDataOnce(){
     const cashTotals={lucas:{in:0,out:0},naara:{in:0,out:0}};
     const cashCoupleTotals={in:0,out:0};
     const dateParts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',year:'numeric',month:'numeric',day:'numeric'});
+    // Evita formatar a mesma hora UTC centenas de vezes durante a importação.
+    // Cache descartado no fim desta leitura: nunca compartilhado entre sessões.
+    const localDayCache=new Map();
+    const finaLocalDay=iso=>{
+      const time=new Date(iso);
+      if(Number.isNaN(time.getTime()))return {year:0,month:0,day:0};
+      const key=time.toISOString().slice(0,13);
+      let result=localDayCache.get(key);
+      if(!result){
+        const parts=dateParts.formatToParts(time);
+        const part=k=>Number(parts.find(p=>p.type===k)?.value||0);
+        result={year:part('year'),month:part('month'),day:part('day')};
+        localDayCache.set(key,result);
+      }
+      return result;
+    };
     for(const movement of txs||[]){
       if(!bankIds.has(movement.bank_account_id))continue;
       if(String(movement.status||'POSTED').toUpperCase()==='PENDING')continue;
-      const parts=dateParts.formatToParts(new Date(movement.occurred_at));
-      const part=k=>Number(parts.find(p=>p.type===k)?.value||0);
-      if(part('year')!==cashToday.year||part('month')!==cashToday.month+1||part('day')>cashToday.day)continue;
+      const local=finaLocalDay(movement.occurred_at);
+      if(local.year!==cashToday.year||local.month!==cashToday.month+1||local.day>cashToday.day)continue;
       const cat=String(movement.category||'').toLowerCase();
       const betweenPartners=cat==='transfer-spouse'||window.FinaGetCoupleTransferTxIds().has(String(movement.id||''));
       const sameOwnerTransfer=!betweenPartners&&(cat.includes('same person transfer')||cat==='transfer-self');
@@ -2257,9 +2291,7 @@ async function finaLoadRealBankDataOnce(){
     // permanecem na área de cartão/fatura e não duplicam fluxo bancário.
     S.transactions=(txs||[]).filter(t=>bankIds.has(t.bank_account_id)).map(t=>{
       const a=bankById.get(t.bank_account_id)||{};
-      const d=new Date(t.occurred_at);
-      const parts=dateParts.formatToParts(d);
-      const localPart=k=>Number(parts.find(x=>x.type===k)?.value||0);
+      const local=finaLocalDay(t.occurred_at);
       const desc=String(t.description||'Movimentação');
       const rawCategory=String(t.category||'bank');
       const catLower=rawCategory.toLowerCase();
@@ -2269,7 +2301,7 @@ async function finaLoadRealBankDataOnce(){
       else if(catLower.includes('same person transfer')||catLower==='transfer-self')category='transfer-self';
       else if(/\bparcela\s+0*\d+\s+de\s+0*\d+/i.test(desc)||/\bcontr\s+\d+\s+parc\s+0*\d+\s*\/\s*0*\d+/i.test(desc))category='financing';
       else if(descLower.includes('pagamento de fatura'))category='card-payment';
-      return {id:'real-'+t.id,owner:ownerForUserId(t.user_id),bank:prettyBank(a.institution_name||a.name||'Banco'),name:desc,value:Math.round((Number(t.amount)||0)*100),kind:t.direction==='credit'?'in':'out',date:String(localPart('day')).padStart(2,'0')+'/'+String(localPart('month')).padStart(2,'0'),category,month:localPart('month')-1,year:localPart('year'),real:true,
+      return {id:'real-'+t.id,owner:ownerForUserId(t.user_id),bank:prettyBank(a.institution_name||a.name||'Banco'),name:desc,value:Math.round((Number(t.amount)||0)*100),kind:t.direction==='credit'?'in':'out',date:String(local.day).padStart(2,'0')+'/'+String(local.month).padStart(2,'0'),category,month:local.month-1,year:local.year,real:true,
         status:String(t.status||'').toUpperCase(),occurredAt:t.occurred_at};
     }).sort((a,b)=>String(b.occurredAt||'').localeCompare(String(a.occurredAt||''))||String(a.id).localeCompare(String(b.id)));
     const hadWarmSnapshot=window.FinaBankCacheState==='cached'||window.FinaRealBankLoaded===true;
