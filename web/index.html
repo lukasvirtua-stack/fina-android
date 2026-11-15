@@ -1343,10 +1343,24 @@ async function finaLoadHistorySharingStatus(){
  if(wasBoth!==null&&wasBoth!==both){
   try{localStorage.removeItem('fina_bank_snapshot_v3_'+user.id);localStorage.removeItem('fina_bank_snapshot_v4_'+user.id)}catch{}
   if(wasBoth&&!both){
-   void window.FinaOfflineVault?.clear(user.id);
+   // Revogacao: remover imediatamente dados bancarios e de planejamento
+   // RECEBIDOS de outro Google, antes da proxima consulta ao servidor.
+   // Nao apagar o backup proprio de cadastros feitos para o outro integrante.
+   void window.FinaOfflineVault?.clearBank(user.id);
    try{localStorage.removeItem('fina_bank_snapshot_v5_'+user.id)}catch{}
    const myOwner=window.FinaSelfOwnerKey;
-   S.transactions=(S.transactions||[]).filter(x=>x.real!==true||x.owner===myOwner);
+   S.accounts=(S.accounts||[]).filter(x=>x.owner===myOwner);
+   S.cards=(S.cards||[]).filter(x=>x.owner===myOwner);
+   S.transactions=(S.transactions||[]).filter(x=>x.owner===myOwner);
+   S.bills=(S.bills||[]).filter(x=>x.type!=='shared'&&(
+    !['bank','financing','forecast-card'].includes(x.type)||x.owner===myOwner));
+   S.future=(S.future||[]).filter(x=>x.type!=='shared');
+   S.refunds=(S.refunds||[]).filter(x=>x.type!=='shared');
+   S.loans=(S.loans||[]).filter(x=>x.owner===myOwner);
+   window.FinaCashTotalsByOwner=null;
+   window.FinaBankBalancesReady=false;
+   window.FinaRealBankLoaded=false;
+   window.FinaBankCacheState='waiting';
    window.FinaRender?.();
   }
   // Uma consulta já em andamento pode usar a permissão anterior; repetir ao fim.
@@ -2730,7 +2744,8 @@ function finaStartDataRealtime(){
     .on('postgres_changes',{event:'*',schema:'public',table:'fina_user_state'},refresh)
     .on('postgres_changes',{event:'*',schema:'public',table:'fina_sync_alerts'},()=>void finaLoadSyncAlerts())
     .on('postgres_changes',{event:'*',schema:'public',table:'fina_bank_items'},()=>void finaLoadBankSyncHealth())
-    .on('postgres_changes',{event:'*',schema:'public',table:'fina_couple_state_versions'},()=>{void finaLoadSharedBills();void finaLoadOfficialCardBills();})
+    .on('postgres_changes',{event:'*',schema:'public',table:'fina_couple_state_versions'},()=>{void finaLoadHistorySharingStatus();void finaLoadSharedBills();void finaLoadOfficialCardBills();})
+     .on('postgres_changes',{event:'*',schema:'public',table:'fina_history_sharing'},()=>void finaLoadHistorySharingStatus())
     .subscribe();
 }
 window.addEventListener('fina:auth-ready',()=>setTimeout(finaStartDataRealtime,900));

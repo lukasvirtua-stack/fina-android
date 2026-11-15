@@ -81,33 +81,50 @@ test('A UI consulta alertas próprios e não mostra TED esperado como crédito c
  assert.ok(html.includes("const finaCashCountable"));
 });
 
-test('Compromissos e recebimentos futuros próprios são criptografados, sem vazar dados do outro integrante',async()=>{
+test('backup do Google criador preserva compromissos para ambas as pessoas, nunca RPCs recebidas',async()=>{
  const {vault,stores}=harness();
  const state={
-   profile:{displayName:'Lucas'},
-   preferences:{theme:'dark'},
-   manualBills:[
-     {id:'l',owner:'lucas',name:'Conta própria',value:12990},
-     {id:'n',owner:'naara',name:'Conta privada de Naara',value:500000}
-   ],
-   future:[
-     {owner:'lucas',name:'Comissão',value:45000},
-     {owner:'naara',name:'Recebimento reservado',value:99999}
-   ]
+  profile:{displayName:'Lucas'},
+  preferences:{theme:'dark'},
+  manualBills:[
+   {id:'l',type:'manual',owner:'lucas',name:'Conta própria',value:12990},
+   {id:'n',type:'manual',owner:'naara',name:'Lucas cadastrou para Naara',value:500000},
+   {id:'s',type:'shared',owner:'naara',name:'Criada por outro Google',value:888888}
+  ],
+  future:[
+   {id:1,owner:'lucas',name:'Comissão',value:45000},
+   {id:2,owner:'naara',name:'Recebimento cadastrado por Lucas',value:99999},
+   {id:3,type:'shared',owner:'naara',name:'Recebimento remoto',value:99999}
+  ],
+  refunds:[
+   {id:10,owner:'naara',state:'pending',value:1500},
+   {id:11,owner:'lucas',state:'cash',value:1700},
+   {id:12,owner:'naara',type:'shared',state:'pending',value:5000}
+  ]
  };
  assert.equal(await vault.saveState(user,'lucas',state),true);
  const encrypted=stores.get('records').get('state:'+user);
  assert.ok(encrypted,'O estado cifrado deve ser um registro distinto');
  assert.ok(!JSON.stringify(encrypted).includes('Conta própria'));
- assert.ok(!JSON.stringify(encrypted).includes('Conta privada de Naara'));
+ assert.ok(!JSON.stringify(encrypted).includes('Lucas cadastrou para Naara'));
  const restored=await vault.loadState(user,'lucas');
- assert.deepEqual(restored.manualBills.map(x=>x.id),['l']);
- assert.equal(restored.future.length,1);
- assert.equal(restored.future[0].owner,'lucas');
- assert.equal(await vault.loadState(user,'naara'),null,'Credenciais de outro papel não devem decifrar o estado');
+ assert.deepEqual(Array.from(restored.manualBills.map(x=>x.id)),['l','n']);
+ assert.deepEqual(Array.from(restored.future.map(x=>x.id)),[1,2]);
+ assert.deepEqual(Array.from(restored.refunds.map(x=>x.id)),[10]);
+ assert.equal(await vault.loadState(user,'naara'),null,'Outro Google nao deve decifrar esse backup');
  await vault.clear(user);
  assert.equal(stores.get('records').has('state:'+user),false);
  assert.equal(stores.get('keys').has(user),false);
+});
+
+test('revogacao limpa somente extratos, preservando o planejamento cifrado do proprio Google',async()=>{
+ const {vault,stores}=harness();
+ await vault.save(user,'lucas',{transactions:[{id:'bank-historic',value:25000}]});
+ await vault.saveState(user,'lucas',{manualBills:[{id:17,type:'manual',owner:'naara',name:'Condominio',value:555}]});
+ await vault.clearBank(user);
+ assert.equal(await vault.load(user,'lucas'),null);
+ assert.equal((await vault.loadState(user,'lucas')).manualBills[0].id,17);
+ assert.equal(stores.get('keys').has(user),true);
 });
 
 test('Gravações simultâneas mantêm último extrato confirmado e logout elimina pendências',async()=>{
