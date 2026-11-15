@@ -73,19 +73,36 @@ async function clear(id){
   await Promise.all([remove('records',id),remove('records','state:'+id),remove('keys',id)]);
  }catch{}
 }
-// Contas manuais e recebimentos de outra pessoa nunca são salvos offline.
+async function clearBank(id){
+ if(!validId(id)||!canUse())return;
+ try{
+  // Revogacao invalida o snapshot bancario; nao apagar o backup proprio
+  // de contas manuais, previsoes e estornos pendentes.
+  const pending=pendingWrites.get(id);
+  if(pending)await pending.catch(()=>{});
+  await remove('records',id);
+ }catch{}
+}
+// O cofre de planejamento pertence ao Google CRIADOR e nao ao responsavel
+// financeiro. Uma conta criada por Lucas para Naara continua no cofre de Lucas.
+// Dados recebidos por RPC (type=shared) nunca podem entrar neste backup.
 function sanitizeState(state,owner){
  if(!state||typeof state!=='object')return null;
+ const validOwner=x=>x?.owner==='lucas'||x?.owner==='naara';
  return {
   schemaVersion:2,
   preferences:state.preferences&&typeof state.preferences==='object'?state.preferences:{},
   profile:state.profile&&typeof state.profile==='object'?state.profile:{},
   weddingDate:typeof state.weddingDate==='string'?state.weddingDate:'',
-  manualBills:Array.isArray(state.manualBills)?state.manualBills.filter(b=>b?.owner===owner).slice(0,1000):[],
-  future:Array.isArray(state.future)?state.future.filter(b=>b?.owner===owner).slice(0,1000):[]
+  manualBills:Array.isArray(state.manualBills)?state.manualBills.filter(b=>
+   validOwner(b)&&b?.type!=='shared').slice(0,1000):[],
+  future:Array.isArray(state.future)?state.future.filter(b=>
+   validOwner(b)&&b?.type!=='shared').slice(0,1000):[],
+  refunds:Array.isArray(state.refunds)?state.refunds.filter(b=>
+   validOwner(b)&&b?.type!=='shared'&&b?.state==='pending').slice(0,1000):[]
  };
 }
 async function saveState(id,owner,state){const safe=sanitizeState(state,owner);return safe?save(id,owner,safe,'state'):false}
 async function loadState(id,owner){return load(id,owner,'state')}
-window.FinaOfflineVault={save,load,saveState,loadState,clear,available:canUse};
+window.FinaOfflineVault={save,load,saveState,loadState,clear,clearBank,available:canUse};
 })();
