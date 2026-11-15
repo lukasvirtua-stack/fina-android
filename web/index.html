@@ -409,21 +409,7 @@ const transferRows=()=>S.transactions.filter(t=>ownerShown(t.owner)&&/^transfer-
    const f=x=>x.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
    return `Compras: ${f(start)} a ${f(end)} · Vence ${f(due)}`;
  };
- function handleBankTransferEvent(){
-   const id='bank-tx-paired-naara-lucas-3260-20261110';
-   if(S.bankFeedApplied.includes(id)){S.syncWarning='Já recebido: o banco não deve registrar a transferência duas vezes.';return}
-   const a=S.accounts.find(x=>x.id==='n'),b=S.accounts.find(x=>x.id==='s');
-   if(!a||!b){S.syncWarning='Contas ainda não disponíveis para conciliar.';return}
-   const value=326000;
-   // Two bank legs provided as a known, matching pair in the isolated simulation.
-   a.balance-=value;b.balance+=value;
-   for(const [owner,bank,kind,label,suffix] of [
-     ['naara',a.name,'out','PIX enviado para '+name('lucas'),'out'],
-     ['lucas',b.name,'in','PIX recebido de '+name('naara'),'in']]){
-     S.transactions.unshift({id:id+'-'+suffix,owner,bank,kind,name:label,value,date:'10/11',month:10,year:2026,category:'transfer-spouse',bankRef:id,source:'bank'});
-   }
-   S.bankFeedApplied.push(id);S.syncWarning='Banco reconheceu as duas pontas de R$ 3.260,00: Naara → Lucas. Movimento individual registrado; visão Casal neutra.';
- }
+ 
 const validDate=d=>typeof d==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d)&&!Number.isNaN(Date.parse(d+'T12:00:00Z'))&&new Date(d+'T12:00:00Z').toISOString().slice(0,10)===d;
 const daysTo=(from,today)=>{const a=new Date(from+'T12:00:00Z'),b=new Date(today+'T12:00:00Z');return Math.round((b-a)/86400000)};
 const nowDate=(()=>{const p=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const v=t=>p.find(x=>x.type===t)?.value||'';return v('year')+'-'+v('month')+'-'+v('day')})();
@@ -749,15 +735,17 @@ document.addEventListener('click',event=>{
 
 let finaCoupleTransfers=[];
 let finaCoupleTransferTxIds=new Set();
+window.FinaClearCoupleTransferCache=()=>{finaCoupleTransfers=[];finaCoupleTransferTxIds=new Set();};
 async function loadFinaCoupleTransfers(){
-  if(!window.FinaCurrentUser||!window.FinaPartnerReady){finaCoupleTransfers=[];finaCoupleTransferTxIds=new Set();return;}
+  if(!window.FinaCurrentUser||!window.FinaPartnerReady){window.FinaClearCoupleTransferCache();return;}
+  const sourceUser=window.FinaCurrentUser.id;
   // O cliente autenticado e inicializado pelo modulo bancario, em outro escopo JS.
   const client=window.FinaSupabase;
   if(!client)return;
   try{
     const results=await Promise.all([client.rpc('fina_couple_transfer_status'),client.rpc('fina_couple_transfer_links')]);
     const data=results[0].data,error=results[0].error,links=results[1].data,linkError=results[1].error;
-    if(error)return;
+    if(window.FinaCurrentUser?.id!==sourceUser||!window.FinaPartnerReady||error)return;
     finaCoupleTransferTxIds=new Set();
     if(!linkError){
       for(const x of links||[]){
@@ -874,8 +862,19 @@ function runTests(){
  check('Fotos nunca são deformadas: a escala usa a mesma proporção nos dois eixos',(()=>{const width=1600,height=800,base=Math.max(320/width,320/height);return width*base/height/base===2})());
  S.tests=checks;
 }
-function tests(){let pass=S.tests.filter(x=>x.pass).length;return `${heading('Diagnóstico','Verificação isolada das regras da simulação. Não é auditoria da produção.')}${card('Verificações automáticas',`<div class="row"><div><div class="muted">Testes aprovados</div><div style="font-size:27px;font-weight:750">${S.tests.length?`${pass}/${S.tests.length}`:'—'}</div></div><button class="btn" data-act="run-tests">Executar testes</button></div>${S.tests.map(t=>`<div class="testline"><strong>${t.pass?'✓':'✕'}</strong><span>${escape(t.name)}</span></div>`).join('')}`)}${card('Conciliação automática — simulação isolada',`<p>Este controle existe somente no app e representa uma nova movimentação confirmada recebida do banco. No aplicativo real, não haverá botão de baixa manual.</p><label>Escolha uma obrigação a conciliar<select id="labSyncBill">${S.bills.filter(b=>pending(b)&&ownerShown(b.owner)).map(b=>`<option value="${b.id}">${escape(b.name)} · ${money(billValue(b))}</option>`).join('')}</select></label><button class="btn" data-act="bank-event" ${S.bills.some(b=>pending(b)&&ownerShown(b.owner))?'':'disabled'}>Simular chegada do extrato</button><p>${escape(S.syncMessage)}</p>`)}${card('Banco reconhecido automaticamente',`<p class="muted">A conta conectada envia o lançamento. Lucas e Naara não precisam digitar valor, cadastrar salário recebido ou marcar entrada bancária como paga.</p><div class="line"><span class="line-title">TED recebida · Santander · Lucas</span><span class="line-detail">Exemplo bancário fictício: R$ 1.500,00</span></div><button class="btn" data-act="auto-credit">Simular chegada automática do extrato</button><p>O mesmo ID bancário não pode entrar duas vezes. O saldo é atualizado, e Entrou registra somente a movimentação confirmada.</p>`)}
-${card('Simular entrada realmente recebida no banco',`<p class="muted">Somente no app: cria uma entrada fictícia POSTED e aumenta o saldo bancário da conta selecionada.</p><form data-form="deposit" class="formgrid"><label>Recebeu<select name="owner"><option value="lucas">${escape(name("lucas"))}</option>${S.consent?'<option value="naara">'+escape(name("naara"))+'</option>':''}</select></label><label>Valor (R$)<input name="value" type="text" inputmode="decimal" autocomplete="off" placeholder="1500 ou 1.500,00" value="100" required></label><button class="btn wide" type="submit">Simular crédito bancário confirmado</button></form>`)}${card('Testes manuais',`<div class="action-menu">${btn('Reservar despesa','open','data-target="bills"')}${btn('Confirmar estorno','open','data-target="cards"')}${btn('Revogar acesso','open','data-target="couple"')}</div>`) }<div class="action-menu">${btn('Transferências reconhecidas do banco','open','data-target="transfers"')}${btn('Perfil e bodas','open','data-target="profile"')}</div><div class="hint">Aprovação aqui não comprova atualização do Supabase, conciliação real com Pluggy, desempenho, login ou publicação na Vercel. Nenhuma gravação real é feita.</div>`}
+function tests(){
+ const pass=S.tests.filter(t=>t.pass).length;
+ const rows=S.tests.map(t=>'<div class="testline"><strong>'+(t.pass?'✓':'✕')+
+  '</strong><span>'+escape(t.name)+'</span></div>').join('');
+ const contents='<div class="row"><div><span class="muted">Checagens locais</span><strong>'+
+  (S.tests.length?pass+'/'+S.tests.length:'Ainda não executadas')+
+  '</strong></div><button class="btn" data-act="run-tests">Conferir regras</button></div>'+rows;
+ return heading('Diagnóstico','Verificações locais das regras. Não substituem extratos e testes reais.')+
+  card('Regras locais',contents)+
+  '<p class="hint">Nenhuma ação desta tela modifica saldo, faturas ou extratos. Os valores financeiros vêm dos bancos autenticados.</p>'+
+  '<div class="action-menu">'+btn('Ver extratos reais','open','data-target="banks"')+
+  btn('Ver faturas oficiais','open','data-target="bills"')+'</div>';
+}
 const views={home,banks,cards,bills,forecast,calendar,chat,couple,settings,tests,profile,transfers};
 let finaHistoryInitialized=false;
 let finaHistoryRestoring=false;
@@ -1042,7 +1041,7 @@ function finaReconcileBill(b){
   return true;
 }
 function finaReconcileManualBills(){return false;}
-function post(b){if(!b||!pending(b))return;let a=S.accounts.find(a=>a.owner===b.owner);if(!a)return;const amount=billValue(b);a.balance-=amount;b.state='posted';if(b.loanId){const loan=S.loans.find(l=>l.id===b.loanId);const due=loan?.current+monthOffset();if(loan&&due>=1&&due<=loan.total)loan.paid=Math.max(loan.paid,due)}S.transactions.unshift({id:'p'+Date.now(),owner:b.owner,bank:a.name,name:'Baixa simulada · '+b.name,value:amount,kind:'out',date:'10/11',category:'expense',month:S.monthForBills});}
+
 // Estornos só são confirmados por dados bancários reais.
 function answer(msg){S.messages.push({mine:true,text:msg});const t=msg.toLowerCase();let reply;
 if(/(?:ensinar|ensina|aprend|conciliar|conferir pagamento|baixar|dar baixa|paguei)/.test(t)){
@@ -1220,18 +1219,10 @@ if(a==='cash-refresh'){
  Promise.resolve(window.FinaBank?.sync?.()).then(()=>{window.FinaCashRefreshStatus='Consulta realizada. Confira a data do último lançamento abaixo.';render(false)}).catch(()=>{window.FinaCashRefreshStatus='Não foi possível consultar. Tente novamente em Bancos.';render(false)});
  return
 }
-if(a==='open'){S.tab=target.dataset.target;S.add=false;S.invoiceAdd=false;S.formNotice='';S.edit=null;render(true);return}if(a==='bank-connect-own'){window.FinaBank?.connect?.();return}if(a==='bank-sync-own'){window.FinaBank?.sync?.();return}if(a==='install-fina'){window.FinaInstall?.();return}if(a==='push-enable'||a==='push-disable'||a==='push-test')return;if(a==='bank-sync-id'){const id=document.getElementById('finaPluggyItemId')?.value||'';const label=document.getElementById('finaPluggyItemLabel')?.value||'';window.FinaBank?.syncById?.(id,label);return}if(a==='bank-reauth-id'){const id=document.getElementById('finaPluggyItemId')?.value||'';window.FinaBank?.reauthById?.(id);return}if(a==='couple-create-code'){window.FinaCouple?.createInvite?.();return}if(a==='couple-accept-code'){const code=document.getElementById('finaCoupleCodeInput')?.value||'';window.FinaCouple?.acceptCode?.(code);return}if(a==='couple-copy-code'){window.FinaCouple?.copyCode?.();return}if(a==='open-card'){S.card=target.dataset.id;S.tab='cards';render(true);return}if(a==='scope')S.scope=target.dataset.scope;if(a==='show')S.showMoney=!S.showMoney;if(a==='theme')S.theme=S.theme==='light'?'dark':'light';if(a==='notifs'){if(window.FinaPushConnected)void window.FinaDisablePush?.();else void window.FinaEnablePush?.();return;}if(a==='birthdays')S.birthdays=!S.birthdays;if(a==='division')S.division=target.dataset.mode;if(a==='revoke'){S.consent=false;S.sharePending=false;if(S.scope==='naara')S.scope='casal'}if(a==='request-share')S.sharePending=true;if(a==='approve-share'){S.consent=true;S.sharePending=false}if(a==='choose-card')S.card=target.dataset.id;if(a==='reserve'&&b?.state==='open')b.state='reserved';if(a==='unreserve'&&b?.state==='reserved')b.state='open';if(a==='report'&&b&&['open','reserved'].includes(b.state))b.state='reported';if(a==='unreport'&&b?.state==='reported')b.state='open';if(a==='auto-credit'){
-  const id='auto-bank-credit-1500-20261110';
-  if(!S.transactions.some(t=>t.id===id)){
-   const account=S.accounts.find(x=>x.id==='s');
-   if(account){account.balance+=150000;S.transactions.unshift({id,owner:'lucas',bank:account.name,name:'TED recebida · registro automático do banco (teste)',value:150000,kind:'in',date:'10/11',category:'salary',month:S.monthForBills});}
-   S.syncMessage='Banco enviou R$ 1.500,00; lançamento registrado uma vez, sem digitação do casal.';
-  }else S.syncMessage='Este lançamento bancário já foi sincronizado; não foi duplicado.';
-  S.tab='tests';
- }
- if(a==='bank-transfer-feed'){handleBankTransferEvent();S.tab='transfers';S.monthForBills=10;S.billYear=2026;S.month=10;S.year=2026}if(a==='bill-prev'){navigateMonth(-1);return}if(a==='bill-next'){navigateMonth(1);return}if(a==='bank-event'){const chosen=Number(el.querySelector('#labSyncBill')?.value),record=S.bills.find(x=>x.id===chosen);if(record&&pending(record)){post(record);S.syncMessage='Extrato fictício recebido: '+record.name+' confirmado no banco. Entrou/Saiu e saldo foram atualizados sem cobrança duplicada.';}else{S.syncMessage='Nenhuma obrigação disponível para conciliar.'}}if(a==='edit'&&b?.type==='manual'&&pending(b))S.edit=b.id;if(a==='delete'&&b?.type==='manual'&&pending(b)){const series=String(b.seriesId||b.id),start=monthKey(b.month,b.year??2026);for(const entry of S.bills){if(String(entry.seriesId||entry.id)===series){entry.recurring=false;if(monthKey(entry.month,entry.year??2026)>=start)entry.state='removed';}} b.recurring=false;}if(a==='add-bill')S.add=true;if(a==='add-invoice'){S.invoiceAdd=!S.invoiceAdd;S.formNotice='';}if(a==='home-add')S.homeAdd=!S.homeAdd;if(a==='cancel'){S.add=false;S.homeAdd=false;S.invoiceAdd=false;S.edit=null;S.formNotice=''}/* Confirmação de estorno nunca é simulada. */if(a==='delete-forecast')S.future=S.future.filter(x=>x.id!==id);if(a==='prev-month'){navigateMonth(-1);return}if(a==='next-month'){navigateMonth(1);return}if(a==='ask')answer(target.dataset.message||'');if(a==='run-tests')runTests();if(a==='editor-owner')S.activeEditor=target.dataset.owner;if(a==='preview-bodas')S.celebrationPreview=!S.celebrationPreview;if(a==='gallery'){S.galleryOwner=target.dataset.owner;el.querySelector('#labGallery')?.click();return}if(a==='photo-adjust'){const o=target.dataset.owner;const p=S.profiles[o];if(p?.photoOriginal||p?.photo)openPhotoEditor(o,p.photoOriginal||p.photo);return}if(a==='reset')S=seed();render();if(a==='home-add'&&S.homeAdd){el.querySelector('form[data-form="newbill"] input[name="name"]')?.focus()}});
+if(a==='open'){S.tab=target.dataset.target;S.add=false;S.invoiceAdd=false;S.formNotice='';S.edit=null;render(true);return}if(a==='bank-connect-own'){window.FinaBank?.connect?.();return}if(a==='bank-sync-own'){window.FinaBank?.sync?.();return}if(a==='install-fina'){window.FinaInstall?.();return}if(a==='push-enable'||a==='push-disable'||a==='push-test')return;if(a==='bank-sync-id'){const id=document.getElementById('finaPluggyItemId')?.value||'';const label=document.getElementById('finaPluggyItemLabel')?.value||'';window.FinaBank?.syncById?.(id,label);return}if(a==='bank-reauth-id'){const id=document.getElementById('finaPluggyItemId')?.value||'';window.FinaBank?.reauthById?.(id);return}if(a==='couple-create-code'){window.FinaCouple?.createInvite?.();return}if(a==='couple-accept-code'){const code=document.getElementById('finaCoupleCodeInput')?.value||'';window.FinaCouple?.acceptCode?.(code);return}if(a==='couple-copy-code'){window.FinaCouple?.copyCode?.();return}if(a==='open-card'){S.card=target.dataset.id;S.tab='cards';render(true);return}if(a==='scope')S.scope=target.dataset.scope;if(a==='show')S.showMoney=!S.showMoney;if(a==='theme')S.theme=S.theme==='light'?'dark':'light';if(a==='notifs'){if(window.FinaPushConnected)void window.FinaDisablePush?.();else void window.FinaEnablePush?.();return;}if(a==='birthdays')S.birthdays=!S.birthdays;if(a==='division')S.division=target.dataset.mode;if(a==='revoke'){S.consent=false;S.sharePending=false;if(S.scope==='naara')S.scope='casal'}if(a==='request-share')S.sharePending=true;if(a==='approve-share'){S.consent=true;S.sharePending=false}if(a==='choose-card')S.card=target.dataset.id;if(a==='reserve'&&b?.state==='open')b.state='reserved';if(a==='unreserve'&&b?.state==='reserved')b.state='open';if(a==='report'&&b&&['open','reserved'].includes(b.state))b.state='reported';if(a==='unreport'&&b?.state==='reported')b.state='open';
+ if(a==='bill-prev'){navigateMonth(-1);return}if(a==='bill-next'){navigateMonth(1);return}if(a==='edit'&&b?.type==='manual'&&pending(b))S.edit=b.id;if(a==='delete'&&b?.type==='manual'&&pending(b)){const series=String(b.seriesId||b.id),start=monthKey(b.month,b.year??2026);for(const entry of S.bills){if(String(entry.seriesId||entry.id)===series){entry.recurring=false;if(monthKey(entry.month,entry.year??2026)>=start)entry.state='removed';}} b.recurring=false;}if(a==='add-bill')S.add=true;if(a==='add-invoice'){S.invoiceAdd=!S.invoiceAdd;S.formNotice='';}if(a==='home-add')S.homeAdd=!S.homeAdd;if(a==='cancel'){S.add=false;S.homeAdd=false;S.invoiceAdd=false;S.edit=null;S.formNotice=''}/* Confirmação de estorno nunca é simulada. */if(a==='delete-forecast')S.future=S.future.filter(x=>x.id!==id);if(a==='prev-month'){navigateMonth(-1);return}if(a==='next-month'){navigateMonth(1);return}if(a==='ask')answer(target.dataset.message||'');if(a==='run-tests')runTests();if(a==='editor-owner')S.activeEditor=target.dataset.owner;if(a==='preview-bodas')S.celebrationPreview=!S.celebrationPreview;if(a==='gallery'){S.galleryOwner=target.dataset.owner;el.querySelector('#labGallery')?.click();return}if(a==='photo-adjust'){const o=target.dataset.owner;const p=S.profiles[o];if(p?.photoOriginal||p?.photo)openPhotoEditor(o,p.photoOriginal||p.photo);return}if(a==='reset')S=seed();render();if(a==='home-add'&&S.homeAdd){el.querySelector('form[data-form="newbill"] input[name="name"]')?.focus()}});
 el.addEventListener('submit',event=>{const form=event.target.closest('form[data-form]');if(!form)return;event.preventDefault();const data=new FormData(form),type=form.dataset.form,value=cents(data.get('value')),day=Number(data.get('day')||20),owner=String(data.get('owner')||selfOwner()),safeOwner=owner===selfOwner()||(partnerReady()&&owner===partnerOwner()),planningOwner=owner==='lucas'||owner==='naara';
-if(['newbill','edit','forecast','refund','deposit','transfer','invoice'].includes(type) && value===null){
+if(['newbill','edit','forecast','refund','invoice'].includes(type) && value===null){
  const input=form.querySelector('input[name="value"]');
  if(input){input.setCustomValidity('Informe um valor em reais, por exemplo: 1500, 1500,00 ou 1.500,00.');input.reportValidity();input.addEventListener('input',()=>input.setCustomValidity(''),{once:true});}
  return;
@@ -1276,10 +1267,7 @@ if(['newbill','edit','forecast','refund','deposit','transfer','invoice'].include
   return;
  }
 }
-if(type==='edit'){const b=S.bills.find(x=>x.id===Number(form.dataset.id));if(b&&b.type==='manual'&&pending(b)&&value>0){b.name=String(data.get('name')).trim().slice(0,100);b.value=value;b.day=day;S.edit=null}}if(type==='newbill'&&value>0&&planningOwner){const nb={id:Date.now(),owner,name:String(data.get('name')).trim().slice(0,100),value,day,type:'manual',state:'open',detail:'Cadastro no app',recurring:data.get('recurring')==='on',month:S.monthForBills,year:S.billYear};S.bills.push(nb);if(owner===selfOwner())finaReconcileBill(nb);S.add=false;S.homeAdd=false}if(type==='forecast'&&value>0&&safeOwner)S.future.push({id:Date.now(),owner,name:String(data.get('name')).trim().slice(0,100),value,day,month:S.monthForBills,year:S.billYear});if(type==='refund'&&value>0){const c=S.cards.find(x=>x.id===data.get('card'));if(c&&(c.owner===selfOwner()||partnerReady())){S.refunds.push({id:Date.now(),owner:c.owner,card:c.id,name:String(data.get('name')).trim().slice(0,100),value,state:'pending',month:S.monthForBills,year:S.billYear,type:'manual'});S.formNotice='Estorno anotado. Aguardando confirmação bancária.'}}if(type==='deposit'&&value>0&&safeOwner){
-   const account=S.accounts.find(a=>a.owner===owner);
-   if(account){account.balance+=value;S.transactions.unshift({id:'credit'+Date.now(),owner,bank:account.name,name:'Crédito confirmado pelo banco (teste)',value,kind:'in',date:'10/11',category:'salary',month:S.monthForBills});}
- }
+if(type==='edit'){const b=S.bills.find(x=>x.id===Number(form.dataset.id));if(b&&b.type==='manual'&&pending(b)&&value>0){b.name=String(data.get('name')).trim().slice(0,100);b.value=value;b.day=day;S.edit=null}}if(type==='newbill'&&value>0&&planningOwner){const nb={id:Date.now(),owner,name:String(data.get('name')).trim().slice(0,100),value,day,type:'manual',state:'open',detail:'Cadastro no app',recurring:data.get('recurring')==='on',month:S.monthForBills,year:S.billYear};S.bills.push(nb);if(owner===selfOwner())finaReconcileBill(nb);S.add=false;S.homeAdd=false}if(type==='forecast'&&value>0&&safeOwner)S.future.push({id:Date.now(),owner,name:String(data.get('name')).trim().slice(0,100),value,day,month:S.monthForBills,year:S.billYear});if(type==='refund'&&value>0){const c=S.cards.find(x=>x.id===data.get('card'));if(c&&(c.owner===selfOwner()||partnerReady())){S.refunds.push({id:Date.now(),owner:c.owner,card:c.id,name:String(data.get('name')).trim().slice(0,100),value,state:'pending',month:S.monthForBills,year:S.billYear,type:'manual'});S.formNotice='Estorno anotado. Aguardando confirmação bancária.'}}
  if(type==='profile'){
   const o=S.activeEditor;
   const nm=String(data.get(o+'_name')||'').trim().slice(0,70);
@@ -2845,6 +2833,7 @@ finaPullScreen?.addEventListener('touchcancel',()=>{finaPullStart=null},{passive
 // Apaga dados privados da memoria em logout/troca de Google.
 // Nao substitui S: os modulos visual e bancario compartilham o mesmo objeto.
 function finaClearPrivateSessionState(){
+ window.FinaClearCoupleTransferCache?.();
  S.accounts=[];S.cards=[];S.transactions=[];S.bills=[];S.future=[];
  S.loans=[];S.refunds=[];S.transfers=[];S.bankFeedApplied=[];S.messages=[];
  S.profiles={
