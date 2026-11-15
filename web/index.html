@@ -1602,29 +1602,31 @@ async function finaLoadSharedBills(){
  }
  window.FinaPlanningSyncError='';
  const current=(S.bills||[]).filter(b=>b.type!=='shared');
- const norm=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
- const fp=b=>[b.owner,norm(b.name),b.month,b.year,Math.round(Number(b.value)||0)].join('|');
- const seen=new Set(current.filter(b=>b.type==='manual').map(fp));
+ // Duas contas reais podem ter mesmo nome, mes, responsavel e valor.
+ // A identidade compartilhada inclui o Google criador e o ID da conta;
+ // nao ocultar registros verdadeiros por coincidencia de valores.
+ const seenSharedBills=new Set();
  for(const item of data){
-  if(!item||!['open','reserved','reported','posted'].includes(item.state))continue;
+  if(!item||!['open','reserved','reported','posted'].includes(item.state)||!item.id)continue;
   const bill={...item,type:'shared',
    detail:item.state==='posted'
      ?String(item.detail||'Pagamento bancário conciliado · já refletido no saldo')
      :'Conta do casal · cadastrada manualmente',
    value:Math.round(Number(item.value)||0)};
-  if(bill.value<=0||seen.has(fp(bill)))continue;
-  seen.add(fp(bill));current.push(bill);
+  const id=String(bill.id);
+  if(bill.value<=0||seenSharedBills.has(id))continue;
+  seenSharedBills.add(id);current.push(bill);
  }
  S.bills=current;
  {
   const ownFuture=(S.future||[]).filter(x=>x.type!=='shared');
-  const sig=x=>[x.owner,norm(x.name),x.month,x.year,Math.round(Number(x.value)||0)].join('|');
-  const seenFuture=new Set(ownFuture.map(sig));
+  const seenSharedFuture=new Set();
   for(const item of futureData){
-   if(!item)continue;
+   if(!item||!item.id)continue;
    const entry={...item,type:'shared',value:Math.round(Number(item.value)||0)};
-   if(entry.value<=0||seenFuture.has(sig(entry)))continue;
-   seenFuture.add(sig(entry));ownFuture.push(entry);
+   const id=String(entry.id);
+   if(entry.value<=0||seenSharedFuture.has(id))continue;
+   seenSharedFuture.add(id);ownFuture.push(entry);
   }
   S.future=ownFuture;
  }
