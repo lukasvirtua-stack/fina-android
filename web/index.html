@@ -1569,11 +1569,18 @@ async function finaLoadPersistentState(user){
  }
 }
 async function finaLoadSharedBills(){
- if(!window.FinaCurrentUser||!window.FinaPartnerReady){S.bills=(S.bills||[]).filter(b=>b.type!=='shared');S.future=(S.future||[]).filter(x=>x.type!=='shared');return;}
+ if(!window.FinaCurrentUser||!window.FinaPartnerReady){
+ S.bills=(S.bills||[]).filter(b=>b.type!=='shared');
+ S.future=(S.future||[]).filter(x=>x.type!=='shared');
+ S.refunds=(S.refunds||[]).filter(x=>x.type!=='shared');
+ return;
+}
  const sourceUser=window.FinaCurrentUser.id;
- const [{data,error},{data:futureData,error:futureError}]=await Promise.all([sb.rpc('fina_shared_pending_bills'),sb.rpc('fina_shared_future_income')]);
+ const [{data,error},{data:futureData,error:futureError},{data:refundData,error:refundError}]=await Promise.all([
+ sb.rpc('fina_shared_pending_bills'),sb.rpc('fina_shared_future_income'),sb.rpc('fina_shared_pending_refunds')
+]);
  if(window.FinaCurrentUser?.id!==sourceUser||!window.FinaPartnerReady)return;
- if(error||!Array.isArray(data)||futureError||!Array.isArray(futureData)){
+ if(error||!Array.isArray(data)||futureError||!Array.isArray(futureData)||refundError||!Array.isArray(refundData)){
   window.FinaPlanningSyncError='Não foi possível consultar todos os cadastros do casal. Os últimos valores conhecidos foram mantidos.';
   window.FinaRender?.();return;
  }
@@ -1605,9 +1612,38 @@ async function finaLoadSharedBills(){
   }
   S.future=ownFuture;
  }
+ const personalRefunds=(S.refunds||[]).filter(x=>x.type!=='shared');
+ const seenRefundIds=new Set(personalRefunds.map(x=>String(x.id)));
+ for(const entry of refundData){
+  if(!entry||entry.state!=='pending'||Number(entry.value)<=0||seenRefundIds.has(String(entry.id)))continue;
+  seenRefundIds.add(String(entry.id));
+  personalRefunds.push({...entry,type:'shared',state:'pending'});
+ }
+ S.refunds=personalRefunds;
  window.FinaRender?.();
 }
 window.FinaLoadSharedBills=finaLoadSharedBills;
+window.FinaDeleteSharedRefund=async refund=>{
+ const user=window.FinaCurrentUser;
+ if(!user||refund?.type!=='shared'||!refund.sourceUserId)return;
+ const match=String(refund.id||'').match(/^shared-refund-([0-9a-f-]{36})-([0-9]+)$/i);
+ if(!match||match[1]!==String(refund.sourceUserId)){
+  S.formNotice='Identificador de estorno inválido.';window.FinaRender?.();return;
+ }
+ S.formNotice='Excluindo a anotação compartilhada...';window.FinaRender?.();
+ try{
+  const {data,error}=await sb.rpc('fina_delete_shared_refund',{
+   p_owner_id:refund.sourceUserId,p_refund_id:match[2]
+  });
+  if(window.FinaCurrentUser?.id!==user.id)return;
+  if(error||!data?.ok)throw error||Error('exclusao recusada');
+  S.formNotice='Anotação de estorno excluída para os dois.';
+  await finaLoadSharedBills();
+ }catch{
+  S.formNotice='Não foi possível excluir a anotação. Confira a conexão e tente novamente.';
+ }
+ if(window.FinaCurrentUser?.id===user.id)window.FinaRender?.();
+};
 
 window.FinaDeleteSharedForecast=async forecast=>{
  const user=window.FinaCurrentUser;
