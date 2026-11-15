@@ -202,19 +202,31 @@ refunds:[],
 future:[],
 loans:[],transfers:[],bankFeedApplied:[],syncWarning:'',weddingDate:'',celebrationPreview:false,activeEditor:'lucas',profiles:{lucas:{displayName:'Você',dob:'',photo:null},naara:{displayName:'Outra pessoa',dob:'',photo:null}},photoNotice:'',transactions:[]});
 let S=seed();window.FinaState=S;
+const finaPersistManualBill=x=>({
+ id:x.id,owner:(x.owner==='naara'?'naara':'lucas'),name:x.name,value:x.value,day:x.day,
+ type:'manual',state:x.state||'open',paidDate:x.paidDate||null,
+ paidTransactionId:x.paidTransactionId||null,reconciliationCandidates:Number(x.reconciliationCandidates)||0,
+ reconciliationMethod:x.reconciliationMethod||null,
+ reconciliationConfidence:x.reconciliationConfidence||null,
+ bankAlreadyReflectedInBalance:x.bankAlreadyReflectedInBalance??null,
+ detail:x.detail||'',recurring:!!x.recurring,month:x.month,year:x.year,card:x.card||null,
+ estimated:!!x.estimated
+});
+const finaPersistFuture=x=>({
+ id:x.id,owner:(x.owner==='naara'?'naara':'lucas'),name:x.name,value:x.value,
+ day:x.day,month:x.month,year:x.year
+});
 window.FinaExportPersistentState=()=>{
-  const self=window.FinaSelfOwnerKey||'lucas';
-  return {
-    schemaVersion:2,
-    profile:{displayName:name(self),dob:S.profiles?.[self]?.dob||''},
-    weddingDate:S.weddingDate||'',
-    preferences:{theme:S.theme||'light',notifs:!!S.notifs,birthdays:!!S.birthdays,photoSize:Number(S.photoSize)||85,division:S.division||'none'},
-    manualBills:(S.bills||[]).filter(x=>x.type==='manual').map(x=>({
-      id:x.id,owner:(x.owner==='naara'?'naara':'lucas'),name:x.name,value:x.value,day:x.day,type:'manual',state:x.state||'open',paidDate:x.paidDate||null,paidTransactionId:x.paidTransactionId||null,reconciliationCandidates:Number(x.reconciliationCandidates)||0,
-      detail:x.detail||'',recurring:!!x.recurring,month:x.month,year:x.year,card:x.card||null,estimated:!!x.estimated
-    })),
-    future:(S.future||[]).filter(x=>x.type!=='shared').map(x=>({id:x.id,owner:(x.owner==='naara'?'naara':'lucas'),name:x.name,value:x.value,day:x.day,month:x.month,year:x.year}))
-  };
+ const self=window.FinaSelfOwnerKey||'lucas';
+ return {
+  schemaVersion:2,
+  profile:{displayName:name(self),dob:S.profiles?.[self]?.dob||''},
+  weddingDate:S.weddingDate||'',
+  preferences:{theme:S.theme||'light',notifs:!!S.notifs,birthdays:!!S.birthdays,
+   photoSize:Number(S.photoSize)||85,division:S.division||'none'},
+  manualBills:(S.bills||[]).filter(x=>x.type==='manual').map(finaPersistManualBill),
+  future:(S.future||[]).filter(x=>x.type!=='shared').map(finaPersistFuture)
+ };
 };
 window.FinaApplyPersistentState=(p)=>{
   if(!p||typeof p!=='object')return;
@@ -1431,7 +1443,57 @@ document.addEventListener('click',event=>{
 
 
 let finaPersistTimer=null;
+let finaStateWriteQueue=Promise.resolve();
+let finaStateSaving=false,finaStateDirty=false,finaStateChangeRevision=0;
+let finaStateBaseline=null;
 window.FinaPersistentStateLoadedForUser=null;
+const finaNormalizeSavedState=state=>({
+ ...(state&&typeof state==='object'?state:{}),
+ manualBills:Array.isArray(state?.manualBills)?
+  state.manualBills.filter(x=>x?.type==='manual').map(finaPersistManualBill):[],
+ future:Array.isArray(state?.future)?
+  state.future.filter(x=>x?.type!=='shared').map(finaPersistFuture):[]
+});
+const finaMergeEditedItems=(server,base,edited)=>{
+ const key=x=>String(x?.id??'');
+ const serverItems=Array.isArray(server)?server:[];
+ const baseItems=Array.isArray(base)?base:[];
+ const localItems=Array.isArray(edited)?edited:[];
+ const byId=new Map(serverItems.filter(x=>key(x)).map(x=>[key(x),x]));
+ const old=new Map(baseItems.filter(x=>key(x)).map(x=>[key(x),x]));
+ const current=new Map(localItems.filter(x=>key(x)).map(x=>[key(x),x]));
+ for(const id of old.keys())if(!current.has(id))byId.delete(id);
+ for(const [id,row] of current){
+  if(old.has(id)&&JSON.stringify(row)===JSON.stringify(old.get(id)))continue;
+  // Pagamento confirmado pelo banco nunca volta a aberto por uma copia antiga.
+  if(byId.get(id)?.state==='posted'&&row.state!=='posted')continue;
+  byId.set(id,row);
+ }
+ return [...byId.values()];
+};
+const finaMergeEditedObject=(server,base,edited)=>{
+ const out={...(server&&typeof server==='object'?server:{})};
+ const previous=base&&typeof base==='object'?base:{};
+ const current=edited&&typeof edited==='object'?edited:{};
+ for(const k of new Set([...Object.keys(previous),...Object.keys(current)])){
+  if(JSON.stringify(current[k])===JSON.stringify(previous[k]))continue;
+  if(Object.prototype.hasOwnProperty.call(current,k))out[k]=current[k];
+  else delete out[k];
+ }
+ return out;
+};
+const finaMergeSavedState=(server,base,edited)=>{
+ const remote=server&&typeof server==='object'?server:{};
+ const old=base&&typeof base==='object'?base:{};
+ const current=edited&&typeof edited==='object'?edited:{};
+ const next={...remote,schemaVersion:Math.max(Number(remote.schemaVersion)||0,Number(current.schemaVersion)||2)};
+ next.manualBills=finaMergeEditedItems(remote.manualBills,old.manualBills,current.manualBills);
+ next.future=finaMergeEditedItems(remote.future,old.future,current.future);
+ next.preferences=finaMergeEditedObject(remote.preferences,old.preferences,current.preferences);
+ next.profile=finaMergeEditedObject(remote.profile,old.profile,current.profile);
+ if(current.weddingDate!==old.weddingDate)next.weddingDate=current.weddingDate||'';
+ return next;
+};
 async function finaRestoreEncryptedLocalPreferences(userId,ownerKey){
  try{
   const state=await window.FinaOfflineVault?.loadState(userId,ownerKey);
@@ -1441,15 +1503,16 @@ async function finaRestoreEncryptedLocalPreferences(userId,ownerKey){
  }catch{}
 }
 async function finaLoadPersistentState(user){
-  if(!user)return;
-  const {data,error}=await sb.from('fina_user_state').select('state').eq('user_id',user.id).maybeSingle();
-  if(error)return;
-  if(data?.state&&window.FinaCurrentUser?.id===user.id){
-    window.FinaPersistentStateLoadedForUser=user.id;
-    window.FinaApplyPersistentState?.(data.state);
-    void window.FinaOfflineVault?.saveState(user.id,window.FinaSelfOwnerKey,data.state);
-    try{localStorage.removeItem(finaLocalUserStateKey(user.id))}catch{}
-  }
+ if(!user||finaStateDirty||finaStateSaving||finaPersistTimer)return;
+ const {data,error}=await sb.from('fina_user_state').select('state').eq('user_id',user.id).maybeSingle();
+ if(error||finaStateDirty||finaStateSaving||finaPersistTimer)return;
+ if(data?.state&&window.FinaCurrentUser?.id===user.id){
+  window.FinaPersistentStateLoadedForUser=user.id;
+  window.FinaApplyPersistentState?.(data.state);
+  finaStateBaseline={userId:user.id,state:finaNormalizeSavedState(data.state)};
+  void window.FinaOfflineVault?.saveState(user.id,window.FinaSelfOwnerKey,data.state);
+  try{localStorage.removeItem(finaLocalUserStateKey(user.id))}catch{}
+ }
 }
 async function finaLoadSharedBills(){
  if(!window.FinaCurrentUser||!window.FinaPartnerReady){S.bills=(S.bills||[]).filter(b=>b.type!=='shared');S.future=(S.future||[]).filter(x=>x.type!=='shared');return;}
@@ -1603,24 +1666,72 @@ window.FinaChangeSharedManualBill=async(bill,operation,editFields={})=>{
  }
 };
 
-async function finaSavePersistentState(){
-  const user=window.FinaCurrentUser; if(!user)return;
-  const state=window.FinaExportPersistentState?.(); if(!state)return;
-  const {error}=await sb.from('fina_user_state').upsert({user_id:user.id,state,updated_at:new Date().toISOString()},{onConflict:'user_id'});
-  if(error){console.warn('Erro ao salvar estado FINA',error.message);return;}
-  if(window.FinaCurrentUser?.id!==user.id)return;
-  window.FinaPersistentStateLoadedForUser=user.id;
-  void window.FinaOfflineVault?.saveState(user.id,window.FinaSelfOwnerKey,state);
-  try{localStorage.removeItem(finaLocalUserStateKey(user.id))}catch{}
-  if(Array.isArray(state.manualBills)&&state.manualBills.some(b=>b.type==='manual'&&['open','reserved','reported'].includes(b.state))){
-   const result=await sb.rpc('fina_reconcile_manual_bills');
-   if(!result.error&&Number(result.data)>0&&window.FinaCurrentUser?.id===user.id){
-    await finaLoadPersistentState(user);window.FinaRender?.();
+function finaMarkStateDirty(){finaStateDirty=true;finaStateChangeRevision++;}
+function finaSavePersistentState(){
+ const user=window.FinaCurrentUser;
+ if(!user)return Promise.resolve(false);
+ finaStateWriteQueue=finaStateWriteQueue.catch(()=>{}).then(async()=>{
+  if(window.FinaCurrentUser?.id!==user.id)return false;
+  const revision=finaStateChangeRevision;
+  const local=finaNormalizeSavedState(window.FinaExportPersistentState?.());
+  const base=finaStateBaseline?.userId===user.id?finaStateBaseline.state:{};
+  finaStateSaving=true;
+  let saved=false,finalState=null;
+  try{
+   for(let attempt=0;attempt<4;attempt++){
+    const {data:latest,error:readError}=await sb.from('fina_user_state')
+     .select('state,updated_at').eq('user_id',user.id).maybeSingle();
+    if(readError)throw readError;
+    if(window.FinaCurrentUser?.id!==user.id)return false;
+    const merged=finaMergeSavedState(latest?.state||{},base,local);
+    const update={state:merged,updated_at:new Date().toISOString()};
+    let result;
+    if(latest?.updated_at){
+     result=await sb.from('fina_user_state').update(update)
+      .eq('user_id',user.id).eq('updated_at',latest.updated_at).select('updated_at');
+    }else{
+     result=await sb.from('fina_user_state').upsert({user_id:user.id,...update},
+      {onConflict:'user_id'}).select('updated_at');
+    }
+    if(result.error)throw result.error;
+    if(!result.data?.length)continue; // Outro aparelho salvou primeiro: mesclar e tentar novamente.
+    saved=true;finalState=merged;break;
+   }
+   if(!saved)throw Error('concurrent_user_state_update');
+   if(window.FinaCurrentUser?.id!==user.id)return false;
+   finaStateBaseline={userId:user.id,state:finaNormalizeSavedState(finalState)};
+   window.FinaPersistentStateLoadedForUser=user.id;
+   void window.FinaOfflineVault?.saveState(user.id,window.FinaSelfOwnerKey,finalState);
+   try{localStorage.removeItem(finaLocalUserStateKey(user.id))}catch{}
+   if(Array.isArray(finalState.manualBills)&&finalState.manualBills.some(b=>b.type==='manual'&&['open','reserved','reported'].includes(b.state))){
+    const result=await sb.rpc('fina_reconcile_manual_bills');
+    if(!result.error&&Number(result.data)>0&&window.FinaCurrentUser?.id===user.id)window.FinaRender?.();
+   }
+   return true;
+  }catch(e){
+   if(window.FinaCurrentUser?.id===user.id){
+    window.FinaPlanningSyncError='Não foi possível salvar as alterações. Elas continuam nesta tela; tente novamente com internet.';
+    console.warn('FINA: falha ao salvar planejamento:',e?.message||e);
+    window.FinaRender?.();
+   }
+   return false;
+  }finally{
+   finaStateSaving=false;
+   if(saved&&window.FinaCurrentUser?.id===user.id&&revision===finaStateChangeRevision){
+    finaStateDirty=false;
+    window.FinaPlanningSyncError='';
+    // Receber alterações feitas no outro aparelho sem apagar o que ainda não foi salvo.
+    void finaLoadPersistentState(user).then(()=>finaLoadSharedBills()).catch(()=>{});
    }
   }
-  // Perfil compartilhado é salvo apenas pelas rotinas específicas de perfil/foto.
+ });
+ return finaStateWriteQueue;
 }
-function finaScheduleSave(){clearTimeout(finaPersistTimer);finaPersistTimer=setTimeout(()=>void finaSavePersistentState(),250);}
+function finaScheduleSave(){
+ finaMarkStateDirty();
+ clearTimeout(finaPersistTimer);
+ finaPersistTimer=setTimeout(()=>{finaPersistTimer=null;void finaSavePersistentState();},250);
+}
 window.FinaPersistNow=finaSavePersistentState;
 
 let finaSharedProfileChannel=null;
@@ -2561,6 +2672,8 @@ async function applySession(session){
  window.FinaCashTotalsByOwner=null;
  window.FinaCurrentUser=user;window.FinaCurrentSession=session;
  window.FinaPersistentStateLoadedForUser=null;
+ finaStateBaseline=null;finaStateDirty=false;finaStateChangeRevision=0;
+ clearTimeout(finaPersistTimer);finaPersistTimer=null;
  try{localStorage.removeItem(finaLocalUserStateKey(user.id));localStorage.removeItem('fina_state_v1')}catch{}
 
  // A interface abre com o estado local imediatamente; rede apenas atualiza em segundo plano.
@@ -2608,7 +2721,10 @@ document.addEventListener('submit',e=>{
   const f=e.target.closest?.('form[data-form]');
   if(!f)return;
   const t=f.dataset.form;
-  if(['newbill','edit','forecast','invoice'].includes(t))setTimeout(()=>void window.FinaPersistNow?.(),0);
+  if(['newbill','edit','forecast','invoice'].includes(t)){
+   const sharedEdit=t==='edit'&&S.bills.some(b=>b.type==='shared'&&String(b.id)===String(f.dataset.id));
+   if(!sharedEdit){finaMarkStateDirty();setTimeout(()=>void window.FinaPersistNow?.(),0);}
+ }
 },true);
 document.addEventListener('click',e=>{
   const a=e.target.closest?.('[data-act]')?.dataset?.act;
