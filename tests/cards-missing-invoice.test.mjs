@@ -17,7 +17,7 @@ function show(bill){
   S,ownerShown:()=>true,sameMonth:()=>true,cardRefundCredit:()=>0,refundRow:()=>'',
   heading:()=>'',monthPicker:()=>'',bankCard:()=>'',status:{open:'Em aberto',posted:'Pago'},
   escape:s=>String(s),money:v=>'R$ '+(v/100).toFixed(2),
-  billValue:b=>b.value,cardCycle:()=>'',billActions:()=>'',btn:()=>'',row:(name,detail,value)=>name+': '+value,
+  billValue:b=>b.value,cardCycle:()=>'',billActions:()=>'',btn:()=>'',row:(name,detail,value)=>name+': '+detail+' · '+value,
   card:(title,content)=>title+content
  };
  return vm.runInNewContext(code+'\n cards()',ctx);
@@ -37,6 +37,7 @@ test('fatura oficial de R$ 0,00 continua indicada como zero real',()=>{
 });
 test('a tela não apresenta saldo residual como compras do ciclo',()=>{
  const rendered=show({id:'bill1',card:cardAccount.id,state:'open',value:12049});
+ assert.match(rendered,/Resumo da fatura/);
  assert.match(rendered,/Valor da fatura no período/);
  assert.match(rendered,/valor da fatura, não total de compras/);
  assert.match(rendered,/R\$ 120\.49/);
