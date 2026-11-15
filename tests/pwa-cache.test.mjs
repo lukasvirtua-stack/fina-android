@@ -99,8 +99,8 @@ test('App abre offline a partir de arquivos públicos previamente salvos',async(
 });
 
 test('release v34 invalida cache de shell anterior sem tocar dados bancários',()=>{
- assert.match(source,/fina-sw-v36-couple-planning-20261115/);
- assert.match(source,/fina-shell-v36-couple-planning-20261115/);
+ assert.match(source,/fina-sw-v37-shared-refunds-20261115/);
+ assert.match(source,/fina-shell-v37-shared-refunds-20261115/);
  assert.doesNotMatch(source,/const SHELL_CACHE='fina-shell-v31-encrypted-history-20261113'/);
  assert.match(source,/keys\.filter\(k=>k\.startsWith\('fina-shell-'\)&&k!==SHELL_CACHE\)/);
  assert.match(source,/const SHELL_PATHS=new Set\(APP_FILES\)/);
