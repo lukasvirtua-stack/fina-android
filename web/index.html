@@ -651,9 +651,14 @@ function finaScheduledBankPreview(){
   rows+'<p class="muted">Agendamentos disponíveis pelo Open Finance. Não incluem todos os boletos DDA e só entram em Saiu quando o banco confirmar o débito.</p>');
 }
 function bills(){if(!accessible())return heading('Faturas + Contas','Sem autorização.');
+ const recovery=window.FinaRecoverablePlanningState;
+ const recoveryNotice=recovery?.userId===window.FinaCurrentUser?.id?
+  '<p class="hint" role="status">Encontramos '+(recovery.manualBills.length+recovery.future.length)+
+  ' cadastro(s) deste acesso guardados neste aparelho e ausentes do servidor. Nada foi restaurado automaticamente. '+
+  btn('Recuperar cadastros','recover-local-planning')+'</p>':'';
  const incompleteBills=(window.FinaBankSyncHealth||[]).some(it=>
    it.last_bills_warning==='bills_record_incomplete'&&Number(it.last_bills_invalid_count)>0);
- return `${heading('Faturas + Contas','Reserve ou informe pagamentos; a baixa bancária acontece automaticamente após o extrato confirmar.')}
+ return `${heading('Faturas + Contas','Reserve ou informe pagamentos; a baixa bancária acontece automaticamente após o extrato confirmar.')}${recoveryNotice}
  ${incompleteBills?'<p class="hint" role="status">A Pluggy disponibilizou dados parciais de algumas faturas. Valores ausentes não significam fatura zerada. A FINA preserva as faturas válidas; consulte o banco para confirmar as demais.</p>':''} ${window.FinaCardBillsLoadError?`<p class="hint" role="status">${escape(window.FinaCardBillsLoadError)}</p>`:''} ${switcher()}${monthPicker()}<div class="statgrid"><div class="stat"><small>Em aberto</small><strong>${display(open())}</strong></div><div class="stat"><small>Reservado</small><strong>${display(reserved())}</strong></div><div class="stat"><small>Informado</small><strong>${display(reported())}</strong></div><div class="stat"><small>Pendente total</small><strong>${display(owed())}</strong></div></div>
 ${card('↶ Estornos das faturas',ownRefunds().map(refundRow).join('')||'<p>Sem estornos.</p>')}
 <section class="card"><div class="row"><div class="cardtitle">Faturas de cartão</div>${btn('+ Informar fatura','add-invoice')}</div>${S.invoiceAdd?invoiceForm():''}${S.formNotice?`<p class="hint" role="status">${escape(S.formNotice)}</p>`:''}${ownBills().filter(b=>b.card).map(billList).join('')||'<p>Nenhuma fatura.</p>'}</section>
@@ -661,7 +666,7 @@ ${card('↶ Estornos das faturas',ownRefunds().map(refundRow).join('')||'<p>Sem 
 ${finaScheduledBankPreview()}
 ${card('Fechamento e próximo mês',`<div class="row"><div><strong>Confirmado pelo banco</strong><span class="line-detail">${money(sum(ownBills().filter(b=>b.state==='posted'),b=>billValue(b)))}</span></div><div><strong>Pendente e previsto</strong><span class="line-detail">${money(owed())}</span></div></div><p class="muted">${monthOffset()<0?'Mês encerrado ou histórico de pagamentos demonstrativos.':monthOffset()===0?'Mês vigente: valores reais entram pelo banco, reservas mantêm cor até a confirmação.':'Previsões podem repetir o último valor, mas a fatura bancária oficial tem prioridade.'}</p>`)}
  `}
-function forecast(){return `${heading('Variáveis a receber','Planeje recebimentos futuros sem alterá-los no extrato.')}${window.FinaPlanningSyncError?'<p class="hint" role="status">'+escape(window.FinaPlanningSyncError)+'</p>':''}${S.formNotice?'<p class="hint" role="status">'+escape(S.formNotice)+'</p>':''}${switcher()}${card('Entradas previstas',S.future.filter(x=>ownerShown(x.owner)&&x.month===S.monthForBills&&x.year===S.billYear).map(x=>row(x.name,`${name(x.owner)} · Dia ${x.day}`,money(x.value),`<div class="action-menu">${btn('Excluir','delete-forecast',`data-id="${x.id}"`)}</div>`)).join('')||'<p>Não há previsões.</p>')}${card('Nova variável a receber',`<form data-form="forecast" class="formgrid"><label class="wide">Descrição<input name="name" required placeholder="Comissão, salário..."></label><label>Valor (R$)<input name="value" type="text" inputmode="decimal" autocomplete="off" placeholder="1500 ou 1.500,00" required></label><label>Dia<input name="day" type="number" min="1" max="31" value="25" required></label><label class="wide">Responsável<select name="owner"><option value="${selfOwner()}">${escape(name(selfOwner()))}</option>${partnerReady()?'<option value="'+partnerOwner()+'">'+escape(name(partnerOwner()))+'</option>':''}</select></label><button class="btn wide" type="submit">Adicionar variável</button></form>`)}${card('Resultado projetado',`<div style="font-size:24px;font-weight:720">${display(monthResult())}</div><p class="muted">Saldo ajustado ${display(scopeBalance())} + variáveis a receber ${display(future())} − contas ainda abertas ${display(open())}. Entrou/Saiu já são parte do saldo importado e não são somados novamente.</p>`)}`}
+function forecast(){return `${heading('Variáveis a receber','Planeje recebimentos futuros sem alterá-los no extrato.')}${window.FinaRecoverablePlanningState?.userId===window.FinaCurrentUser?.id?'<p class="hint">Há cadastros anteriores disponíveis neste aparelho. '+btn('Recuperar cadastros','recover-local-planning')+'</p>':''}${window.FinaPlanningSyncError?'<p class="hint" role="status">'+escape(window.FinaPlanningSyncError)+'</p>':''}${S.formNotice?'<p class="hint" role="status">'+escape(S.formNotice)+'</p>':''}${switcher()}${card('Entradas previstas',S.future.filter(x=>ownerShown(x.owner)&&x.month===S.monthForBills&&x.year===S.billYear).map(x=>row(x.name,`${name(x.owner)} · Dia ${x.day}`,money(x.value),`<div class="action-menu">${btn('Excluir','delete-forecast',`data-id="${x.id}"`)}</div>`)).join('')||'<p>Não há previsões.</p>')}${card('Nova variável a receber',`<form data-form="forecast" class="formgrid"><label class="wide">Descrição<input name="name" required placeholder="Comissão, salário..."></label><label>Valor (R$)<input name="value" type="text" inputmode="decimal" autocomplete="off" placeholder="1500 ou 1.500,00" required></label><label>Dia<input name="day" type="number" min="1" max="31" value="25" required></label><label class="wide">Responsável<select name="owner"><option value="${selfOwner()}">${escape(name(selfOwner()))}</option>${partnerReady()?'<option value="'+partnerOwner()+'">'+escape(name(partnerOwner()))+'</option>':''}</select></label><button class="btn wide" type="submit">Adicionar variável</button></form>`)}${card('Resultado projetado',`<div style="font-size:24px;font-weight:720">${display(monthResult())}</div><p class="muted">Saldo ajustado ${display(scopeBalance())} + variáveis a receber ${display(future())} − contas ainda abertas ${display(open())}. Entrou/Saiu já são parte do saldo importado e não são somados novamente.</p>`)}`}
 function calendar(){
   const dt=new Date(S.year,S.month,1),name=dt.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
   const days=new Date(S.year,S.month+1,0).getDate();
@@ -1151,6 +1156,12 @@ el.addEventListener('click',event=>{const target=event.target.closest('button[da
   if(window.confirm('Excluir esta previsão do planejamento do casal?'))void window.FinaDeleteSharedForecast?.(sharedForecast);
   return;
  }
+ if(a==='recover-local-planning'){
+  if(window.FinaRecoverablePlanningState?.userId!==window.FinaCurrentUser?.id)return;
+  if(window.confirm('Recuperar os cadastros deste aparelho que ainda não estão no servidor? Eles serão compartilhados conforme as permissões do casal.'))
+   void window.FinaRecoverLocalPlanning?.();
+  return;
+ }
  if(sharedBill&&['reserve','unreserve','report','unreport','edit','delete'].includes(a)){
   if(a==='edit'){S.edit=sharedBill.id;render(false);return;}
   if(a==='delete'&&!window.confirm('Excluir esta conta manual do casal?'))return;
@@ -1447,6 +1458,7 @@ let finaStateWriteQueue=Promise.resolve();
 let finaStateSaving=false,finaStateDirty=false,finaStateChangeRevision=0;
 let finaStateBaseline=null;
 window.FinaPersistentStateLoadedForUser=null;
+window.FinaRecoverablePlanningState=null;
 const finaNormalizeSavedState=state=>({
  ...(state&&typeof state==='object'?state:{}),
  manualBills:Array.isArray(state?.manualBills)?
@@ -1507,11 +1519,29 @@ async function finaLoadPersistentState(user){
  const {data,error}=await sb.from('fina_user_state').select('state').eq('user_id',user.id).maybeSingle();
  if(error||finaStateDirty||finaStateSaving||finaPersistTimer)return;
  if(data?.state&&window.FinaCurrentUser?.id===user.id){
+  // Uma versao antiga pode ter deixado dados apenas no cofre criptografado
+  // do proprio celular. Nao destruir esse backup se o servidor esta incompleto.
+  let recoverable=null;
+  try{
+   const local=await window.FinaOfflineVault?.loadState(user.id,window.FinaSelfOwnerKey);
+   const ownOwner=window.FinaSelfOwnerKey;
+   const remoteBills=new Set((Array.isArray(data.state.manualBills)?data.state.manualBills:[]).map(x=>String(x.id)));
+   const remoteFuture=new Set((Array.isArray(data.state.future)?data.state.future:[]).map(x=>String(x.id)));
+   const missingBills=(Array.isArray(local?.manualBills)?local.manualBills:[]).filter(x=>
+    x?.type==='manual'&&x.owner===ownOwner&&x.id!=null&&!remoteBills.has(String(x.id)));
+   const missingFuture=(Array.isArray(local?.future)?local.future:[]).filter(x=>
+    x?.owner===ownOwner&&x.id!=null&&!remoteFuture.has(String(x.id)));
+   if(missingBills.length||missingFuture.length)
+    recoverable={userId:user.id,manualBills:missingBills,future:missingFuture};
+  }catch{}
+  if(window.FinaCurrentUser?.id!==user.id||finaStateDirty||finaStateSaving)return;
+  window.FinaRecoverablePlanningState=recoverable;
   window.FinaPersistentStateLoadedForUser=user.id;
   window.FinaApplyPersistentState?.(data.state);
   finaStateBaseline={userId:user.id,state:finaNormalizeSavedState(data.state)};
-  void window.FinaOfflineVault?.saveState(user.id,window.FinaSelfOwnerKey,data.state);
+  if(!recoverable)void window.FinaOfflineVault?.saveState(user.id,window.FinaSelfOwnerKey,data.state);
   try{localStorage.removeItem(finaLocalUserStateKey(user.id))}catch{}
+  if(recoverable)window.FinaRender?.();
  }
 }
 async function finaLoadSharedBills(){
@@ -1733,6 +1763,34 @@ function finaScheduleSave(){
  finaPersistTimer=setTimeout(()=>{finaPersistTimer=null;void finaSavePersistentState();},250);
 }
 window.FinaPersistNow=finaSavePersistentState;
+window.FinaMarkStateDirty=finaMarkStateDirty;
+window.FinaRecoverLocalPlanning=async()=>{
+ const backup=window.FinaRecoverablePlanningState;
+ const user=window.FinaCurrentUser;
+ if(!backup||!user||backup.userId!==user.id)return false;
+ const own=window.FinaSelfOwnerKey;
+ const currentBills=new Set((S.bills||[]).map(x=>String(x.id)));
+ const currentFuture=new Set((S.future||[]).map(x=>String(x.id)));
+ for(const b of backup.manualBills){
+  if(b.owner===own&&!currentBills.has(String(b.id))){S.bills.push({...b,type:'manual'});currentBills.add(String(b.id));}
+ }
+ for(const entry of backup.future){
+  if(entry.owner===own&&!currentFuture.has(String(entry.id))){S.future.push({...entry});currentFuture.add(String(entry.id));}
+ }
+ finaMarkStateDirty();
+ S.formNotice='Recuperando os cadastros anteriores...';window.FinaRender?.();
+ const saved=await finaSavePersistentState();
+ if(window.FinaCurrentUser?.id!==user.id)return false;
+ if(saved){
+  window.FinaRecoverablePlanningState=null;
+  S.formNotice='Cadastros recuperados e enviados para o planejamento do casal.';
+  await finaLoadSharedBills();
+ }else{
+  S.formNotice='Os registros continuam neste aparelho, mas não foi possível enviá-los. Confira a conexão.';
+ }
+ window.FinaRender?.();
+ return saved;
+};
 
 let finaSharedProfileChannel=null;
 window.FinaCoupleMemberIds=window.FinaCoupleMemberIds||{};
@@ -2672,6 +2730,7 @@ async function applySession(session){
  window.FinaCashTotalsByOwner=null;
  window.FinaCurrentUser=user;window.FinaCurrentSession=session;
  window.FinaPersistentStateLoadedForUser=null;
+ window.FinaRecoverablePlanningState=null;
  finaStateBaseline=null;finaStateDirty=false;finaStateChangeRevision=0;
  clearTimeout(finaPersistTimer);finaPersistTimer=null;
  try{localStorage.removeItem(finaLocalUserStateKey(user.id));localStorage.removeItem('fina_state_v1')}catch{}
