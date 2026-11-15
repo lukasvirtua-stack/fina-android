@@ -1,7 +1,7 @@
-const VERSION='fina-sw-v33-finance-guard-20261114';
+const VERSION='fina-sw-v34-cards-20261114';
 // Armazena SOMENTE arquivos estaticos publicos do aplicativo.
 // Nunca interceptar nem armazenar OAuth, Supabase, Pluggy, extratos ou tokens.
-const SHELL_CACHE='fina-shell-v33-finance-guard-20261114';
+const SHELL_CACHE='fina-shell-v34-cards-20261114';
 const APP_FILES=['/','/index.html','/manifest.webmanifest','/icon-192.png','/icon-512.png','/supabase.min.js','/offline-vault.js'];
 const SHELL_PATHS=new Set(APP_FILES);
 self.addEventListener('install',event=>event.waitUntil((async()=>{
