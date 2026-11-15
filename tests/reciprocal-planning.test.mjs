@@ -103,27 +103,61 @@ test('backup privado antigo só é oferecido; não restaura dados silenciosament
  assert.match(html,/window\.FinaRecoverablePlanningState=null/);
 });
 
-test('recuperação preserva faturas oficiais e registros compartilhados; evita duplicatas',async()=>{
- const code=between('window.FinaRecoverLocalPlanning=async()=>{','\nlet finaSharedProfileChannel=null;');
- let saveCount=0,refreshCount=0;
- const S={bills:[{id:'bank',type:'bank'},{id:55,type:'manual'}],future:[{id:'shared',type:'shared'}],formNotice:''};
- const window={FinaCurrentUser:{id:'lucas-id'},FinaSelfOwnerKey:'lucas',
-  FinaRecoverablePlanningState:{userId:'lucas-id',manualBills:[
-   {id:55,owner:'lucas',type:'manual'},{id:56,owner:'lucas',type:'manual'}],
-   future:[{id:123,owner:'lucas'}]},
-  FinaRender:()=>{}};
- const ctx={window,S,finaMarkStateDirty:()=>{},
-  finaSavePersistentState:async()=>{saveCount++;return true;},
-  finaLoadSharedBills:async()=>{refreshCount++;}};
- vm.createContext(ctx);
- vm.runInContext(code,ctx);
- const ok=await ctx.window.FinaRecoverLocalPlanning();
- assert.equal(ok,true);
- assert.equal(saveCount,1);
- assert.equal(refreshCount,1);
- assert.equal(S.bills.length,3);
- assert.equal(S.bills.find(x=>x.id==='bank')?.type,'bank');
- assert.equal(S.bills.filter(x=>x.id===55).length,1);
- assert.equal(S.future.length,2);
- assert.equal(window.FinaRecoverablePlanningState,null);
+const recoveryHelper=between('function finaFindRecoverablePlanning(local,remote){','async function finaLoadPersistentState(user){');
+
+test('cofre de Lucas recupera contas destinadas a Naara, preservando dono e pagamentos',()=>{
+ const f=vm.runInNewContext(recoveryHelper+'\nfinaFindRecoverablePlanning',
+  {},{timeout:3000});
+ const local={manualBills:[
+  {...bill(50,'open'),owner:'naara'},
+  {...bill(51,'posted'),owner:'naara'},
+  {...bill(52,'removed'),owner:'lucas'},
+  {...bill(53,'open'),owner:'lucas'},
+  {...bill('not-a-number','open'),owner:'lucas'},
+  {...bill(55,'open'),owner:'intruso'}
+ ],future:[
+  {...future(60),owner:'naara'},
+  {...future(61),owner:'lucas'}
+ ]};
+ const server={manualBills:[{id:53}],future:[{id:61}]};
+ const r=f(local,server);
+ assert.deepEqual(Array.from(r.manualBills.map(x=>x.id)),[50,51]);
+ assert.deepEqual(Array.from(r.manualBills.map(x=>x.owner)),['naara','naara']);
+ assert.equal(r.manualBills[1].state,'posted');
+ assert.deepEqual(Array.from(r.future.map(x=>x.id)),[60]);
+ assert.equal(r.future[0].owner,'naara');
+});
+
+test('recuperação aceita registros de ambas as pessoas e não mexe em faturas oficiais',async()=>{
+ const code=recoveryHelper+'\n'+between('window.FinaRecoverLocalPlanning=async()=>{','\nlet finaSharedProfileChannel=null;');
+ for(const creator of ['lucas','naara']){
+  const assigned=creator==='lucas'?'naara':'lucas';
+  let saveCount=0,refreshCount=0;
+  const S={bills:[{id:'bank',type:'bank'},{id:55,type:'manual',owner:creator,state:'open'}],
+   future:[{id:'shared',type:'shared'}],formNotice:''};
+  const window={FinaCurrentUser:{id:creator+'-google-id'},FinaSelfOwnerKey:creator,
+   FinaRecoverablePlanningState:{userId:creator+'-google-id',manualBills:[
+    {id:55,owner:creator,type:'manual',state:'open'},
+    {id:56,owner:assigned,type:'manual',state:'open',name:'Conta cadastrada para outra pessoa'},
+    {id:57,owner:creator,type:'manual',state:'removed'}
+   ],future:[{id:123,owner:assigned,name:'Recebimento de outra pessoa'}]},
+   FinaRender:()=>{}};
+  const ctx={window,S,finaMarkStateDirty:()=>{},
+   finaSavePersistentState:async()=>{saveCount++;return true;},
+   finaLoadSharedBills:async()=>{refreshCount++;}};
+  vm.createContext(ctx);
+  vm.runInContext(code,ctx);
+  const result=await ctx.window.FinaRecoverLocalPlanning();
+  assert.equal(result,true);
+  assert.equal(saveCount,1);
+  assert.equal(refreshCount,1);
+  assert.equal(S.bills.length,3);
+  assert.equal(S.bills.find(x=>x.id==='bank')?.type,'bank');
+  assert.equal(S.bills.filter(x=>x.id===55).length,1);
+  assert.equal(S.bills.find(x=>x.id===56)?.owner,assigned);
+  assert.equal(S.bills.some(x=>x.id===57),false);
+  assert.equal(S.future.length,2);
+  assert.equal(S.future.find(x=>x.id===123)?.owner,assigned);
+  assert.equal(window.FinaRecoverablePlanningState,null);
+ }
 });
