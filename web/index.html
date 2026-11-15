@@ -641,7 +641,7 @@ function bills(){if(!accessible())return heading('Faturas + Contas','Sem autoriz
  const incompleteBills=(window.FinaBankSyncHealth||[]).some(it=>
    it.last_bills_warning==='bills_record_incomplete'&&Number(it.last_bills_invalid_count)>0);
  return `${heading('Faturas + Contas','Reserve ou informe pagamentos; a baixa bancária acontece automaticamente após o extrato confirmar.')}
- ${incompleteBills?'<p class="hint" role="status">A Pluggy disponibilizou dados parciais de algumas faturas. Valores ausentes não significam fatura zerada. A FINA preserva as faturas válidas; consulte o banco para confirmar as demais.</p>':''} ${switcher()}${monthPicker()}<div class="statgrid"><div class="stat"><small>Em aberto</small><strong>${display(open())}</strong></div><div class="stat"><small>Reservado</small><strong>${display(reserved())}</strong></div><div class="stat"><small>Informado</small><strong>${display(reported())}</strong></div><div class="stat"><small>Pendente total</small><strong>${display(owed())}</strong></div></div>
+ ${incompleteBills?'<p class="hint" role="status">A Pluggy disponibilizou dados parciais de algumas faturas. Valores ausentes não significam fatura zerada. A FINA preserva as faturas válidas; consulte o banco para confirmar as demais.</p>':''} ${window.FinaCardBillsLoadError?`<p class="hint" role="status">${escape(window.FinaCardBillsLoadError)}</p>`:''} ${switcher()}${monthPicker()}<div class="statgrid"><div class="stat"><small>Em aberto</small><strong>${display(open())}</strong></div><div class="stat"><small>Reservado</small><strong>${display(reserved())}</strong></div><div class="stat"><small>Informado</small><strong>${display(reported())}</strong></div><div class="stat"><small>Pendente total</small><strong>${display(owed())}</strong></div></div>
 ${card('↶ Estornos das faturas',ownRefunds().map(refundRow).join('')||'<p>Sem estornos.</p>')}
 <section class="card"><div class="row"><div class="cardtitle">Faturas de cartão</div>${btn('+ Informar fatura','add-invoice')}</div>${S.invoiceAdd?invoiceForm():''}${S.formNotice?`<p class="hint" role="status">${escape(S.formNotice)}</p>`:''}${ownBills().filter(b=>b.card).map(billList).join('')||'<p>Nenhuma fatura.</p>'}</section>
 <section class="card"><div class="row"><div class="cardtitle">Contas e financiamentos</div>${btn('+ Adicionar','add-bill')}</div>${ownBills().filter(b=>!b.card).map(billList).join('')||'<p>Nenhuma conta.</p>'}${S.add?newBillForm():''}${finaLearnedRulesPanel()}</section>
@@ -1735,7 +1735,7 @@ async function loadCoupleStatus(user){
    window.FinaCashTotalsByOwner=null;
    if(window.FinaBankCacheState!=='live')window.FinaRestoreCachedBankData?.();
    // O banco começa agora; faturas, fotos e perfis não bloqueiam saldos.
-   setTimeout(()=>{void finaLoadEarlyBankBalances(user.id);void finaLoadRealBankData();void window.FinaLoadCoupleTransfers?.();},0);
+   setTimeout(()=>{void finaLoadEarlyBankBalances(user.id);void finaLoadRealBankData();void finaLoadOfficialCardBills();void window.FinaLoadCoupleTransfers?.();},0);
    try{await finaLoadPersistentState(user);await finaLoadSharedBills();}catch{}
    try{await loadFinaSharedProfiles();finaStartSharedProfileRealtime();}catch{}
  }else{
@@ -1749,7 +1749,7 @@ async function loadCoupleStatus(user){
  void finaRestoreEncryptedLocalPreferences(user.id,window.FinaSelfOwnerKey);
  window.dispatchEvent(new Event('fina:header-changed'));window.FinaCouple?.paint?.();
  if(!row||Number(row.member_count)===0){
-  setTimeout(()=>{void finaLoadEarlyBankBalances(user.id);void finaLoadRealBankData();},0);
+  setTimeout(()=>{void finaLoadEarlyBankBalances(user.id);void finaLoadRealBankData();void finaLoadOfficialCardBills();},0);
   // Sem grupo conectado, conservar preferencias e contas manuais do proprio usuario.
   void finaLoadPersistentState(user).catch(()=>{});
  }
@@ -1974,12 +1974,18 @@ window.FinaLoadFinancings=loadFinaFinancings;
 // Somente faturas oficiais da instituição: dados do banco, sem transformar
 // limites utilizados em dívida nem inventar parcelas futuras.
 async function finaLoadOfficialCardBills(){
- if(!window.FinaCurrentUser)return;
+ if(!window.FinaCurrentUser||window.FinaOwnerResolvedForUserId!==window.FinaCurrentUser.id)return;
+ const requestedForUser=window.FinaCurrentUser.id;
  try{
   const [{data,error},{data:pendingData,error:pendingError}]=await Promise.all([
    sb.rpc('fina_couple_card_bills'),sb.rpc('fina_projected_card_spend')
   ]);
-  if(error||!Array.isArray(data))return;
+  if(window.FinaCurrentUser?.id!==requestedForUser)return;
+  if(error||!Array.isArray(data)){
+   window.FinaCardBillsLoadError='Não foi possível atualizar as faturas do casal. Confira a conexão e atualize esta tela.';
+   window.FinaRender?.();return;
+  }
+  window.FinaCardBillsLoadError='';
   const self=window.FinaSelfOwnerKey||'lucas';
   const partner=self==='lucas'?'naara':'lucas';
   const selfId=String(window.FinaCurrentUser.id);
@@ -2042,6 +2048,7 @@ async function finaLoadOfficialCardBills(){
     });
    }
   }
+  if(window.FinaCurrentUser?.id!==requestedForUser)return;
   S.bills=(S.bills||[]).filter(b=>!(
     (b.type==='bank'&&b.source==='pluggy-bills')||
     (b.type==='forecast-card'&&b.source==='pending-card-tx')
@@ -2373,6 +2380,7 @@ function finaScheduleRealtimeDataRefresh(){
   finaDataRealtimeTimer=setTimeout(async()=>{
     if(!window.FinaCurrentUser)return;
     try{await finaLoadPersistentState(window.FinaCurrentUser);await finaLoadSharedBills();}catch{}
+    try{await finaLoadOfficialCardBills();}catch{}
     try{await window.FinaLoadCoupleTransfers?.();}catch{}
     try{await finaLoadRealBankData();}catch{}
     try{await loadFinaFinancings();}catch{}
@@ -2384,6 +2392,7 @@ function finaStartDataRealtime(){
   const refresh=()=>finaScheduleRealtimeDataRefresh();
   finaDataRealtimeChannel=sb.channel('fina-data-'+window.FinaCurrentUser.id)
     .on('postgres_changes',{event:'*',schema:'public',table:'fina_bank_accounts'},refresh)
+    .on('postgres_changes',{event:'*',schema:'public',table:'fina_card_bills'},()=>void finaLoadOfficialCardBills())
     .on('postgres_changes',{event:'*',schema:'public',table:'fina_bank_transactions'},refresh)
     .on('postgres_changes',{event:'*',schema:'public',table:'fina_financings'},refresh)
     .on('postgres_changes',{event:'*',schema:'public',table:'fina_financing_installments'},refresh)
@@ -2391,7 +2400,7 @@ function finaStartDataRealtime(){
     .on('postgres_changes',{event:'*',schema:'public',table:'fina_user_state'},refresh)
     .on('postgres_changes',{event:'*',schema:'public',table:'fina_sync_alerts'},()=>void finaLoadSyncAlerts())
     .on('postgres_changes',{event:'*',schema:'public',table:'fina_bank_items'},()=>void finaLoadBankSyncHealth())
-    .on('postgres_changes',{event:'*',schema:'public',table:'fina_couple_state_versions'},()=>void finaLoadSharedBills())
+    .on('postgres_changes',{event:'*',schema:'public',table:'fina_couple_state_versions'},()=>{void finaLoadSharedBills();void finaLoadOfficialCardBills();})
     .subscribe();
 }
 window.addEventListener('fina:auth-ready',()=>setTimeout(finaStartDataRealtime,900));
@@ -2409,6 +2418,8 @@ async function finaRefreshVisibleData(){
   try{await finaLoadPersistentState(window.FinaCurrentUser);}catch{}
   // Atualizar também contas cadastradas pelo outro integrante; inclui pagas.
   try{await finaLoadSharedBills();}catch{}
+  // Faturas devem atualizar mesmo quando o extrato completo estiver lento ou indisponível.
+  try{await finaLoadOfficialCardBills();}catch{}
   try{await finaLoadHistorySharingStatus();}catch{}
   try{await finaLoadRealBankData();}catch{}
   try{await window.FinaLoadCoupleTransfers?.();}catch{}
