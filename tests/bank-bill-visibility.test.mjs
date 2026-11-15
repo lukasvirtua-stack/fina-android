@@ -44,6 +44,8 @@ test("Faturas + Contas avisa sobre payload incompleto e preserva segurança por 
  assert.match(src,/const incompleteBills=\(window\.FinaBankSyncHealth\|\|\[\]\)\.some/);
  assert.match(src,/Valores ausentes não significam fatura zerada/);
  assert.match(src,/if\(S\.tab==='banks'\|\|S\.tab==='bills'\)window\.FinaRender/);
- const reset=src.match(/window\.FinaSyncAlerts=\[\];window\.FinaBankSyncHealth=\[\];window\.FinaOfflineHistoryCount=0/g)||[];
- assert.equal(reset.length,2,"Session change and logout must clear previous user's warnings");
+ const helper=between('function finaClearPrivateSessionState(){','async function applySession(session){');
+ assert.match(helper,/window\.FinaSyncAlerts=\[\];window\.FinaBankSyncHealth=\[\];window\.FinaOfflineHistoryCount=0/);
+ assert.match(src,/if\(!user\)\{\s*finaClearPrivateSessionState\(\);/);
+ assert.match(src,/window\.FinaCurrentUser\.id!==user\.id\)\{\s*finaClearPrivateSessionState\(\);/);
 });
