@@ -36,7 +36,7 @@ test("previsões mostram somente entradas do mês e ANO selecionados",()=>{
     {name:"Entrada outro mês",owner:"lucas",month:1,year:2027,value:50000,day:20},
     {name:"Entrada outra pessoa",owner:"naara",month:0,year:2027,value:100000,day:20}
    ],monthForBills:0,billYear:2027,consent:false},
-  window:{FinaPlanningSyncError:''},partnerReady:()=>true,
+  window:{FinaPlanningSyncError:''},partnerReady:()=>true,partnerOwner:()=> 'naara',
   ownerShown:o=>o==="lucas",heading:()=>"",switcher:()=>"",card:(name,content)=>name+content,
   row:name=>name+";",name:()=>"",money:v=>String(v),btn:()=>"",selfOwner:()=>"lucas",
   escape:v=>v,display:()=>"",monthResult:()=>0,scopeBalance:()=>0,future:()=>0,open:()=>0
