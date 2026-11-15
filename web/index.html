@@ -1539,6 +1539,25 @@ async function finaRestoreEncryptedLocalPreferences(userId,ownerKey){
   window.FinaApplyPersistentState?.(state);
  }catch{}
 }
+// O cofre e vinculado a uma identidade Google. A pessoa responsavel
+// por uma conta pode ser a outra integrante do casal; nao usar owner para
+// decidir quem criou/guardou o cadastro.
+function finaFindRecoverablePlanning(local,remote){
+ const serverBills=new Set((Array.isArray(remote?.manualBills)?remote.manualBills:[])
+  .map(x=>String(x.id)));
+ const serverFuture=new Set((Array.isArray(remote?.future)?remote.future:[])
+  .map(x=>String(x.id)));
+ const eligibleOwner=x=>x?.owner==='lucas'||x?.owner==='naara';
+ const eligibleId=x=>x?.id!==null&&x?.id!==undefined&&/^[0-9]{1,25}$/.test(String(x.id));
+ return {
+  manualBills:(Array.isArray(local?.manualBills)?local.manualBills:[]).filter(x=>
+   x?.type==='manual'&&eligibleOwner(x)&&eligibleId(x)&&
+   ['open','reserved','reported','posted'].includes(x.state)&&
+   !serverBills.has(String(x.id))),
+  future:(Array.isArray(local?.future)?local.future:[]).filter(x=>
+   eligibleOwner(x)&&eligibleId(x)&&!serverFuture.has(String(x.id)))
+ };
+}
 async function finaLoadPersistentState(user){
  if(!user||finaStateDirty||finaStateSaving||finaPersistTimer)return;
  const {data,error}=await sb.from('fina_user_state').select('state').eq('user_id',user.id).maybeSingle();
@@ -1549,13 +1568,9 @@ async function finaLoadPersistentState(user){
   let recoverable=null;
   try{
    const local=await window.FinaOfflineVault?.loadState(user.id,window.FinaSelfOwnerKey);
-   const ownOwner=window.FinaSelfOwnerKey;
-   const remoteBills=new Set((Array.isArray(data.state.manualBills)?data.state.manualBills:[]).map(x=>String(x.id)));
-   const remoteFuture=new Set((Array.isArray(data.state.future)?data.state.future:[]).map(x=>String(x.id)));
-   const missingBills=(Array.isArray(local?.manualBills)?local.manualBills:[]).filter(x=>
-    x?.type==='manual'&&x.owner===ownOwner&&x.id!=null&&!remoteBills.has(String(x.id)));
-   const missingFuture=(Array.isArray(local?.future)?local.future:[]).filter(x=>
-    x?.owner===ownOwner&&x.id!=null&&!remoteFuture.has(String(x.id)));
+   const missing=finaFindRecoverablePlanning(local,data.state);
+   const missingBills=missing.manualBills;
+   const missingFuture=missing.future;
    if(missingBills.length||missingFuture.length)
     recoverable={userId:user.id,manualBills:missingBills,future:missingFuture};
   }catch{}
@@ -1829,15 +1844,12 @@ window.FinaRecoverLocalPlanning=async()=>{
  const backup=window.FinaRecoverablePlanningState;
  const user=window.FinaCurrentUser;
  if(!backup||!user||backup.userId!==user.id)return false;
- const own=window.FinaSelfOwnerKey;
- const currentBills=new Set((S.bills||[]).map(x=>String(x.id)));
- const currentFuture=new Set((S.future||[]).map(x=>String(x.id)));
- for(const b of backup.manualBills){
-  if(b.owner===own&&!currentBills.has(String(b.id))){S.bills.push({...b,type:'manual'});currentBills.add(String(b.id));}
- }
- for(const entry of backup.future){
-  if(entry.owner===own&&!currentFuture.has(String(entry.id))){S.future.push({...entry});currentFuture.add(String(entry.id));}
- }
+ const eligible=finaFindRecoverablePlanning(backup,{
+  manualBills:(S.bills||[]).filter(x=>x.type==='manual'),
+  future:(S.future||[]).filter(x=>x.type!=='shared')
+ });
+ for(const bill of eligible.manualBills)S.bills.push({...bill,type:'manual'});
+ for(const entry of eligible.future)S.future.push({...entry});
  finaMarkStateDirty();
  S.formNotice='Recuperando os cadastros anteriores...';window.FinaRender?.();
  const saved=await finaSavePersistentState();
