@@ -1602,29 +1602,31 @@ async function finaLoadSharedBills(){
  }
  window.FinaPlanningSyncError='';
  const current=(S.bills||[]).filter(b=>b.type!=='shared');
- const norm=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
- const fp=b=>[b.owner,norm(b.name),b.month,b.year,Math.round(Number(b.value)||0)].join('|');
- const seen=new Set(current.filter(b=>b.type==='manual').map(fp));
+ // Duas contas reais podem ter mesmo nome, mes, responsavel e valor.
+ // A identidade compartilhada inclui o Google criador e o ID da conta;
+ // nao ocultar registros verdadeiros por coincidencia de valores.
+ const seenSharedBills=new Set();
  for(const item of data){
-  if(!item||!['open','reserved','reported','posted'].includes(item.state))continue;
+  if(!item||!['open','reserved','reported','posted'].includes(item.state)||!item.id)continue;
   const bill={...item,type:'shared',
    detail:item.state==='posted'
      ?String(item.detail||'Pagamento bancário conciliado · já refletido no saldo')
      :'Conta do casal · cadastrada manualmente',
    value:Math.round(Number(item.value)||0)};
-  if(bill.value<=0||seen.has(fp(bill)))continue;
-  seen.add(fp(bill));current.push(bill);
+  const id=String(bill.id);
+  if(bill.value<=0||seenSharedBills.has(id))continue;
+  seenSharedBills.add(id);current.push(bill);
  }
  S.bills=current;
  {
   const ownFuture=(S.future||[]).filter(x=>x.type!=='shared');
-  const sig=x=>[x.owner,norm(x.name),x.month,x.year,Math.round(Number(x.value)||0)].join('|');
-  const seenFuture=new Set(ownFuture.map(sig));
+  const seenSharedFuture=new Set();
   for(const item of futureData){
-   if(!item)continue;
+   if(!item||!item.id)continue;
    const entry={...item,type:'shared',value:Math.round(Number(item.value)||0)};
-   if(entry.value<=0||seenFuture.has(sig(entry)))continue;
-   seenFuture.add(sig(entry));ownFuture.push(entry);
+   const id=String(entry.id);
+   if(entry.value<=0||seenSharedFuture.has(id))continue;
+   seenSharedFuture.add(id);ownFuture.push(entry);
   }
   S.future=ownFuture;
  }
@@ -2414,34 +2416,71 @@ function finaRestoreCachedBankData(){
 }
 window.FinaRestoreCachedBankData=finaRestoreCachedBankData;
 // O saldo das contas chega antes do histórico e não depende da conciliação.
+// O extrato historico pode levar varios segundos. Saldos e TODOS os cartoes
+// do casal devem chegar numa consulta pequena, mesmo com snapshot proprio no cofre.
 let finaEarlyBalancesUser=null;
 async function finaLoadEarlyBankBalances(userId){
- if(!userId||window.FinaCurrentUser?.id!==userId||window.FinaOwnerResolvedForUserId!==userId)return;
- if((S.accounts||[]).some(a=>a.real===true)||window.FinaRealBankLoaded===true)return;
+ if(!userId||window.FinaCurrentUser?.id!==userId||
+   window.FinaOwnerResolvedForUserId!==userId||window.FinaRealBankLoaded===true)return;
  if(finaEarlyBalancesUser===userId)return;
  finaEarlyBalancesUser=userId;
  const expectedOwner=window.FinaSelfOwnerKey;
  try{
   const {data,error}=await sb.from('fina_bank_accounts')
-   .select('id,user_id,institution_name,name,type,number_last4,balance')
-   .eq('type','BANK').order('institution_name');
+   .select('id,user_id,institution_name,name,type,subtype,number_last4,balance,credit_limit,available_credit_limit')
+   .order('institution_name');
   if(window.FinaCurrentUser?.id!==userId||window.FinaOwnerResolvedForUserId!==userId||
      window.FinaSelfOwnerKey!==expectedOwner||window.FinaRealBankLoaded===true)return;
-  if(error||!Array.isArray(data)||!data.length)return;
+  if(error||!Array.isArray(data)||!data.length){
+   window.FinaCashDataError='Não foi possível consultar todas as contas e cartões compartilhados. Confira a conexão.';
+   window.FinaRender?.();return;
+  }
   const partner=expectedOwner==='lucas'?'naara':'lucas';
-  const prettyBank=v=>{const x=String(v||'Banco').trim().toUpperCase();
-    return x==='ITAU'||x==='ITAÚ'?'Itaú':x==='NUBANK'?'Nubank':x==='SANTANDER'?'Santander':x==='BRADESCO'?'Bradesco':String(v||'Banco').trim();};
-  S.accounts=data.map(a=>({
-   id:'real-'+a.id,owner:String(a.user_id)===String(userId)?expectedOwner:partner,
+  const ownerOf=account=>String(account.user_id)===String(userId)?expectedOwner:partner;
+  const prettyBank=v=>{
+   const x=String(v||'Banco').trim().toUpperCase();
+   return x==='ITAU'||x==='ITAÚ'?'Itaú':x==='NUBANK'?'Nubank':
+    x==='SANTANDER'?'Santander':x==='BRADESCO'?'Bradesco':String(v||'Banco').trim();
+  };
+  const bankAccounts=data.filter(x=>String(x.type||'').toUpperCase()==='BANK');
+  const creditAccounts=data.filter(x=>String(x.type||'').toUpperCase()==='CREDIT'||
+   String(x.subtype||'').toUpperCase()==='CREDIT_CARD');
+  const currentCardSettings=new Map((S.cards||[]).map(c=>[c.owner+'|'+c.digits,c]));
+  S.accounts=bankAccounts.map(a=>({
+   id:'real-'+a.id,owner:ownerOf(a),
    name:prettyBank(a.institution_name||a.name||'Banco'),
    balance:Math.round(Number(a.balance||0)*100),real:true,
-   last4:a.number_last4||'',accountType:'BANK'
+   last4:a.number_last4||'',accountType:a.subtype||a.type||'BANK'
   })).sort(finaBankSort);
+  S.cards=creditAccounts.map(a=>{
+   const owner=ownerOf(a),digits=a.number_last4||'';
+   const previous=currentCardSettings.get(owner+'|'+digits)||{};
+   const limit=Math.max(0,Math.round(Number(a.credit_limit||0)*100));
+   const available=a.available_credit_limit==null?null:
+    Math.max(0,Math.round(Number(a.available_credit_limit)*100));
+   const used=available!==null&&limit>0?Math.max(0,limit-available):
+    Math.max(0,Math.round(Number(a.balance||0)*100));
+   const cardName=String(a.name||'Cartão').trim();
+   return {id:'real-card-'+a.id,owner,
+    bank:prettyBank(a.institution_name||a.name||'Banco'),name:cardName,digits,
+    network:/VISA/i.test(cardName)?'VISA':'MASTERCARD',
+    limit,used,closing:Number(previous.closing)||15,
+    due:Number(previous.due)||15,source:'bank',real:true};
+  }).sort(finaBankSort);
+  if(S.cards.length&&!S.cards.some(c=>c.id===S.card))S.card=S.cards[0].id;
   window.FinaBankBalancesReady=true;
   window.FinaBankLastSnapshotAt=Date.now();
+  window.FinaCashDataError='';
   window.FinaRender?.();
- }catch(e){console.warn('FINA: saldos rápidos indisponíveis:',e?.message||e);}
- finally{if(finaEarlyBalancesUser===userId)finaEarlyBalancesUser=null;}
+  // Reprocessar faturas oficiais caso tenham chegado antes dos cartoes.
+  void finaLoadOfficialCardBills();
+ }catch(e){
+  console.warn('FINA: contas e cartões rápidos indisponíveis:',e?.message||e);
+  if(window.FinaCurrentUser?.id===userId){
+   window.FinaCashDataError='Falha ao atualizar contas e cartões do casal. Confira a conexão.';
+   window.FinaRender?.();
+  }
+ }finally{if(finaEarlyBalancesUser===userId)finaEarlyBalancesUser=null;}
 }
 function finaSaveCachedBankData(user){
  if(!user||window.FinaCurrentUser?.id!==user.id||window.FinaOwnerResolvedForUserId!==user.id)return;
