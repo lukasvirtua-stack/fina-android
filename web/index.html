@@ -250,9 +250,10 @@ window.FinaApplyPersistentState=(p)=>{
     S.bills=bankOnly.concat(p.manualBills.map(x=>({...x,owner:(x.owner==='naara'?'naara':'lucas'),type:'manual'})));
   }
   if(Array.isArray(p.future))S.future=p.future.map(x=>({...x,owner:(x.owner==='naara'?'naara':'lucas')}));
-  if(Array.isArray(p.refunds)){
+  {
    const shared=(S.refunds||[]).filter(x=>x.type==='shared');
-   S.refunds=shared.concat(p.refunds.filter(x=>x?.state==='pending'&&x.id!=null).map(x=>({...x,
+   const pending=Array.isArray(p.refunds)?p.refunds:[];
+   S.refunds=shared.concat(pending.filter(x=>x?.state==='pending'&&x.id!=null).map(x=>({...x,
     owner:(x.owner==='naara'?'naara':'lucas'),state:'pending',type:'manual'})));
   }
   if(window.FinaRenderReady)window.FinaRender?.();
