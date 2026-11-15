@@ -22,16 +22,28 @@ test('Scripts embutidos têm sintaxe válida', () => {
   for (const script of scripts) new vm.Script(script, { filename: 'web/index.html' });
 });
 
-test('Casal soma saldos das duas pessoas; individual conserva seu saldo', () => {
+test('Casal usa o menor saldo individual em ambos os logins; visoes pessoais preservam seus bancos', () => {
   const code = segment('const coupleBaseBalance=', '\nconst monthKey=');
-  const bank = { lucas: 68570, naara: 714 };
-  for (const scope of ['casal', 'lucas', 'naara']) {
-    const ctx = { S: { scope }, ownerBalance: o => bank[o],
-      selfOwner: () => 'lucas', partnerOwner: () => 'naara', partnerReady: () => true };
-    const result = run(code, '({ casal: coupleBaseBalance(), exibido: scopeBalance() })', ctx);
-    assert.equal(result.casal, 69284);
-    assert.equal(result.exibido, scope === 'casal' ? 69284 : bank[scope]);
+  for (const bank of [
+   {lucas:68570,naara:714},
+   {lucas:-3000,naara:12500},
+   {lucas:0,naara:0}
+  ]){
+   for(const login of ['lucas','naara']){
+    const other=login==='lucas'?'naara':'lucas';
+    for(const scope of ['casal',login,other]){
+     const ctx={S:{scope},ownerBalance:o=>bank[o],selfOwner:()=>login,
+       partnerOwner:()=>other,partnerReady:()=>true};
+     const result=run(code,'({casal:coupleBaseBalance(),real:coupleRealBankBalance(),exibido:scopeBalance()})',ctx);
+     assert.equal(result.casal,Math.min(bank.lucas,bank.naara));
+     assert.equal(result.real,result.casal);
+     assert.equal(result.exibido,scope==='casal'?result.casal:bank[scope]);
+    }
+   }
   }
+  const withoutPartner={S:{scope:'casal'},ownerBalance:o=>o==='lucas'?5000:0,
+   selfOwner:()=> 'lucas',partnerOwner:()=> 'naara',partnerReady:()=>false};
+  assert.equal(run(code,'coupleBaseBalance()',withoutPartner),5000,'não presumir saldo zero da outra pessoa');
 });
 
 test('Pix/TED do casal contam só individualmente; transferências próprias nunca contam', () => {
@@ -91,15 +103,33 @@ test('Cálculo bancário de Casal não acumula Pix entre integrantes', () => {
   assert.match(html, /coupleTransferPolicy:'individual-only'/);
 });
 
-test('Resultado do Casal soma as duas projeções individuais', () => {
-  const code = segment('const monthResult=', '\nconst ownerReserved=');
-  const projected = { lucas: -42000, naara: 21000 };
-  for (const scope of ['casal','lucas','naara']) {
-    const ctx = { S:{scope},ownerProjected:o=>projected[o],
-      selfOwner:()=> 'lucas',partnerOwner:()=> 'naara' };
-    const actual = run(code, 'monthResult()', ctx);
-    assert.equal(actual, scope === 'casal' ? -21000 : projected[scope]);
+test('Resultado do casal usa minimo + previsoes − pendencias; pagamento real não duplica débito', () => {
+ const code=segment('const monthResult=', '\nconst ownerReserved=');
+ const current={lucas:68570,naara:714};
+ const projected={lucas:75570,naara:15714};
+ const data={
+  future:[
+   {owner:'lucas',month:10,year:2026,value:10000},
+   {owner:'naara',month:10,year:2026,value:20000},
+   {owner:'naara',month:9,year:2026,value:999999}
+  ],
+  bills:[
+   {owner:'lucas',month:10,year:2026,state:'open',value:3000},
+   {owner:'naara',month:10,year:2026,state:'reserved',value:5000},
+   {owner:'naara',month:10,year:2026,state:'posted',value:7000}
+  ]};
+ for(const login of ['lucas','naara']){
+  const other=login==='lucas'?'naara':'lucas';
+  for(const scope of ['casal',login,other]){
+   const ctx={S:{scope,...data},ownerProjected:o=>projected[o],
+    coupleBaseBalance:()=>Math.min(current.lucas,current.naara),
+    selfOwner:()=>login,partnerOwner:()=>other,partnerReady:()=>true,
+    sameMonth:x=>x.month===10&&x.year===2026,
+    pending:x=>['open','reserved','reported'].includes(x.state),
+    billValue:x=>x.value,sum:(arr,fn)=>arr.reduce((n,x)=>n+fn(x),0)};
+   assert.equal(run(code,'monthResult()',ctx),scope==='casal'?22714:projected[scope]);
   }
+ }
 });
 
 test('Offline só armazena extrato da própria conta Google e evita vazamento entre integrantes',()=>{
