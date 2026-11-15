@@ -14,7 +14,7 @@ function show(bill){
  const S={cards:[cardAccount],card:cardAccount.id,bills:bill?[bill]:[],
   refunds:[],invoiceAdd:false,formNotice:''};
  const ctx={
-  S,ownerShown:()=>true,sameMonth:()=>true,cardRefundCredit:()=>0,
+  S,ownerShown:()=>true,sameMonth:()=>true,cardRefundCredit:()=>0,refundRow:()=>'',
   heading:()=>'',monthPicker:()=>'',bankCard:()=>'',status:{open:'Em aberto',posted:'Pago'},
   escape:s=>String(s),money:v=>'R$ '+(v/100).toFixed(2),
   billValue:b=>b.value,cardCycle:()=>'',billActions:()=>'',btn:()=>'',row:(name,detail,value)=>name+': '+value,
