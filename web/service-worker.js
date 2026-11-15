@@ -1,7 +1,7 @@
-const VERSION='fina-sw-v35-couple-bills-20261115';
+const VERSION='fina-sw-v36-couple-planning-20261115';
 // Armazena SOMENTE arquivos estaticos publicos do aplicativo.
 // Nunca interceptar nem armazenar OAuth, Supabase, Pluggy, extratos ou tokens.
-const SHELL_CACHE='fina-shell-v35-couple-bills-20261115';
+const SHELL_CACHE='fina-shell-v36-couple-planning-20261115';
 const APP_FILES=['/','/index.html','/manifest.webmanifest','/icon-192.png','/icon-512.png','/supabase.min.js','/offline-vault.js'];
 const SHELL_PATHS=new Set(APP_FILES);
 self.addEventListener('install',event=>event.waitUntil((async()=>{
