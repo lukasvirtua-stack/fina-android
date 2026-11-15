@@ -75,7 +75,7 @@ test('sincronizacao de planos usa controle de login, fatura e previsao',()=>{
  assert.match(html,/window\.FinaDeleteSharedForecast=async forecast=>/);
  assert.match(html,/fina_delete_shared_future_income/);
  assert.match(html,/if\(sharedForecast\)/);
- assert.match(html,/if\(!sharedBill&&!sharedForecast\)setTimeout\(finaScheduleSave,80\)/);
+ assert.match(html,/if\(!sharedBill&&!sharedForecast&&!sharedRefund\)setTimeout\(finaScheduleSave,80\)/);
  assert.match(html,/'delete','delete-forecast'/);
  assert.match(html,/Responsável pela fatura informada/);
  assert.match(html,/partnerReady\(\)\?'<option value="'\+partnerOwner\(\)/);

@@ -24,4 +24,4 @@ jobs:
       - name: Testar atualização por gesto sem chamadas extras à Pluggy
         run: node --test tests/pull-refresh.test.mjs
       - name: Testar visibilidade de faturas para Lucas e Naara sem duplicação
-        run: node --test tests/couple-bill-initial-load.test.mjs tests/bank-bill-visibility.test.mjs tests/pwa-cache.test.mjs tests/reciprocal-planning.test.mjs
+        run: node --test tests/couple-bill-initial-load.test.mjs tests/bank-bill-visibility.test.mjs tests/pwa-cache.test.mjs tests/reciprocal-planning.test.mjs tests/shared-refund-sync.test.mjs
