@@ -145,7 +145,7 @@ begin
  values(cid,actor,p_owner_id,p_bill_id,operation,original,updated);
  return jsonb_build_object('ok',true,'billId',p_bill_id,'state',updated->>'state');
 end;
-$function$
+$function$;
 
 -- Hardened: fina_couple_card_bills
 CREATE OR REPLACE FUNCTION public.fina_couple_card_bills()
@@ -177,7 +177,7 @@ AS $function$
      and mine.sharing_level in ('planning','partial','total')
      and partner.sharing_level in ('planning','partial','total')
  );
-$function$
+$function$;
 
 -- Hardened: fina_delete_shared_future_income
 CREATE OR REPLACE FUNCTION public.fina_delete_shared_future_income(p_owner_id uuid, p_future_id text)
@@ -233,7 +233,7 @@ begin
  where user_id=p_owner_id;
  return jsonb_build_object('ok',true,'id',p_future_id,'ownerId',p_owner_id);
 end;
-$function$
+$function$;
 
 -- Hardened: fina_delete_shared_refund
 CREATE OR REPLACE FUNCTION public.fina_delete_shared_refund(p_owner_id uuid, p_refund_id text)
@@ -278,7 +278,7 @@ begin
  where user_id=p_owner_id;
  return jsonb_build_object('ok',true,'refundId',p_refund_id);
 end;
-$function$
+$function$;
 
 -- Hardened: fina_shared_future_income
 CREATE OR REPLACE FUNCTION public.fina_shared_future_income()
@@ -311,7 +311,7 @@ AS $function$
    and mine.sharing_level in ('planning','partial','total')
    and theirs.sharing_level in ('planning','partial','total')
    and (select count(*) from public.fina_couple_members m where m.couple_id=mine.couple_id)=2;
-$function$
+$function$;
 
 -- Hardened: fina_shared_pending_bills
 CREATE OR REPLACE FUNCTION public.fina_shared_pending_bills()
@@ -355,7 +355,7 @@ AS $function$
    and theirs.sharing_level in ('planning','partial','total')
    and b.bill->>'type'='manual'
    and b.bill->>'state' in ('open','reserved','reported','posted');
-$function$
+$function$;
 
 -- Hardened: fina_shared_pending_refunds
 CREATE OR REPLACE FUNCTION public.fina_shared_pending_refunds()
@@ -395,7 +395,7 @@ AS $function$
   and r.item->>'id' ~ '^[0-9]{1,25}$'
   and r.item->>'value' ~ '^[0-9]{1,12}$'
   and (case when (r.item->>'value') ~ '^[0-9]{1,12}$' then (r.item->>'value')::bigint else 0 end) > 0;
-$function$
+$function$;
 -- The exposed card RPC is never available to unauthenticated callers.
 revoke all on function public.fina_couple_card_bills() from public,anon;
 grant execute on function public.fina_couple_card_bills() to authenticated;
