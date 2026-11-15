@@ -449,6 +449,7 @@ function invoiceForm(){
  <p class="wide muted">Para faturas ainda não recebidas do banco. Uma fatura oficial é somente leitura e nunca será contada duas vezes.</p>
  <label class="wide">Cartão<select name="card"><option value="manual-other" ${chosen==='manual-other'?'selected':''}>Outro cartão · fatura informada</option>${cards.map(c=>`<option value="${escape(c.id)}" ${c.id===chosen?'selected':''}>${escape(c.bank)} •••• ${escape(c.digits)}</option>`).join('')}</select></label>
  <label class="wide">Descrição<input name="name" maxlength="110" required value="Fatura informada" placeholder="Fatura do cartão"></label>
+ <label class="wide">Responsável pela fatura informada<select name="owner"><option value="${selfOwner()}">${escape(name(selfOwner()))}</option>${partnerReady()?'<option value="'+partnerOwner()+'">'+escape(name(partnerOwner()))+'</option>':''}</select></label>
  <label>Valor total da fatura (R$)<input name="value" type="text" inputmode="decimal" autocomplete="off" placeholder="8210 ou 8.210,35" required></label>
  <label>Dia do vencimento<input name="day" type="number" min="1" max="31" value="15" required></label>
  <label class="wide">Valor reconhecido: <strong data-money-preview>Digite o valor em reais</strong></label>
@@ -648,7 +649,7 @@ ${card('↶ Estornos das faturas',ownRefunds().map(refundRow).join('')||'<p>Sem 
 ${finaScheduledBankPreview()}
 ${card('Fechamento e próximo mês',`<div class="row"><div><strong>Confirmado pelo banco</strong><span class="line-detail">${money(sum(ownBills().filter(b=>b.state==='posted'),b=>billValue(b)))}</span></div><div><strong>Pendente e previsto</strong><span class="line-detail">${money(owed())}</span></div></div><p class="muted">${monthOffset()<0?'Mês encerrado ou histórico de pagamentos demonstrativos.':monthOffset()===0?'Mês vigente: valores reais entram pelo banco, reservas mantêm cor até a confirmação.':'Previsões podem repetir o último valor, mas a fatura bancária oficial tem prioridade.'}</p>`)}
  `}
-function forecast(){return `${heading('Variáveis a receber','Planeje recebimentos futuros sem alterá-los no extrato.')}${switcher()}${card('Entradas previstas',S.future.filter(x=>ownerShown(x.owner)&&x.month===S.monthForBills&&x.year===S.billYear).map(x=>row(x.name,`${name(x.owner)} · Dia ${x.day}`,money(x.value),`<div class="action-menu">${btn('Excluir','delete-forecast',`data-id="${x.id}"`)}</div>`)).join('')||'<p>Não há previsões.</p>')}${card('Nova variável a receber',`<form data-form="forecast" class="formgrid"><label class="wide">Descrição<input name="name" required placeholder="Comissão, salário..."></label><label>Valor (R$)<input name="value" type="text" inputmode="decimal" autocomplete="off" placeholder="1500 ou 1.500,00" required></label><label>Dia<input name="day" type="number" min="1" max="31" value="25" required></label><label class="wide">Responsável<select name="owner"><option value="${selfOwner()}">${escape(name(selfOwner()))}</option>${S.consent?'<option value="'+partnerOwner()+'">'+escape(name(partnerOwner()))+'</option>':''}</select></label><button class="btn wide" type="submit">Adicionar variável</button></form>`)}${card('Resultado projetado',`<div style="font-size:24px;font-weight:720">${display(monthResult())}</div><p class="muted">Saldo ajustado ${display(scopeBalance())} + variáveis a receber ${display(future())} − contas ainda abertas ${display(open())}. Entrou/Saiu já são parte do saldo importado e não são somados novamente.</p>`)}`}
+function forecast(){return `${heading('Variáveis a receber','Planeje recebimentos futuros sem alterá-los no extrato.')}${window.FinaPlanningSyncError?'<p class="hint" role="status">'+escape(window.FinaPlanningSyncError)+'</p>':''}${S.formNotice?'<p class="hint" role="status">'+escape(S.formNotice)+'</p>':''}${switcher()}${card('Entradas previstas',S.future.filter(x=>ownerShown(x.owner)&&x.month===S.monthForBills&&x.year===S.billYear).map(x=>row(x.name,`${name(x.owner)} · Dia ${x.day}`,money(x.value),`<div class="action-menu">${btn('Excluir','delete-forecast',`data-id="${x.id}"`)}</div>`)).join('')||'<p>Não há previsões.</p>')}${card('Nova variável a receber',`<form data-form="forecast" class="formgrid"><label class="wide">Descrição<input name="name" required placeholder="Comissão, salário..."></label><label>Valor (R$)<input name="value" type="text" inputmode="decimal" autocomplete="off" placeholder="1500 ou 1.500,00" required></label><label>Dia<input name="day" type="number" min="1" max="31" value="25" required></label><label class="wide">Responsável<select name="owner"><option value="${selfOwner()}">${escape(name(selfOwner()))}</option>${partnerReady()?'<option value="'+partnerOwner()+'">'+escape(name(partnerOwner()))+'</option>':''}</select></label><button class="btn wide" type="submit">Adicionar variável</button></form>`)}${card('Resultado projetado',`<div style="font-size:24px;font-weight:720">${display(monthResult())}</div><p class="muted">Saldo ajustado ${display(scopeBalance())} + variáveis a receber ${display(future())} − contas ainda abertas ${display(open())}. Entrou/Saiu já são parte do saldo importado e não são somados novamente.</p>`)}`}
 function calendar(){
   const dt=new Date(S.year,S.month,1),name=dt.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
   const days=new Date(S.year,S.month+1,0).getDate();
@@ -1132,6 +1133,12 @@ photoModal.addEventListener('click',e=>{
 
 el.addEventListener('click',event=>{const target=event.target.closest('button[data-act]');if(!target)return;const a=target.dataset.act,id=Number(target.dataset.id),b=S.bills.find(x=>x.id===id),r=S.refunds.find(x=>x.id===id);
  const sharedBill=target.dataset.id?S.bills.find(x=>x.type==='shared'&&String(x.id)===String(target.dataset.id)):null;
+ const sharedForecast=a==='delete-forecast'&&target.dataset.id?
+  S.future.find(x=>x.type==='shared'&&String(x.id)===String(target.dataset.id)):null;
+ if(sharedForecast){
+  if(window.confirm('Excluir esta previsão do planejamento do casal?'))void window.FinaDeleteSharedForecast?.(sharedForecast);
+  return;
+ }
  if(sharedBill&&['reserve','unreserve','report','unreport','edit','delete'].includes(a)){
   if(a==='edit'){S.edit=sharedBill.id;render(false);return;}
   if(a==='delete'&&!window.confirm('Excluir esta conta manual do casal?'))return;
@@ -1178,7 +1185,7 @@ if(a==='open'){S.tab=target.dataset.target;S.add=false;S.invoiceAdd=false;S.form
   S.tab='tests';
  }
  if(a==='bank-transfer-feed'){handleBankTransferEvent();S.tab='transfers';S.monthForBills=10;S.billYear=2026;S.month=10;S.year=2026}if(a==='bill-prev'){navigateMonth(-1);return}if(a==='bill-next'){navigateMonth(1);return}if(a==='bank-event'){const chosen=Number(el.querySelector('#labSyncBill')?.value),record=S.bills.find(x=>x.id===chosen);if(record&&pending(record)){post(record);S.syncMessage='Extrato fictício recebido: '+record.name+' confirmado no banco. Entrou/Saiu e saldo foram atualizados sem cobrança duplicada.';}else{S.syncMessage='Nenhuma obrigação disponível para conciliar.'}}if(a==='edit'&&b?.type==='manual'&&pending(b))S.edit=b.id;if(a==='delete'&&b?.type==='manual'&&pending(b)){const series=String(b.seriesId||b.id),start=monthKey(b.month,b.year??2026);for(const entry of S.bills){if(String(entry.seriesId||entry.id)===series){entry.recurring=false;if(monthKey(entry.month,entry.year??2026)>=start)entry.state='removed';}} b.recurring=false;}if(a==='add-bill')S.add=true;if(a==='add-invoice'){S.invoiceAdd=!S.invoiceAdd;S.formNotice='';}if(a==='home-add')S.homeAdd=!S.homeAdd;if(a==='cancel'){S.add=false;S.homeAdd=false;S.invoiceAdd=false;S.edit=null;S.formNotice=''}if(a==='refund-card')confirmRefund(r,'card');if(a==='refund-cash')confirmRefund(r,'cash');if(a==='refund-undo'&&r&&r.state!=='pending'){if(r.state==='cash'){let account=S.accounts.find(x=>x.owner===r.owner);if(account)account.balance-=r.value;S.transactions=S.transactions.filter(x=>x.id!=='r'+r.id)}r.state='pending'}if(a==='delete-forecast')S.future=S.future.filter(x=>x.id!==id);if(a==='prev-month'){navigateMonth(-1);return}if(a==='next-month'){navigateMonth(1);return}if(a==='ask')answer(target.dataset.message||'');if(a==='run-tests')runTests();if(a==='editor-owner')S.activeEditor=target.dataset.owner;if(a==='preview-bodas')S.celebrationPreview=!S.celebrationPreview;if(a==='gallery'){S.galleryOwner=target.dataset.owner;el.querySelector('#labGallery')?.click();return}if(a==='photo-adjust'){const o=target.dataset.owner;const p=S.profiles[o];if(p?.photoOriginal||p?.photo)openPhotoEditor(o,p.photoOriginal||p.photo);return}if(a==='reset')S=seed();render();if(a==='home-add'&&S.homeAdd){el.querySelector('form[data-form="newbill"] input[name="name"]')?.focus()}});
-el.addEventListener('submit',event=>{const form=event.target.closest('form[data-form]');if(!form)return;event.preventDefault();const data=new FormData(form),type=form.dataset.form,value=cents(data.get('value')),day=Number(data.get('day')||20),owner=String(data.get('owner')||'lucas'),safeOwner=owner===selfOwner()||S.consent,planningOwner=owner==='lucas'||owner==='naara';
+el.addEventListener('submit',event=>{const form=event.target.closest('form[data-form]');if(!form)return;event.preventDefault();const data=new FormData(form),type=form.dataset.form,value=cents(data.get('value')),day=Number(data.get('day')||20),owner=String(data.get('owner')||selfOwner()),safeOwner=owner===selfOwner()||(partnerReady()&&owner===partnerOwner()),planningOwner=owner==='lucas'||owner==='naara';
 if(['newbill','edit','forecast','refund','deposit','transfer','invoice'].includes(type) && value===null){
  const input=form.querySelector('input[name="value"]');
  if(input){input.setCustomValidity('Informe um valor em reais, por exemplo: 1500, 1500,00 ou 1.500,00.');input.reportValidity();input.addEventListener('input',()=>input.setCustomValidity(''),{once:true});}
@@ -1446,8 +1453,14 @@ async function finaLoadPersistentState(user){
 }
 async function finaLoadSharedBills(){
  if(!window.FinaCurrentUser||!window.FinaPartnerReady){S.bills=(S.bills||[]).filter(b=>b.type!=='shared');S.future=(S.future||[]).filter(x=>x.type!=='shared');return;}
+ const sourceUser=window.FinaCurrentUser.id;
  const [{data,error},{data:futureData,error:futureError}]=await Promise.all([sb.rpc('fina_shared_pending_bills'),sb.rpc('fina_shared_future_income')]);
- if(error||!Array.isArray(data))return;
+ if(window.FinaCurrentUser?.id!==sourceUser||!window.FinaPartnerReady)return;
+ if(error||!Array.isArray(data)||futureError||!Array.isArray(futureData)){
+  window.FinaPlanningSyncError='Não foi possível consultar todos os cadastros do casal. Os últimos valores conhecidos foram mantidos.';
+  window.FinaRender?.();return;
+ }
+ window.FinaPlanningSyncError='';
  const current=(S.bills||[]).filter(b=>b.type!=='shared');
  const norm=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
  const fp=b=>[b.owner,norm(b.name),b.month,b.year,Math.round(Number(b.value)||0)].join('|');
@@ -1463,7 +1476,7 @@ async function finaLoadSharedBills(){
   seen.add(fp(bill));current.push(bill);
  }
  S.bills=current;
- if(!futureError&&Array.isArray(futureData)){
+ {
   const ownFuture=(S.future||[]).filter(x=>x.type!=='shared');
   const sig=x=>[x.owner,norm(x.name),x.month,x.year,Math.round(Number(x.value)||0)].join('|');
   const seenFuture=new Set(ownFuture.map(sig));
@@ -1478,6 +1491,29 @@ async function finaLoadSharedBills(){
  window.FinaRender?.();
 }
 window.FinaLoadSharedBills=finaLoadSharedBills;
+
+window.FinaDeleteSharedForecast=async forecast=>{
+ const user=window.FinaCurrentUser;
+ if(!user||forecast?.type!=='shared'||!forecast.sourceUserId)return;
+ const match=String(forecast.id||'').match(/^shared-income-([0-9a-f-]{36})-([0-9]+)$/i);
+ if(!match||match[1]!==String(forecast.sourceUserId)){
+  S.formNotice='Identificador da previsão compartilhada inválido.';window.FinaRender?.();return;
+ }
+ S.formNotice='Excluindo previsão do casal...';window.FinaRender?.();
+ try{
+  const {data,error}=await sb.rpc('fina_delete_shared_future_income',{
+   p_owner_id:String(forecast.sourceUserId),p_future_id:match[2]
+  });
+  if(window.FinaCurrentUser?.id!==user.id)return;
+  if(error||!data?.ok)throw error||Error('Operação recusada');
+  S.formNotice='Previsão excluída do planejamento dos dois.';
+  await finaLoadSharedBills();
+  window.FinaRender?.();
+ }catch{
+  S.formNotice='Não foi possível excluir. Atualize a tela antes de tentar novamente.';
+  window.FinaRender?.();
+ }
+};
 
 window.FinaLoadLearningRules=async()=>{
  if(!window.FinaCurrentUser)return;
@@ -2576,7 +2612,12 @@ document.addEventListener('submit',e=>{
 },true);
 document.addEventListener('click',e=>{
   const a=e.target.closest?.('[data-act]')?.dataset?.act;
-  if(['theme','notifs','birthdays','division','reserve','unreserve','report','unreport','delete-bill','delete-forecast'].includes(a))setTimeout(finaScheduleSave,80);
+  if(['theme','notifs','birthdays','division','reserve','unreserve','report','unreport','delete','delete-forecast'].includes(a)){
+   const id=e.target.closest('[data-id]')?.dataset?.id;
+   const sharedBill=id?(S.bills||[]).some(b=>b.type==='shared'&&String(b.id)===String(id)):false;
+   const sharedForecast=id?(S.future||[]).some(b=>b.type==='shared'&&String(b.id)===String(id)):false;
+   if(!sharedBill&&!sharedForecast)setTimeout(finaScheduleSave,80);
+ }
 },true);
 
 window.FinaInstallPrompt=null;
