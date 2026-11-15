@@ -580,7 +580,7 @@ function banks(){
  const accountRows=accounts.map(a=>`<div class="bank-account-line"><div class="bank-account-identity"><span class="bank-dot ${escape(a.name.toLowerCase())}">${a.name==='Santander'?'S':a.name==='Nubank'?'nu':a.name==='Itaú'?'I':'B'}</span><div><strong>${escape(a.name)}</strong><small>${name(a.owner)} · Saldo em conta</small></div></div><strong class="bank-account-value">${display(a.balance)}</strong></div>`).join('');
  const bankPeriod=finaBankLedgerSelectedPeriod();
  const txAll=S.transactions.filter(t=>t.real===true&&ownerShown(t.owner)&&
-   t.month===bankPeriod.month&&t.year===bankPeriod.year).slice().reverse();
+   t.month===bankPeriod.month&&t.year===bankPeriod.year).slice();
  const maxBankRows=Math.max(50,Number(S.bankRowsVisible)||50);
  const txRows=txAll.slice(0,maxBankRows).map(t=>row(t.name,`${name(t.owner)} · ${t.bank} · ${t.date}`,`<span class="${t.kind==='in'?'positive':'negative'}">${t.kind==='in'?'+':'−'} ${money(t.value)}</span>`,t.category==='refund'?'<span class="pill ok">Estorno devolvido na conta</span>':t.category==='transfer-self'?'<span class="pill wait">Transferência própria · não soma</span>':t.category==='transfer-spouse'?'<span class="pill ok">Entre vocês · só soma individualmente</span>':'')).join('')||'<p class="muted">Sem movimentações bancárias neste período.</p>';
  const movements=`<div class="bank-total-balance"><span>Saldo total das contas exibidas</span><strong>${display(totalAccounts)}</strong><small>Soma dos saldos bancários disponíveis neste filtro · não inclui limite do cartão</small></div><div class="bank-accounts-group">${accountRows||'<p class="muted">Nenhuma conta disponível.</p>'}</div><div class="bank-subheading"><strong>Últimas movimentações bancárias</strong><span class="muted">Inclui transferências identificadas</span></div>${txRows}${txAll.length>maxBankRows?btn('Mostrar mais movimentações ('+String(txAll.length-maxBankRows)+')','bank-show-more'):''}<div class="hint">O total desta tela soma as contas exibidas. Na tela inicial, o total do casal é a soma dos saldos ajustados autorizados; tocando na inicial de uma pessoa, aparece o saldo bancário original dela. Créditos de cartão não contam como dinheiro em conta.</div>`;
@@ -1490,6 +1490,9 @@ const finaNormalizeSavedState=state=>({
  refunds:Array.isArray(state?.refunds)?
   state.refunds.filter(x=>x?.state==='pending'&&x?.type!=='shared'&&x.id!=null).map(finaPersistRefund):[]
 });
+// Mescla por campo para nao perder edicoes simultaneas de aparelhos distintos.
+// Se o mesmo campo mudar nos dois lados, a versao do servidor prevalece.
+// Baixas bancarias confirmadas jamais podem retornar para aberto.
 const finaMergeEditedItems=(server,base,edited)=>{
  const key=x=>String(x?.id??'');
  const serverItems=Array.isArray(server)?server:[];
@@ -1498,12 +1501,33 @@ const finaMergeEditedItems=(server,base,edited)=>{
  const byId=new Map(serverItems.filter(x=>key(x)).map(x=>[key(x),x]));
  const old=new Map(baseItems.filter(x=>key(x)).map(x=>[key(x),x]));
  const current=new Map(localItems.filter(x=>key(x)).map(x=>[key(x),x]));
- for(const id of old.keys())if(!current.has(id))byId.delete(id);
+ for(const [id,prior] of old){
+  if(current.has(id))continue;
+  const remote=byId.get(id);
+  // Nao apagar uma edicao remota que chegou depois da copia local.
+  if(remote && JSON.stringify(remote)!==JSON.stringify(prior))continue;
+  byId.delete(id);
+ }
  for(const [id,row] of current){
-  if(old.has(id)&&JSON.stringify(row)===JSON.stringify(old.get(id)))continue;
-  // Pagamento confirmado pelo banco nunca volta a aberto por uma copia antiga.
-  if(byId.get(id)?.state==='posted'&&row.state!=='posted')continue;
-  byId.set(id,row);
+  const prior=old.get(id),remote=byId.get(id);
+  if(!prior){
+   // Duas inclusoes com o mesmo ID nao podem sobrescrever uma a outra.
+   if(!remote)byId.set(id,row);
+   continue;
+  }
+  if(!remote)continue; // Remocao remota ja confirmada.
+  if(JSON.stringify(row)===JSON.stringify(prior))continue;
+  if(remote.state==='posted'&&row.state!=='posted')continue;
+  const next={...remote};
+  for(const field of new Set([...Object.keys(prior),...Object.keys(row)])){
+   const before=prior[field],local=row[field],latest=remote[field];
+   if(JSON.stringify(local)===JSON.stringify(before))continue;
+   if(JSON.stringify(latest)!==JSON.stringify(before))continue;
+   if(Object.prototype.hasOwnProperty.call(row,field))next[field]=local;
+   else delete next[field];
+  }
+  if(remote.state==='posted'&&next.state!=='posted')continue;
+  byId.set(id,next);
  }
  return [...byId.values()];
 };
