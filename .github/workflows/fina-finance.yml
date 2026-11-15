@@ -29,6 +29,7 @@ on:
       - tests/sync-coverage.test.mjs
       - tests/finance-rules.test.mjs
       - tests/pwa-cache.test.mjs
+      - tests/couple-fast-bank-visible.test.mjs
       - tests/shared-refund-sync.test.mjs
       - supabase/migrations/20261115133500_fina_shared_pending_refunds.sql
       - .github/workflows/fina-finance.yml
@@ -58,6 +59,7 @@ on:
       - tests/sync-coverage.test.mjs
       - tests/finance-rules.test.mjs
       - tests/pwa-cache.test.mjs
+      - tests/couple-fast-bank-visible.test.mjs
       - tests/shared-refund-sync.test.mjs
       - supabase/migrations/20261115133500_fina_shared_pending_refunds.sql
       - .github/workflows/fina-finance.yml
@@ -71,4 +73,4 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --test tests/cards-missing-invoice.test.mjs tests/server-bill-payment-guard.test.mjs tests/manual-payment-reconciliation.test.mjs tests/bank-bill-visibility.test.mjs tests/finance-rules.test.mjs tests/reciprocal-planning.test.mjs tests/shared-refund-sync.test.mjs tests/pwa-cache.test.mjs tests/offline-vault.test.mjs tests/financial-invariants.test.mjs tests/sync-coverage.test.mjs tests/pluggy-webhook.test.mjs tests/history-rescan.test.mjs tests/partner-webhook-provision.test.mjs tests/bills-webhook-recovery.test.mjs tests/finance-audit.test.mjs tests/home-forecast-performance.test.mjs
+      - run: node --test tests/cards-missing-invoice.test.mjs tests/server-bill-payment-guard.test.mjs tests/manual-payment-reconciliation.test.mjs tests/bank-bill-visibility.test.mjs tests/finance-rules.test.mjs tests/reciprocal-planning.test.mjs tests/couple-fast-bank-visible.test.mjs tests/shared-refund-sync.test.mjs tests/pwa-cache.test.mjs tests/offline-vault.test.mjs tests/financial-invariants.test.mjs tests/sync-coverage.test.mjs tests/pluggy-webhook.test.mjs tests/history-rescan.test.mjs tests/partner-webhook-provision.test.mjs tests/bills-webhook-recovery.test.mjs tests/finance-audit.test.mjs tests/home-forecast-performance.test.mjs
