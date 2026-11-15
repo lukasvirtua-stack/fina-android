@@ -93,3 +93,37 @@ test('SQL permite excluir previsao só do outro integrante autenticado do mesmo 
  assert.match(migration,/grant execute on function public.fina_delete_shared_future_income\(uuid,text\) to authenticated/);
  assert.match(migration,/'sourceUserId',theirs.user_id::text/);
 });
+
+test('backup privado antigo só é oferecido; não restaura dados silenciosamente',()=>{
+ const code=between('async function finaLoadPersistentState(user){','\nasync function finaLoadSharedBills(){');
+ assert.match(code,/window\.FinaOfflineVault\?\.loadState\(user.id,window.FinaSelfOwnerKey\)/);
+ assert.match(code,/missingBills\.length\|\|missingFuture\.length/);
+ assert.match(code,/if\(!recoverable\)void window\.FinaOfflineVault\?\.saveState/);
+ assert.match(html,/window\.confirm\('Recuperar os cadastros deste aparelho/);
+ assert.match(html,/window\.FinaRecoverablePlanningState=null/);
+});
+
+test('recuperação preserva faturas oficiais e registros compartilhados; evita duplicatas',async()=>{
+ const code=between('window.FinaRecoverLocalPlanning=async()=>{','\nlet finaSharedProfileChannel=null;');
+ let saveCount=0,refreshCount=0;
+ const S={bills:[{id:'bank',type:'bank'},{id:55,type:'manual'}],future:[{id:'shared',type:'shared'}],formNotice:''};
+ const window={FinaCurrentUser:{id:'lucas-id'},FinaSelfOwnerKey:'lucas',
+  FinaRecoverablePlanningState:{userId:'lucas-id',manualBills:[
+   {id:55,owner:'lucas',type:'manual'},{id:56,owner:'lucas',type:'manual'}],
+   future:[{id:123,owner:'lucas'}]},
+  FinaRender:()=>{}};
+ const ctx={window,S,finaMarkStateDirty:()=>{},
+  finaSavePersistentState:async()=>{saveCount++;return true;},
+  finaLoadSharedBills:async()=>{refreshCount++;}};
+ vm.createContext(ctx);
+ vm.runInContext(code,ctx);
+ const ok=await ctx.window.FinaRecoverLocalPlanning();
+ assert.equal(ok,true);
+ assert.equal(saveCount,1);
+ assert.equal(refreshCount,1);
+ assert.equal(S.bills.length,3);
+ assert.equal(S.bills.find(x=>x.id==='bank')?.type,'bank');
+ assert.equal(S.bills.filter(x=>x.id===55).length,1);
+ assert.equal(S.future.length,2);
+ assert.equal(window.FinaRecoverablePlanningState,null);
+});
