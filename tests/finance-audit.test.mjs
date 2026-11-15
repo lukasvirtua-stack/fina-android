@@ -46,13 +46,14 @@ test("projection uses current balance, legitimate forecast and pending bills onc
           {owner:"lucas",value:100000,state:"posted",month:10,year:2026},
           {owner:"naara",value:60000,state:"reported",month:10,year:2026}]};
  const ctx={S,partnerOwner:()=>"naara",selfOwner:()=>"lucas",partnerReady:()=>true,
-   ownerBalance:o=>balances[o],sameMonth:x=>x.month===10&&x.year===2026,
+   ownerBalance:o=>balances[o],coupleBaseBalance:()=>Math.min(balances.lucas,balances.naara),
+   sameMonth:x=>x.month===10&&x.year===2026,
    sum:(items,fun)=>items.reduce((n,x)=>n+fun(x),0),
    pending:x=>["open","reserved","reported"].includes(x.state),billValue:x=>x.value};
  const result=vm.runInNewContext(code+"\n({lucas:ownerProjected('lucas'),naara:ownerProjected('naara'),casal:monthResult()})",ctx);
  assert.equal(result.lucas,300000);
  assert.equal(result.naara,190000);
- assert.equal(result.casal,490000);
+ assert.equal(result.casal,-10000,'menor saldo 200000 + recebimentos 150000 − compromissos 360000');
 });
 
 test("audit SQL is read-only and scopes cashflow to posted BANK transactions",()=>{
