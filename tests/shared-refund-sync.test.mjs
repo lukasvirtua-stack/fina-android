@@ -94,3 +94,31 @@ test('RPC limita visibilidade a casal autorizado e permite só excluir pendentes
  assert.match(sql,/state=jsonb_set\(current_state,'\{refunds\}',next_refunds,true\)/);
  assert.doesNotMatch(sql,/fina_bank_accounts|fina_card_bills|fina_bank_transactions/);
 });
+
+test('contas e previsoes com mesmo valor nao desaparecem da visao do outro integrante',async()=>{
+ const fn=between('async function finaLoadSharedBills(){','window.FinaLoadSharedBills=finaLoadSharedBills;');
+ const mine={id:110,owner:'naara',name:'Internet',month:10,year:2026,value:16990,type:'manual',state:'open'};
+ const localFuture={id:210,owner:'naara',name:'Comissão',month:10,year:2026,value:85000};
+ const partnerBills=[
+  {...mine,id:'shared-other-111',sourceUserId:'other-google',type:'shared'},
+  {...mine,id:'shared-other-112',sourceUserId:'other-google',type:'shared'}
+ ];
+ const partnerFuture=[
+  {...localFuture,id:'shared-income-other-211',sourceUserId:'other-google'},
+  {...localFuture,id:'shared-income-other-212',sourceUserId:'other-google'}
+ ];
+ const w={FinaCurrentUser:{id:'lucas-google'},FinaPartnerReady:true,FinaRender:()=>{}};
+ const S={bills:[mine],future:[localFuture],refunds:[]};
+ const sb={rpc:async name=>({error:null,data:name==='fina_shared_pending_bills'?partnerBills:
+  name==='fina_shared_future_income'?partnerFuture:[]})};
+ const ctx={window:w,S,sb,Array,Math,Number,String,Set};
+ vm.createContext(ctx);
+ vm.runInContext(fn,ctx);
+ await ctx.finaLoadSharedBills();
+ assert.equal(S.bills.length,3,'two distinct partner bills must not be hidden');
+ assert.equal(S.future.length,3,'two distinct partner income items must not be hidden');
+ assert.deepEqual(Array.from(S.bills.map(x=>x.id)),[110,'shared-other-111','shared-other-112']);
+ await ctx.finaLoadSharedBills();
+ assert.equal(S.bills.length,3,'refresh must not duplicate partner bills');
+ assert.equal(S.future.length,3,'refresh must not duplicate partner forecasts');
+});
