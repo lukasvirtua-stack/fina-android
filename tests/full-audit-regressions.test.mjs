@@ -124,3 +124,16 @@ test('permissao financeira revogavel protege contas, extratos, faturas e financi
  ])assert.match(migration,new RegExp('-- Hardened: '+name));
  assert.match(migration,/revoke all on function public\.fina_couple_card_bills\(\) from public,anon/);
 });
+
+test('revogacao remove imediatamente dados bancarios de outro Google sem apagar planos proprios',()=>{
+ const code=extract('async function finaLoadHistorySharingStatus(){','window.FinaToggleHistorySharing=async()=>');
+ assert.match(code,/window\.FinaOfflineVault\?\.clearBank\(user\.id\)/);
+ assert.doesNotMatch(code,/window\.FinaOfflineVault\?\.clear\(user\.id\)/);
+ for(const field of ['accounts','cards','transactions','loans'])
+  assert.match(code,new RegExp('S\\.'+field+'='));
+ assert.match(code,/S\.bills=\(S\.bills\|\|\[\]\)\.filter\(x=>x\.type!=='shared'/);
+ assert.match(code,/S\.future=\(S\.future\|\|\[\]\)\.filter\(x=>x\.type!=='shared'\)/);
+ assert.match(code,/S\.refunds=\(S\.refunds\|\|\[\]\)\.filter\(x=>x\.type!=='shared'\)/);
+ assert.match(code,/window\.FinaCashTotalsByOwner=null/);
+ assert.match(html,/table:'fina_history_sharing'/);
+});
