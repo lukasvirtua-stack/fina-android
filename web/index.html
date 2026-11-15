@@ -1898,7 +1898,7 @@ window.FinaCoupleId=window.FinaCoupleId||null;
 async function loadFinaSharedProfiles(){
  const user=window.FinaCurrentUser;if(!user)return;
  const {data:members,error:me}=await sb.from('fina_couple_members').select('couple_id,user_id,role,joined_at').order('joined_at');
- if(me||!Array.isArray(members)||!members.length)return;
+ if(me||window.FinaCurrentUser?.id!==user.id||!Array.isArray(members)||!members.length)return;
  const coupleId=members[0].couple_id;
  const ids=members.map(x=>x.user_id);
  const ownerMember=members.find(x=>x.role==='owner')||members[0];
@@ -1910,7 +1910,7 @@ async function loadFinaSharedProfiles(){
    sb.from('fina_profiles').select('user_id,display_name,birth_date,photo_data,photo_crop,photo_updated_at').in('user_id',ids),
    sb.from('fina_couples').select('id,wedding_date,updated_at').eq('id',coupleId).maybeSingle()
  ]);
- if(pe)return;
+ if(pe||window.FinaCurrentUser?.id!==user.id)return;
 
  for(const p of profiles||[]){
    const key=String(p.user_id)===String(window.FinaCoupleMemberIds.lucas)?'lucas':'naara';
@@ -2003,6 +2003,7 @@ async function loadCoupleStatus(user){
    if(profile?.display_name) selfName=cleanName(profile.display_name);
  }catch{}
  const {data,error}=await sb.rpc('fina_couple_status_v2');
+ if(window.FinaCurrentUser?.id!==user.id)return;
  if(error){
    // Sem rede: recuperar somente dados do proprio Google autenticado e ultimo dono conhecido.
    let saved=null;
@@ -2841,12 +2842,33 @@ finaPullScreen?.addEventListener('touchend',e=>{
  })();
 },{passive:true});
 finaPullScreen?.addEventListener('touchcancel',()=>{finaPullStart=null},{passive:true});
+// Apaga dados privados da memoria em logout/troca de Google.
+// Nao substitui S: os modulos visual e bancario compartilham o mesmo objeto.
+function finaClearPrivateSessionState(){
+ S.accounts=[];S.cards=[];S.transactions=[];S.bills=[];S.future=[];
+ S.loans=[];S.refunds=[];S.transfers=[];S.bankFeedApplied=[];S.messages=[];
+ S.profiles={
+  lucas:{displayName:'Você',dob:'',photo:null,photoOriginal:null,photoCrop:null},
+  naara:{displayName:'Outra pessoa',dob:'',photo:null,photoOriginal:null,photoCrop:null}
+ };
+ S.weddingDate='';S.formNotice='';S.photoNotice='';
+ S.scope='casal';S.card='';S.tab='home';S.edit=null;S.finaTeaching=null;
+ S.finaLearningRules=null;S.finaLearningRulesView=false;
+ S.bankLedgerOffset=0;S.bankRowsVisible=50;S.cashflowFilter='all';
+ window.FinaPartnerReady=false;window.FinaCoupleMemberIds={};window.FinaCoupleId=null;
+ window.FinaBankBalancesReady=false;window.FinaRealBankLoaded=false;
+ window.FinaBankCacheState='waiting';window.FinaCashDataError='';
+ window.FinaCardBillsLoadError='';window.FinaPlanningSyncError='';
+ window.FinaCashTotalsByOwner=null;
+ window.FinaBankLoadSequence=(window.FinaBankLoadSequence||0)+1;
+ window.FinaSyncAlerts=[];window.FinaBankSyncHealth=[];window.FinaOfflineHistoryCount=0;
+ window.FinaHistoryBothApproved=null;window.FinaHistorySelfApproved=false;
+}
 async function applySession(session){
  const user=session?.user;
  if(!user){
-   window.FinaSyncAlerts=[];window.FinaBankSyncHealth=[];window.FinaOfflineHistoryCount=0;
+   finaClearPrivateSessionState();
    window.FinaCurrentUser=null;window.FinaCurrentSession=null;finaAppliedSessionKey='';
-   S.profiles.lucas.displayName='Você';S.profiles.naara.displayName='Outra pessoa';
    document.body.classList.remove('fina-authenticated');gate.hidden=false;bar.textContent='';
    status.textContent='Entre com Google para continuar.';login.disabled=false;return;
  }
@@ -2857,9 +2879,7 @@ async function applySession(session){
    finaAppliedSessionKey=key;window.FinaCurrentSession=session;return;
  }
  if(window.FinaCurrentUser?.id&&window.FinaCurrentUser.id!==user.id){
-   S.accounts=[];S.cards=[];S.transactions=[];S.bills=[];S.future=[];S.loans=[];
-   window.FinaSyncAlerts=[];window.FinaBankSyncHealth=[];window.FinaOfflineHistoryCount=0;
-   window.FinaRealBankLoaded=false;window.FinaBankCacheState='waiting';
+   finaClearPrivateSessionState();
  }
  finaAppliedSessionKey=key;
  window.FinaOwnerResolvedForUserId=null;
