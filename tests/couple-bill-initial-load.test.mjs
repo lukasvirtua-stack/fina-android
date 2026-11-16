@@ -66,7 +66,7 @@ test('falha da API é mostrada sem apagar a última fatura conhecida',async()=>{
 });
 
 test('falha da previsão opcional não esconde faturas oficiais do casal',async()=>{
- const code=between('async function finaLoadOfficialCardBills(){','\\nwindow.FinaLoadOfficialCardBills=');
+ const code=between('async function finaLoadOfficialCardBills(){','\nwindow.FinaLoadOfficialCardBills=');
  const bill={id:'bill-verified',user_id:'lucas-google',bank_account_id:'card-l',
   due_date:'2026-11-12',closing_date:'2026-11-02',total_amount:320,paid_amount:0,currency_code:'BRL'};
  const S={bills:[],cards:[{id:'real-card-card-l',bank:'Santander',digits:'1234'}]};
@@ -78,7 +78,7 @@ test('falha da previsão opcional não esconde faturas oficiais do casal',async(
  }};
  const scope={S,window:w,sb,Math,Number,String,Array,money:c=>String(c),pending:()=>true};
  vm.createContext(scope);
- vm.runInContext(code+'\\nthis.load=finaLoadOfficialCardBills;',scope);
+ vm.runInContext(code+'\nthis.load=finaLoadOfficialCardBills;',scope);
  await scope.load();
  assert.equal(S.bills.filter(x=>x.type==='bank').length,1);
  assert.equal(S.bills[0].value,32000);
