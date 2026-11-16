@@ -53,9 +53,10 @@ test('Versão 1.0.2 e package debug permanecem compatíveis',()=>{
 });
 
 test('Alterações apenas na interface web não geram novos certificados Android',()=>{
- assert.match(workflow,/push:[\\s\\S]*?paths:/);
- assert.doesNotMatch(workflow,/paths-ignore:/);
- assert.doesNotMatch(workflow,/\\n\\s+- 'web\\/index\\.html'/);
- assert.match(workflow,/- 'app\\/\\*\\*'/);
- assert.match(workflow,/publish-assetlinks:/);
+ assert.ok(workflow.includes('push:'));
+ assert.ok(workflow.includes('paths:'));
+ assert.ok(!workflow.includes('paths-ignore:'));
+ assert.ok(!workflow.includes("      - 'web/index.html'"));
+ assert.ok(workflow.includes("      - 'app/**'"));
+ assert.ok(workflow.includes('publish-assetlinks:'));
 });
