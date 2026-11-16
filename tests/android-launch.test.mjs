@@ -51,3 +51,12 @@ test('Versão 1.0.2 e package debug permanecem compatíveis',()=>{
  assert.match(build,/versionName "1\.0\.2"/);
  assert.match(build,/applicationIdSuffix "\.debug"/);
 });
+
+test('Alterações apenas na interface web não geram novos certificados Android',()=>{
+ assert.ok(workflow.includes('push:'));
+ assert.ok(workflow.includes('paths:'));
+ assert.ok(!workflow.includes('paths-ignore:'));
+ assert.ok(!workflow.includes("      - 'web/index.html'"));
+ assert.ok(workflow.includes("      - 'app/**'"));
+ assert.ok(workflow.includes('publish-assetlinks:'));
+});

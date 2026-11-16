@@ -1,10 +1,20 @@
 name: Build FINA Android APK
 
 on:
+  # Alterações apenas na interface web NÃO geram novo APK/certificado.
+  # Cada assinatura de depuração nova exige Digital Asset Links correspondente no domínio.
   push:
     branches: [main]
-    paths-ignore:
-      - 'web/.well-known/assetlinks.json'
+    paths:
+      - 'app/**'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'gradle.properties'
+      - 'tests/android-launch.test.mjs'
+      - 'tests/android-pix.test.mjs'
+      - 'tests/java/**'
+      - 'scripts/update-assetlinks.mjs'
+      - '.github/workflows/build-apk.yml'
   pull_request:
     branches: [main]
     paths:

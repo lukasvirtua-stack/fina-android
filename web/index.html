@@ -671,10 +671,19 @@ function bills(){if(!accessible())return heading('Faturas + Contas','Sem autoriz
   btn('Recuperar cadastros','recover-local-planning')+'</p>':'';
  const incompleteBills=(window.FinaBankSyncHealth||[]).some(it=>
    it.last_bills_warning==='bills_record_incomplete'&&Number(it.last_bills_invalid_count)>0);
+ // O mês filtrado não pode dar a impressão de que faturas de outros meses desapareceram.
+ const currentInvoiceKey=S.billYear+'-'+String(S.monthForBills+1).padStart(2,'0');
+ const invoiceMonths=[...new Set((S.bills||[])
+   .filter(b=>b.card&&planningOwnerShown(b.owner)&&b.state!=='removed'&&Number.isInteger(b.year)&&Number.isInteger(b.month))
+   .map(b=>b.year+'-'+String(b.month+1).padStart(2,'0')))]
+   .filter(key=>key!==currentInvoiceKey).sort().reverse().slice(0,6);
+ const missingInvoiceMessage='<p>Nenhuma fatura carregada para '+escape(monthLabel())+'. '+
+   (invoiceMonths.length?'Há faturas de cartão nos meses: '+escape(invoiceMonths.map(x=>x.split('-').reverse().join('/')).join(', '))+'. Use as setas do calendário para consultá-las.':
+   'Se o banco ainda não enviou a fatura, o valor não será inventado.')+'</p>';
  return `${heading('Faturas + Contas','Reserve ou informe pagamentos; a baixa bancária acontece automaticamente após o extrato confirmar.')}${recoveryNotice}
  ${incompleteBills?'<p class="hint" role="status">A Pluggy disponibilizou dados parciais de algumas faturas. Valores ausentes não significam fatura zerada. A FINA preserva as faturas válidas; consulte o banco para confirmar as demais.</p>':''} ${window.FinaCardBillsLoadError?`<p class="hint" role="status">${escape(window.FinaCardBillsLoadError)}</p>`:''} ${switcher()}${monthPicker()}<div class="statgrid"><div class="stat"><small>Em aberto</small><strong>${display(open())}</strong></div><div class="stat"><small>Reservado</small><strong>${display(reserved())}</strong></div><div class="stat"><small>Informado</small><strong>${display(reported())}</strong></div><div class="stat"><small>Pendente total</small><strong>${display(owed())}</strong></div></div>
 ${card('↶ Estornos das faturas',ownRefunds().map(refundRow).join('')||'<p>Sem estornos.</p>')}
-<section class="card"><div class="row"><div class="cardtitle">Faturas de cartão</div>${btn('+ Informar fatura','add-invoice')}</div>${S.invoiceAdd?invoiceForm():''}${S.formNotice?`<p class="hint" role="status">${escape(S.formNotice)}</p>`:''}${ownBills().filter(b=>b.card).map(billList).join('')||'<p>Nenhuma fatura.</p>'}</section>
+<section class="card"><div class="row"><div class="cardtitle">Faturas de cartão</div>${btn('+ Informar fatura','add-invoice')}</div>${S.invoiceAdd?invoiceForm():''}${S.formNotice?`<p class="hint" role="status">${escape(S.formNotice)}</p>`:''}${ownBills().filter(b=>b.card).map(billList).join('')||missingInvoiceMessage}</section>
 <section class="card"><div class="row"><div class="cardtitle">Contas e financiamentos</div>${btn('+ Adicionar','add-bill')}</div>${ownBills().filter(b=>!b.card).map(billList).join('')||'<p>Nenhuma conta.</p>'}${S.add?newBillForm():''}${finaLearnedRulesPanel()}</section>
 ${finaScheduledBankPreview()}
 ${card('Fechamento e próximo mês',`<div class="row"><div><strong>Confirmado pelo banco</strong><span class="line-detail">${money(sum(ownBills().filter(b=>b.state==='posted'),b=>billValue(b)))}</span></div><div><strong>Pendente e previsto</strong><span class="line-detail">${money(owed())}</span></div></div><p class="muted">${monthOffset()<0?'Mês encerrado ou histórico de pagamentos demonstrativos.':monthOffset()===0?'Mês vigente: valores reais entram pelo banco, reservas mantêm cor até a confirmação.':'Previsões podem repetir o último valor, mas a fatura bancária oficial tem prioridade.'}</p>`)}
@@ -2296,9 +2305,14 @@ async function finaLoadOfficialCardBills(){
  if(!window.FinaCurrentUser||window.FinaOwnerResolvedForUserId!==window.FinaCurrentUser.id)return;
  const requestedForUser=window.FinaCurrentUser.id;
  try{
-  const [{data,error},{data:pendingData,error:pendingError}]=await Promise.all([
+  // O resumo futuro é opcional: sua falha nunca pode ocultar faturas oficiais.
+  const [billResponse,estimateResponse]=await Promise.allSettled([
    sb.rpc('fina_couple_card_bills'),sb.rpc('fina_projected_card_spend')
   ]);
+  const {data,error}=billResponse.status==='fulfilled'
+   ?billResponse.value:{data:null,error:billResponse.reason};
+  const {data:pendingData,error:pendingError}=estimateResponse.status==='fulfilled'
+   ?estimateResponse.value:{data:null,error:estimateResponse.reason};
   if(window.FinaCurrentUser?.id!==requestedForUser)return;
   if(error||!Array.isArray(data)){
    window.FinaCardBillsLoadError='Não foi possível atualizar as faturas do casal. Confira a conexão e atualize esta tela.';
@@ -2373,7 +2387,12 @@ async function finaLoadOfficialCardBills(){
     (b.type==='forecast-card'&&b.source==='pending-card-tx')
    )).concat(official,projected);
   window.FinaRender?.();
- }catch{}
+ }catch(e){
+  if(window.FinaCurrentUser?.id!==requestedForUser)return;
+  window.FinaCardBillsLoadError='Não foi possível atualizar as faturas do casal. Confira a conexão e atualize esta tela.';
+  console.warn('FINA: consulta de faturas indisponível',e?.message||e);
+  window.FinaRender?.();
+ }
 }
 window.FinaLoadOfficialCardBills=finaLoadOfficialCardBills;
 window.FinaSyncAlerts=[];

@@ -64,3 +64,23 @@ test('falha da API é mostrada sem apagar a última fatura conhecida',async()=>{
  assert.match(w.FinaCardBillsLoadError,/Não foi possível atualizar as faturas/);
  assert.match(html,/window\.FinaCardBillsLoadError\?\x60<p class="hint"/);
 });
+
+test('falha da previsão opcional não esconde faturas oficiais do casal',async()=>{
+ const code=between('async function finaLoadOfficialCardBills(){','\nwindow.FinaLoadOfficialCardBills=');
+ const bill={id:'bill-verified',user_id:'lucas-google',bank_account_id:'card-l',
+  due_date:'2026-11-12',closing_date:'2026-11-02',total_amount:320,paid_amount:0,currency_code:'BRL'};
+ const S={bills:[],cards:[{id:'real-card-card-l',bank:'Santander',digits:'1234'}]};
+ const w={FinaCurrentUser:{id:'lucas-google'},FinaOwnerResolvedForUserId:'lucas-google',
+  FinaSelfOwnerKey:'lucas',FinaPartnerReady:true,FinaRender:()=>{}};
+ const sb={rpc:async method=>{
+  if(method==='fina_projected_card_spend')throw Error('Projeção temporariamente indisponível');
+  return {data:[bill],error:null};
+ }};
+ const scope={S,window:w,sb,Math,Number,String,Array,money:c=>String(c),pending:()=>true};
+ vm.createContext(scope);
+ vm.runInContext(code+'\nthis.load=finaLoadOfficialCardBills;',scope);
+ await scope.load();
+ assert.equal(S.bills.filter(x=>x.type==='bank').length,1);
+ assert.equal(S.bills[0].value,32000);
+ assert.equal(w.FinaCardBillsLoadError,'');
+});
